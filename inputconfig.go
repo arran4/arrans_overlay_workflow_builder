@@ -39,37 +39,42 @@ func (c *InputConfig) String() string {
 	if c.Type != "" {
 		sb.WriteString(fmt.Sprintf("Type %s\n", c.Type))
 	}
-	if c.GithubProjectUrl != "" {
-		sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", c.GithubProjectUrl))
-	}
-	if c.DesktopFile != "" {
-		sb.WriteString(fmt.Sprintf("DesktopFile %s\n", c.DesktopFile))
-	}
-	if c.InstalledFilename != "" {
-		sb.WriteString(fmt.Sprintf("InstalledFilename %s\n", c.InstalledFilename))
-	}
-	if c.Category != "" {
-		sb.WriteString(fmt.Sprintf("Category %s\n", c.Category))
-	}
-	if c.EbuildName != "" {
-		sb.WriteString(fmt.Sprintf("EbuildName %s\n", c.EbuildName))
-	}
-	if c.Description != "" {
-		sb.WriteString(fmt.Sprintf("Description %s\n", c.Description))
-	}
-	if c.Homepage != "" {
-		sb.WriteString(fmt.Sprintf("Homepage %s\n", c.Homepage))
-	}
-	if c.License != "" {
-		sb.WriteString(fmt.Sprintf("License %s\n", c.License))
-	}
-	keywords := make([]string, 0, len(c.ReleasesFilename))
-	for key := range c.ReleasesFilename {
-		keywords = append(keywords, key)
-	}
-	sort.Strings(keywords)
-	for _, kw := range keywords {
-		sb.WriteString(fmt.Sprintf("ReleasesFilename %s\n", c.ReleasesFilename[kw]))
+	switch c.Type {
+	case "Github AppImage":
+		if c.GithubProjectUrl != "" {
+			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", c.GithubProjectUrl))
+		}
+		if c.DesktopFile != "" {
+			sb.WriteString(fmt.Sprintf("DesktopFile %s\n", c.DesktopFile))
+		}
+		if c.InstalledFilename != "" {
+			sb.WriteString(fmt.Sprintf("InstalledFilename %s\n", c.InstalledFilename))
+		}
+		if c.Category != "" {
+			sb.WriteString(fmt.Sprintf("Category %s\n", c.Category))
+		}
+		if c.EbuildName != "" {
+			sb.WriteString(fmt.Sprintf("EbuildName %s\n", c.EbuildName))
+		}
+		if c.Description != "" {
+			sb.WriteString(fmt.Sprintf("Description %s\n", c.Description))
+		}
+		if c.Homepage != "" {
+			sb.WriteString(fmt.Sprintf("Homepage %s\n", c.Homepage))
+		}
+		if c.License != "" {
+			sb.WriteString(fmt.Sprintf("License %s\n", c.License))
+		}
+		keywords := make([]string, 0, len(c.ReleasesFilename))
+		for key := range c.ReleasesFilename {
+			keywords = append(keywords, key)
+		}
+		sort.Strings(keywords)
+		for _, kw := range keywords {
+			sb.WriteString(fmt.Sprintf("ReleasesFilename %s=>%s\n", kw, c.ReleasesFilename[kw]))
+		}
+	default:
+		sb.WriteString(fmt.Sprintf("# Unknown type\n"))
 	}
 
 	return sb.String()
@@ -162,54 +167,59 @@ func SanitizeAndAppendInputConfig(parseFields map[string][]string, configs []*In
 	if err != nil {
 		return nil, fmt.Errorf("on Type: %v: %w", parseFields["Type"], err)
 	}
-	currentConfig.GithubProjectUrl, err = onlyOrFail(parseFields["GithubProjectUrl"])
-	if err != nil {
-		return nil, fmt.Errorf("on GithubProjectUrl: %v: %w", parseFields["GithubProjectUrl"], err)
+	switch currentConfig.Type {
+	case "Github AppImage":
+		currentConfig.GithubProjectUrl, err = onlyOrFail(parseFields["GithubProjectUrl"])
+		if err != nil {
+			return nil, fmt.Errorf("on GithubProjectUrl: %v: %w", parseFields["GithubProjectUrl"], err)
+		}
+		currentConfig.InstalledFilename, err = emptyOrOnlyOrFail(parseFields["InstalledFilename"])
+		if err != nil {
+			return nil, fmt.Errorf("on InstalledFilename: %v: %w", parseFields["InstalledFilename"], err)
+		}
+		currentConfig.DesktopFile, err = emptyOrOnlyOrFail(parseFields["DesktopFile"])
+		if err != nil {
+			return nil, fmt.Errorf("on DesktopFile: %v: %w", parseFields["DesktopFile"], err)
+		}
+		currentConfig.Category, err = emptyOrLast(parseFields["Category"])
+		if err != nil {
+			return nil, fmt.Errorf("on Category: %v: %w", parseFields["Category"], err)
+		}
+		currentConfig.EbuildName, err = emptyOrOnlyOrFail(parseFields["EbuildName"])
+		if err != nil {
+			return nil, fmt.Errorf("on EbuildName: %v: %w", parseFields["EbuildName"], err)
+		}
+		currentConfig.Description, err = emptyOrOnlyOrFail(parseFields["Description"])
+		if err != nil {
+			return nil, fmt.Errorf("on Description: %v: %w", parseFields["Description"], err)
+		}
+		currentConfig.Homepage, err = emptyOrOnlyOrFail(parseFields["Homepage"])
+		if err != nil {
+			return nil, fmt.Errorf("on Homepage: %v: %w", parseFields["Homepage"], err)
+		}
+		currentConfig.License, err = emptyOrLast(parseFields["License"])
+		if err != nil {
+			return nil, fmt.Errorf("on License: %v: %w", parseFields["License"], err)
+		}
+		currentConfig.ReleasesFilename, err = parseMapType1(parseFields["ReleasesFilename"])
+		if err != nil {
+			return nil, fmt.Errorf("on ReleasesFilename: %v: %w", parseFields["ReleasesFilename"], err)
+		}
+		currentConfig.GithubOwner, currentConfig.GithubRepo, err = ExtractOrgRepo(currentConfig.GithubProjectUrl)
+		if err != nil {
+			return nil, fmt.Errorf("github url parser: %w", err)
+		}
+		if currentConfig.EbuildName == "" {
+			currentConfig.EbuildName = currentConfig.GithubRepo
+		}
+		currentConfig.EbuildName = TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-appimage", "-AppImage") + "-appimage.ebuild"
+		if currentConfig.DesktopFile == "" {
+			currentConfig.DesktopFile = currentConfig.GithubRepo
+		}
+		currentConfig.DesktopFile = TrimSuffixes(currentConfig.DesktopFile, ".desktop") + ".desktop"
+	default:
+		return nil, fmt.Errorf("uknown type: %s", currentConfig.Type)
 	}
-	currentConfig.InstalledFilename, err = emptyOrOnlyOrFail(parseFields["InstalledFilename"])
-	if err != nil {
-		return nil, fmt.Errorf("on InstalledFilename: %v: %w", parseFields["InstalledFilename"], err)
-	}
-	currentConfig.DesktopFile, err = emptyOrOnlyOrFail(parseFields["DesktopFile"])
-	if err != nil {
-		return nil, fmt.Errorf("on DesktopFile: %v: %w", parseFields["DesktopFile"], err)
-	}
-	currentConfig.Category, err = emptyOrLast(parseFields["Category"])
-	if err != nil {
-		return nil, fmt.Errorf("on Category: %v: %w", parseFields["Category"], err)
-	}
-	currentConfig.EbuildName, err = emptyOrOnlyOrFail(parseFields["EbuildName"])
-	if err != nil {
-		return nil, fmt.Errorf("on EbuildName: %v: %w", parseFields["EbuildName"], err)
-	}
-	currentConfig.Description, err = emptyOrOnlyOrFail(parseFields["Description"])
-	if err != nil {
-		return nil, fmt.Errorf("on Description: %v: %w", parseFields["Description"], err)
-	}
-	currentConfig.Homepage, err = emptyOrOnlyOrFail(parseFields["Homepage"])
-	if err != nil {
-		return nil, fmt.Errorf("on Homepage: %v: %w", parseFields["Homepage"], err)
-	}
-	currentConfig.License, err = emptyOrLast(parseFields["License"])
-	if err != nil {
-		return nil, fmt.Errorf("on License: %v: %w", parseFields["License"], err)
-	}
-	currentConfig.ReleasesFilename, err = parseMapType1(parseFields["ReleasesFilename"])
-	if err != nil {
-		return nil, fmt.Errorf("on ReleasesFilename: %v: %w", parseFields["ReleasesFilename"], err)
-	}
-	currentConfig.GithubOwner, currentConfig.GithubRepo, err = ExtractOrgRepo(currentConfig.GithubProjectUrl)
-	if err != nil {
-		return nil, fmt.Errorf("github url parser: %w", err)
-	}
-	if currentConfig.EbuildName == "" {
-		currentConfig.EbuildName = currentConfig.GithubRepo
-	}
-	currentConfig.EbuildName = TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-appimage", "-AppImage") + "-appimage.ebuild"
-	if currentConfig.DesktopFile == "" {
-		currentConfig.DesktopFile = currentConfig.GithubRepo
-	}
-	currentConfig.DesktopFile = TrimSuffixes(currentConfig.DesktopFile, ".desktop") + ".desktop"
 	configs = append(configs, currentConfig)
 	return configs, nil
 }

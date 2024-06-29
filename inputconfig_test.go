@@ -16,13 +16,13 @@ Category app-misc
 EbuildName jan-appimage
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
 Homepage https://jan.ai/
-ReleasesFilename amd64=>jan-linux-x86_64-VERSION.AppImage
-ReleasesFilename arm64=>jan-linux-arm64-VERSION.AppImage
+ReleasesFilename amd64=>jan-linux-x86_64-${VERSION}.AppImage
+ReleasesFilename arm64=>jan-linux-arm64-${VERSION}.AppImage
 
 Type Github AppImage
 GithubProjectUrl https://github.com/anotherorg/anotherrepo/
 InstalledFilename anotherapp
-ReleasesFilename amd64=>anotherrepo-VERSION.AppImage
+ReleasesFilename amd64=>anotherrepo-${VERSION}.AppImage
 `
 
 func TestParseConfigFile(t *testing.T) {
@@ -46,25 +46,20 @@ func TestParseConfigFile(t *testing.T) {
 			EbuildName:        "jan-appimage.ebuild",
 			Description:       "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 			Homepage:          "https://jan.ai/",
-			GithubRepo:        "janhq",
-			GithubOwner:       "jan",
-			License:           "unknown",
 			ReleasesFilename: map[string]string{
-				"amd64": "jan-linux-x86_64-VERSION.AppImage",
-				"arm64": "jan-linux-arm64-VERSION.AppImage",
+				"amd64": "jan-linux-x86_64-${VERSION}.AppImage",
+				"arm64": "jan-linux-arm64-${VERSION}.AppImage",
 			},
 		},
 		{
 			Type:              "Github AppImage",
 			GithubProjectUrl:  "https://github.com/anotherorg/anotherrepo/",
-			InstalledFilename: "anotherapp",
 			DesktopFile:       "anotherrepo.desktop",
 			Category:          "app-misc",
 			EbuildName:        "anotherrepo-appimage.ebuild",
-			Description:       "", // Empty because it's optional in the test data
-			Homepage:          "", // Empty because it's optional in the test data
+			InstalledFilename: "anotherapp",
 			ReleasesFilename: map[string]string{
-				"amd64": "anotherrepo-VERSION.AppImage",
+				"amd64": "anotherrepo-${VERSION}.AppImage",
 			},
 		},
 	}
@@ -78,7 +73,8 @@ func TestParseConfigFile(t *testing.T) {
 			configs[i].Category != expected.Category ||
 			configs[i].EbuildName != expected.EbuildName ||
 			configs[i].Description != expected.Description ||
-			configs[i].Homepage != expected.Homepage {
+			configs[i].Homepage != expected.Homepage ||
+			!releasesFilenamesEqual(configs[i].ReleasesFilename, expected.ReleasesFilename) {
 			t.Errorf("unexpected config[%d]:\nexpected: %+v\ngot:      %+v", i, expected, configs[i])
 
 			// Print the table only when there is an error
@@ -93,6 +89,7 @@ func TestParseConfigFile(t *testing.T) {
 			fmt.Printf("| %-10s | %-20s | %-80s | %-80s |\n", getStatus(expected.EbuildName, configs[i].EbuildName), "EbuildName", expected.EbuildName, configs[i].EbuildName)
 			fmt.Printf("| %-10s | %-20s | %-80s | %-80s |\n", getStatus(expected.Description, configs[i].Description), "Description", expected.Description, configs[i].Description)
 			fmt.Printf("| %-10s | %-20s | %-80s | %-80s |\n", getStatus(expected.Homepage, configs[i].Homepage), "Homepage", expected.Homepage, configs[i].Homepage)
+			fmt.Printf("| %-10s | %-20s | %-80s | %-80s |\n", getStatus(formatReleasesFilename(expected.ReleasesFilename), formatReleasesFilename(configs[i].ReleasesFilename)), "ReleasesFilename", formatReleasesFilename(expected.ReleasesFilename), formatReleasesFilename(configs[i].ReleasesFilename))
 			fmt.Println("------------------------------------------------------------------------------------------------------------------------------------------------------------------------")
 		}
 	}
@@ -105,8 +102,29 @@ func getStatus(expected, result string) string {
 	return "not equal"
 }
 
+func releasesFilenamesEqual(expected, result map[string]string) bool {
+	if len(expected) != len(result) {
+		return false
+	}
+	for key, expectedValue := range expected {
+		resultValue, ok := result[key]
+		if !ok || resultValue != expectedValue {
+			return false
+		}
+	}
+	return true
+}
+
+func formatReleasesFilename(releases map[string]string) string {
+	var formatted string
+	for arch, filename := range releases {
+		formatted += fmt.Sprintf("%s=>%s, ", arch, filename)
+	}
+	return formatted[:len(formatted)-2] // Remove trailing comma and space
+}
+
 func TestConfigString(t *testing.T) {
-	config := InputConfig{
+	config := &InputConfig{
 		EntryNumber:       0,
 		Type:              "Github AppImage",
 		GithubProjectUrl:  "https://github.com/janhq/jan/",
@@ -117,7 +135,7 @@ func TestConfigString(t *testing.T) {
 		Description:       "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 		Homepage:          "https://jan.ai/",
 		ReleasesFilename: map[string]string{
-			"amd64": "anotherrepo-VERSION.AppImage",
+			"amd64": "anotherrepo-${VERSION}.AppImage",
 		},
 	}
 
@@ -129,7 +147,7 @@ Category app-misc
 EbuildName jan-appimage.ebuild
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
 Homepage https://jan.ai/
-ReleasesFilename amd64=>jan-linux-x86_64-VERSION.AppImage
+ReleasesFilename amd64=>anotherrepo-${VERSION}.AppImage
 `
 
 	result := config.String()

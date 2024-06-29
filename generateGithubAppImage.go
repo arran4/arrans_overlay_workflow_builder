@@ -5,8 +5,10 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 )
@@ -41,12 +43,13 @@ func GenerateGithubAppImage(file string) error {
 	_ = os.MkdirAll(outputDir, 0755)
 	for _, inputConfig := range inputConfigs {
 		out := bytes.NewBuffer(nil)
-		if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", &GenerateGithubAppImageTemplateData{
+		data := &GenerateGithubAppImageTemplateData{
 			InputConfig: inputConfig,
-		}); err != nil {
+		}
+		if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", data); err != nil {
 			return fmt.Errorf("excuting template: %w", err)
 		}
-		n := filepath.Join(outputDir, fmt.Sprintf("%s-%s-update.yaml", inputConfig.Category, strings.TrimSuffix(inputConfig.EbuildName, ".ebuild")))
+		n := filepath.Join(outputDir, data.WorkflowFileName())
 		if err := os.WriteFile(n, out.Bytes(), 0644); err != nil {
 			return fmt.Errorf("writing %s: %w", n, err)
 		}
