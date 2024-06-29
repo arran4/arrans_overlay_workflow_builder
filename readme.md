@@ -1,7 +1,7 @@
 # arrans_overlay_workflow_builder_generator
 
 This is a generator for some of the github actions in [my gentoo overlay](https://github.com/arran4/arrans_overlay/tree/main/.github/workflows)'s
-workflow directory. 
+workflow directory. Checkout the overlay to see if this is appropriate for you.
 
 The github actions it generates run daily and automatically keep my overlay up to date on the supported types. 
 
