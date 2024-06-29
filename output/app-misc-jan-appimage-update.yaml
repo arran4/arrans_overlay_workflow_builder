@@ -1,31 +1,33 @@
-name: [[ .WorkflowName ]]
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder
+
+name: app-misc/jan-appimage update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '[[ .Cron ]]'
+    - cron: '41 17 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/[[ .WorkflowFileName ]]'
+      - '.github/workflows/app-misc-jan-appimage-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  ecn: [[ .Category ]]
-  epn: [[ .PackageName ]]
-  description: "[[ .Description ]]"
-  homepage: "[[ .HomePage ]]"
-  desktop_file: "[[ .DesktopFile ]]"
-  appimage_installed_name: [[ .InstalledFilename ]]
-  github_owner: [[ .GithubOwner ]]
-  github_repo: [[ .GithubRepo ]]
-  keywords: [[ .Keywords ]]
-  workflow_filename: [[ .WorkflowFileName ]]
+  ecn: app-misc
+  epn: jan-appimage
+  description: "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)"
+  homepage: "https://jan.ai/"
+  desktop_file: "jan.desktop"
+  appimage_installed_name: jan
+  github_owner: janhq
+  github_repo: jan
+  keywords: amd64 arm64
+  workflow_filename: app-misc-jan-appimage-update.yaml
 
 jobs:
   check-and-create-ebuild:
@@ -50,9 +52,9 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p $ebuild_dir
 
-          releases=$(curl -s https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[].tag_name')
-          for release in $releases; do
-            version="${release#v}"
+          tags=$(curl -s https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[].tag_name')
+          for tag in $tags; do
+            version="${tag#v}"
             ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
             if [ ! -f "$ebuild_file" ]; then
 
@@ -73,7 +75,11 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo 'SRC_URI="[[ .SrcUri ]]"'
+                                echo "SRC_URI=""
+                echo " amd64? ( https://github.com//${{ env.github_owner }}/${{ env.github_repo }}/releases/download/v\${PV}/jan-linux-x86_64-\${PV}.AppImage -> ${{ env.epn }}-\${PV}.amd64 )"
+                echo " arm64? ( https://github.com//${{ env.github_owner }}/${{ env.github_repo }}/releases/download/v\${PV}/jan-linux-x86_64-\${PV}.AppImage -> ${{ env.epn }}-\${PV}.arm64 )"
+                echo ""
+                echo ""'
                 echo ''
                 echo 'src_unpack() {'
                 echo '  cp "${DISTDIR}/${A}" "${A}"  || die "Can'\''t copy archive file"'
@@ -105,12 +111,18 @@ jobs:
                 echo ""
               } > $ebuild_file
 
-              [[ range _, $wgetfile := .ExternalResources ]] 
-              # Generate the manifest for the new ebuild: [[ $wgetfile.LocalFilename ]]
-              wget [[ $wgetfile.Url ]] -O /tmp/[[ $wgetfile.LocalFilename ]]
-              echo "DIST [[ $wgetfile.LocalFilename ]] $(stat -c %s "/tmp/[[ $wgetfile.LocalFilename ]]") BLAKE2B $(b2sum "/tmp/[[ $wgetfile.LocalFilename ]]" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/[[ $wgetfile.LocalFilename ]]" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
-              rm "/tmp/[[ $wgetfile.LocalFilename ]]"
-              [[ end ]]
+               
+              # Generate the manifest for the new ebuild: ${{ env.epn }}-${version}.amd64
+              wget "https://github.com//${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/jan-linux-x86_64-${version}.AppImage" -O "/tmp/${{ env.epn }}-${version}.amd64"
+              echo "DIST ${{ env.epn }}-${version}.amd64 $(stat -c %s "/tmp/${{ env.epn }}-${version}.amd64") BLAKE2B $(b2sum "/tmp/${{ env.epn }}-${version}.amd64" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/${{ env.epn }}-${version}.amd64" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
+              rm "/tmp/${{ env.epn }}-${version}.amd64"
+               
+              # Generate the manifest for the new ebuild: ${{ env.epn }}-${version}.arm64
+              wget "https://github.com//${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/jan-linux-x86_64-${version}.AppImage" -O "/tmp/${{ env.epn }}-${version}.arm64"
+              echo "DIST ${{ env.epn }}-${version}.arm64 $(stat -c %s "/tmp/${{ env.epn }}-${version}.arm64") BLAKE2B $(b2sum "/tmp/${{ env.epn }}-${version}.arm64" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/${{ env.epn }}-${version}.arm64" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
+              rm "/tmp/${{ env.epn }}-${version}.arm64"
+              
+              echo "::set-output name=generated_tag::$tag"
               break
             fi
           done
@@ -122,4 +134,4 @@ jobs:
           git commit -m "Add ebuilds for new ${{ env.epn }} releases" &&
           git pull --rebase &&
           git push || true
-        if: steps.process_releases.conclusion == 'success'
+        if: steps.check_releases.outputs.generated_tag != 0

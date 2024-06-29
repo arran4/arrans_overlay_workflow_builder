@@ -21,7 +21,7 @@ env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
   description: "[[ .Description ]]"
-  homepage: "[[ .HomePage ]]"
+  homepage: "[[ .Homepage ]]"
   desktop_file: "[[ .DesktopFile ]]"
   appimage_installed_name: [[ .InstalledFilename ]]
   github_owner: [[ .GithubOwner ]]
@@ -107,7 +107,7 @@ jobs:
                 echo ""
               } > $ebuild_file
 
-              [[ range _, $wgetfile := .ExternalResources ]] 
+              [[ range $i, $wgetfile := .ExternalResources ]] 
               # Generate the manifest for the new ebuild: [[ $wgetfile.WgetLocalFilename ]]
               wget "[[ $wgetfile.UrlWget ]]" -O "/tmp/[[ $wgetfile.WgetLocalFilename ]]"
               echo "DIST [[ $wgetfile.WgetLocalFilename ]] $(stat -c %s "/tmp/[[ $wgetfile.WgetLocalFilename ]]") BLAKE2B $(b2sum "/tmp/[[ $wgetfile.WgetLocalFilename ]]" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/[[ $wgetfile.WgetLocalFilename ]]" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
