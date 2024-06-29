@@ -29,7 +29,7 @@ func GenerateGithubAppImage(file string) error {
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", file, err)
 	}
-	subFs, err := fs.Sub(templateFiles, "templates/")
+	subFs, err := fs.Sub(templateFiles, "templates")
 	if err != nil {
 		return fmt.Errorf("searching templates subdirectory: %w", err)
 	}

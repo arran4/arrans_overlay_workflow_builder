@@ -13,7 +13,7 @@ GithubProjectUrl https://github.com/janhq/jan/
 DesktopFile jan
 InstalledFilename jan
 Category app-misc
-EbuildName janhq-appimage
+EbuildName jan-appimage
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
 Homepage https://jan.ai/
 
@@ -39,7 +39,7 @@ func TestParseConfigFile(t *testing.T) {
 			DesktopFile:       "jan.desktop",
 			InstalledFilename: "jan",
 			Category:          "app-misc",
-			EbuildName:        "janhq-appimage.ebuild",
+			EbuildName:        "jan-appimage.ebuild",
 			Description:       "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 			Homepage:          "https://jan.ai/",
 		},
@@ -99,7 +99,7 @@ func TestConfigString(t *testing.T) {
 		DesktopFile:       "jan.desktop",
 		InstalledFilename: "jan",
 		Category:          "app-misc",
-		EbuildName:        "janhq-appimage.ebuild",
+		EbuildName:        "jan-appimage.ebuild",
 		Description:       "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 		Homepage:          "https://jan.ai/",
 	}
@@ -109,7 +109,7 @@ GithubProjectUrl https://github.com/janhq/jan/
 DesktopFile jan.desktop
 InstalledFilename jan
 Category app-misc
-EbuildName janhq-appimage.ebuild
+EbuildName jan-appimage.ebuild
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
 Homepage https://jan.ai/
 `
