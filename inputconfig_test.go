@@ -16,10 +16,13 @@ Category app-misc
 EbuildName jan-appimage
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
 Homepage https://jan.ai/
+ReleasesFilename amd64=>jan-linux-x86_64-VERSION.AppImage
+ReleasesFilename arm64=>jan-linux-arm64-VERSION.AppImage
 
 Type Github AppImage
 GithubProjectUrl https://github.com/anotherorg/anotherrepo/
 InstalledFilename anotherapp
+ReleasesFilename amd64=>anotherrepo-VERSION.AppImage
 `
 
 func TestParseConfigFile(t *testing.T) {
@@ -34,6 +37,7 @@ func TestParseConfigFile(t *testing.T) {
 
 	expectedConfigs := []*InputConfig{
 		{
+			EntryNumber:       0,
 			Type:              "Github AppImage",
 			GithubProjectUrl:  "https://github.com/janhq/jan/",
 			DesktopFile:       "jan.desktop",
@@ -42,6 +46,13 @@ func TestParseConfigFile(t *testing.T) {
 			EbuildName:        "jan-appimage.ebuild",
 			Description:       "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 			Homepage:          "https://jan.ai/",
+			GithubRepo:        "janhq",
+			GithubOwner:       "jan",
+			License:           "unknown",
+			ReleasesFilename: map[string]string{
+				"amd64": "jan-linux-x86_64-VERSION.AppImage",
+				"arm64": "jan-linux-arm64-VERSION.AppImage",
+			},
 		},
 		{
 			Type:              "Github AppImage",
@@ -52,6 +63,9 @@ func TestParseConfigFile(t *testing.T) {
 			EbuildName:        "anotherrepo-appimage.ebuild",
 			Description:       "", // Empty because it's optional in the test data
 			Homepage:          "", // Empty because it's optional in the test data
+			ReleasesFilename: map[string]string{
+				"amd64": "anotherrepo-VERSION.AppImage",
+			},
 		},
 	}
 
@@ -102,6 +116,9 @@ func TestConfigString(t *testing.T) {
 		EbuildName:        "jan-appimage.ebuild",
 		Description:       "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 		Homepage:          "https://jan.ai/",
+		ReleasesFilename: map[string]string{
+			"amd64": "anotherrepo-VERSION.AppImage",
+		},
 	}
 
 	expected := `Type Github AppImage
@@ -112,6 +129,7 @@ Category app-misc
 EbuildName jan-appimage.ebuild
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
 Homepage https://jan.ai/
+ReleasesFilename amd64=>jan-linux-x86_64-VERSION.AppImage
 `
 
 	result := config.String()

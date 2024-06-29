@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"sort"
 	"strings"
 	"unicode"
 )
@@ -20,10 +21,15 @@ type InputConfig struct {
 	EbuildName        string
 	Description       string
 	Homepage          string
+	GithubRepo        string
+	GithubOwner       string
+	License           string
+	ReleasesFilename  map[string]string
 }
 
 const (
 	DefaultCategory = "app-misc"
+	DefaultLicense  = "unknown"
 )
 
 // String serializes the InputConfig struct back into the configuration file format.
@@ -54,6 +60,17 @@ func (c *InputConfig) String() string {
 	if c.Homepage != "" {
 		sb.WriteString(fmt.Sprintf("Homepage %s\n", c.Homepage))
 	}
+	if c.License != "" {
+		sb.WriteString(fmt.Sprintf("License %s\n", c.License))
+	}
+	keywords := make([]string, 0, len(c.ReleasesFilename))
+	for key := range c.ReleasesFilename {
+		keywords = append(keywords, key)
+	}
+	sort.Strings(keywords)
+	for _, kw := range keywords {
+		sb.WriteString(fmt.Sprintf("ReleasesFilename %s\n", c.ReleasesFilename[kw]))
+	}
 
 	return sb.String()
 }
@@ -61,10 +78,8 @@ func (c *InputConfig) String() string {
 // ParseInputConfigFile parses the given configuration file and returns a slice of InputConfig structures.
 func ParseInputConfigFile(file io.Reader) ([]*InputConfig, error) {
 	var configs []*InputConfig
-	var currentConfig *InputConfig
-	var parseFields map[string]*string
+	var parseFields map[string][]string
 	scanner := bufio.NewScanner(file)
-	entryNumber := 0
 	breakCount := 0
 
 	for scanner.Scan() {
@@ -74,39 +89,36 @@ func ParseInputConfigFile(file io.Reader) ([]*InputConfig, error) {
 		}
 
 		if line == "" {
-			if breakCount < 0 || currentConfig == nil {
+			if breakCount < 0 || parseFields == nil {
 				continue
 			}
 			breakCount++
 			var err error
-			configs, err = SanitizeAndAppendInputConfig(currentConfig, configs)
+			configs, err = SanitizeAndAppendInputConfig(parseFields, configs)
 			if err != nil {
-				return nil, fmt.Errorf("sanitiization issue with %d: %w", currentConfig.EntryNumber, err)
+				return nil, fmt.Errorf("sanitiization issue with %d: %w", len(configs), err)
 			}
-			currentConfig = nil
+			parseFields = nil
 			continue
 		}
 
-		if currentConfig == nil {
-			currentConfig = &InputConfig{
-				Category:    DefaultCategory,
-				EntryNumber: entryNumber,
-			}
-			entryNumber++
-			parseFields = map[string]*string{
-				"Type":              &currentConfig.Type,
-				"GithubProjectUrl":  &currentConfig.GithubProjectUrl,
-				"InstalledFilename": &currentConfig.InstalledFilename,
-				"DesktopFile":       &currentConfig.DesktopFile,
-				"Category":          &currentConfig.Category,
-				"EbuildName":        &currentConfig.EbuildName,
-				"Description":       &currentConfig.Description,
-				"Homepage":          &currentConfig.Homepage,
+		if parseFields == nil {
+			parseFields = map[string][]string{
+				"Type":              nil,
+				"GithubProjectUrl":  nil,
+				"InstalledFilename": nil,
+				"DesktopFile":       nil,
+				"Category":          {DefaultCategory},
+				"EbuildName":        nil,
+				"Description":       nil,
+				"Homepage":          nil,
+				"License":           {DefaultLicense},
+				"ReleasesFilename":  nil,
 			}
 		}
 
 		matched := false
-		for prefix, field := range parseFields {
+		for prefix := range parseFields {
 			if strings.HasPrefix(line, prefix) {
 				withoutPrefix := strings.TrimPrefix(line, prefix)
 				if withoutPrefix != "" && !unicode.IsSpace(rune(withoutPrefix[0])) {
@@ -116,7 +128,7 @@ func ParseInputConfigFile(file io.Reader) ([]*InputConfig, error) {
 					withoutPrefix = withoutPrefix[1:]
 				}
 				value := strings.TrimSpace(withoutPrefix)
-				*field = value
+				parseFields[prefix] = append(parseFields[prefix], value)
 				matched = true
 				break
 			}
@@ -128,11 +140,11 @@ func ParseInputConfigFile(file io.Reader) ([]*InputConfig, error) {
 		breakCount = 0
 	}
 
-	if currentConfig != nil {
+	if parseFields != nil {
 		var err error
-		configs, err = SanitizeAndAppendInputConfig(currentConfig, configs)
+		configs, err = SanitizeAndAppendInputConfig(parseFields, configs)
 		if err != nil {
-			return nil, fmt.Errorf("sanitiization issue with %d: %w", currentConfig.EntryNumber, err)
+			return nil, fmt.Errorf("sanitiization issue with %d: %w", len(configs), err)
 		}
 	}
 
@@ -143,24 +155,106 @@ func ParseInputConfigFile(file io.Reader) ([]*InputConfig, error) {
 	return configs, nil
 }
 
-func SanitizeAndAppendInputConfig(currentConfig *InputConfig, configs []*InputConfig) ([]*InputConfig, error) {
-	_, repo, err := ExtractOrgRepo(currentConfig.GithubProjectUrl)
+func SanitizeAndAppendInputConfig(parseFields map[string][]string, configs []*InputConfig) ([]*InputConfig, error) {
+	var err error
+	currentConfig := &InputConfig{}
+	currentConfig.Type, err = onlyOrFail(parseFields["Type"])
+	if err != nil {
+		return nil, fmt.Errorf("on Type: %v: %w", parseFields["Type"], err)
+	}
+	currentConfig.GithubProjectUrl, err = onlyOrFail(parseFields["GithubProjectUrl"])
+	if err != nil {
+		return nil, fmt.Errorf("on GithubProjectUrl: %v: %w", parseFields["GithubProjectUrl"], err)
+	}
+	currentConfig.InstalledFilename, err = emptyOrOnlyOrFail(parseFields["InstalledFilename"])
+	if err != nil {
+		return nil, fmt.Errorf("on InstalledFilename: %v: %w", parseFields["InstalledFilename"], err)
+	}
+	currentConfig.DesktopFile, err = emptyOrOnlyOrFail(parseFields["DesktopFile"])
+	if err != nil {
+		return nil, fmt.Errorf("on DesktopFile: %v: %w", parseFields["DesktopFile"], err)
+	}
+	currentConfig.Category, err = emptyOrLast(parseFields["Category"])
+	if err != nil {
+		return nil, fmt.Errorf("on Category: %v: %w", parseFields["Category"], err)
+	}
+	currentConfig.EbuildName, err = emptyOrOnlyOrFail(parseFields["EbuildName"])
+	if err != nil {
+		return nil, fmt.Errorf("on EbuildName: %v: %w", parseFields["EbuildName"], err)
+	}
+	currentConfig.Description, err = emptyOrOnlyOrFail(parseFields["Description"])
+	if err != nil {
+		return nil, fmt.Errorf("on Description: %v: %w", parseFields["Description"], err)
+	}
+	currentConfig.Homepage, err = emptyOrOnlyOrFail(parseFields["Homepage"])
+	if err != nil {
+		return nil, fmt.Errorf("on Homepage: %v: %w", parseFields["Homepage"], err)
+	}
+	currentConfig.License, err = emptyOrLast(parseFields["License"])
+	if err != nil {
+		return nil, fmt.Errorf("on License: %v: %w", parseFields["License"], err)
+	}
+	currentConfig.ReleasesFilename, err = parseMapType1(parseFields["ReleasesFilename"])
+	if err != nil {
+		return nil, fmt.Errorf("on ReleasesFilename: %v: %w", parseFields["ReleasesFilename"], err)
+	}
+	currentConfig.GithubOwner, currentConfig.GithubRepo, err = ExtractOrgRepo(currentConfig.GithubProjectUrl)
 	if err != nil {
 		return nil, fmt.Errorf("github url parser: %w", err)
 	}
-	if currentConfig.Category == "" {
-		currentConfig.Category = DefaultCategory
-	}
 	if currentConfig.EbuildName == "" {
-		currentConfig.EbuildName = repo
+		currentConfig.EbuildName = currentConfig.GithubRepo
 	}
 	currentConfig.EbuildName = TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-appimage", "-AppImage") + "-appimage.ebuild"
 	if currentConfig.DesktopFile == "" {
-		currentConfig.DesktopFile = repo
+		currentConfig.DesktopFile = currentConfig.GithubRepo
 	}
 	currentConfig.DesktopFile = TrimSuffixes(currentConfig.DesktopFile, ".desktop") + ".desktop"
 	configs = append(configs, currentConfig)
 	return configs, nil
+}
+
+func parseMapType1(a []string) (map[string]string, error) {
+	result := make(map[string]string, len(a))
+	for i, v := range a {
+		s := strings.SplitN(v, "=>", 2)
+		if len(s) != 2 {
+			return nil, fmt.Errorf("entry %d, can't split %#v", i, v)
+		}
+		result[strings.TrimSpace(s[0])] = strings.TrimSpace(s[1])
+	}
+	return result, nil
+}
+
+func emptyOrOnlyOrFail(i []string) (string, error) {
+	switch len(i) {
+	case 0:
+		return "", nil
+	case 1:
+		return i[0], nil
+	default:
+		return "", fmt.Errorf("too many values")
+	}
+}
+
+func emptyOrLast(i []string) (string, error) {
+	switch len(i) {
+	case 0:
+		return "", nil
+	default:
+		return i[len(i)-1], nil
+	}
+}
+
+func onlyOrFail(i []string) (string, error) {
+	switch len(i) {
+	case 0:
+		return "", fmt.Errorf("no values")
+	case 1:
+		return i[0], nil
+	default:
+		return "", fmt.Errorf("too many values")
+	}
 }
 
 // TrimSuffixes removes the first matching suffix from the input string.
