@@ -7,7 +7,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '41 17 * * *'
+    - cron: '11 23 * * *'
   workflow_dispatch:
   push:
     paths:
@@ -75,11 +75,10 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                                echo "SRC_URI=""
+                echo "SRC_URI=\""
                 echo " amd64? ( https://github.com//${{ env.github_owner }}/${{ env.github_repo }}/releases/download/v\${PV}/jan-linux-x86_64-\${PV}.AppImage -> ${{ env.epn }}-\${PV}.amd64 )"
                 echo " arm64? ( https://github.com//${{ env.github_owner }}/${{ env.github_repo }}/releases/download/v\${PV}/jan-linux-x86_64-\${PV}.AppImage -> ${{ env.epn }}-\${PV}.arm64 )"
-                echo ""
-                echo ""'
+                echo "\""
                 echo ''
                 echo 'src_unpack() {'
                 echo '  cp "${DISTDIR}/${A}" "${A}"  || die "Can'\''t copy archive file"'

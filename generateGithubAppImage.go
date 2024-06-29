@@ -142,28 +142,29 @@ func (wfs WgetFiles) SrcUris() []string {
 
 func (ggaitd *GenerateGithubAppImageTemplateData) SrcUriEchos() string {
 	surls := ggaitd.ExternalResources().SrcUris()
-	const linePrefix = "                echo \""
-	const lineSuffix = "\"\n"
-	b := bytes.NewBufferString(linePrefix + `SRC_URI="`)
+	const lineIndentation = "                "
+	const openEco = `echo "`
+	const closeEcho = `"`
+	const openVariable = `SRC_URI=\"`
+	const closeVariable = `\"`
 	switch len(surls) {
 	case 0:
-		return "" // TODO consider
+		return "# Missing " + openEco + closeEcho // TODO consider
 	case 1:
-		return fmt.Sprintf(surls[0])
+		return openEco + openVariable + surls[0] + closeVariable + closeEcho
 	default:
-		b.WriteString(lineSuffix)
-		b.WriteString(linePrefix)
+		b := bytes.NewBufferString(openEco + openVariable)
+		b.WriteString(closeEcho + "\n")
+		b.WriteString(lineIndentation + openEco)
 		for _, surl := range surls {
 			// Assuming no quoting nonsense
 			b.WriteString(surl)
-			b.WriteString(lineSuffix)
-			b.WriteString(linePrefix)
+			b.WriteString(closeEcho + "\n")
+			b.WriteString(lineIndentation + openEco)
 		}
-		b.WriteString(lineSuffix)
-		b.WriteString(linePrefix)
+		b.WriteString(closeVariable + closeEcho)
+		return b.String()
 	}
-	b.WriteString("\"'")
-	return b.String()
 }
 
 func GenerateGithubAppImage(file string) error {
