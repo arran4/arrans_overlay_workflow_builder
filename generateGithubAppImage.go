@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"text/template"
+	"time"
 )
 
 var (
@@ -20,6 +21,8 @@ var (
 
 type GenerateGithubAppImageTemplateData struct {
 	*InputConfig
+	Now        time.Time
+	ConfigFile string
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) Cron() string {
@@ -185,10 +188,13 @@ func GenerateGithubAppImage(file string) error {
 		return fmt.Errorf("parsing templates: %w", err)
 	}
 	outputDir := "./output"
+	now := time.Now()
 	_ = os.MkdirAll(outputDir, 0755)
 	for _, inputConfig := range inputConfigs {
 		out := bytes.NewBuffer(nil)
 		data := &GenerateGithubAppImageTemplateData{
+			Now:         now,
+			ConfigFile:  file,
 			InputConfig: inputConfig,
 		}
 		if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", data); err != nil {
