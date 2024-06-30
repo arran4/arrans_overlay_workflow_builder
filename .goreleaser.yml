@@ -1,8 +1,8 @@
 project_name: arrans_overlay_workflow_builder
 builds:
   -
-    id: "arrans_overlay_workflow_builder_generator"
-    binary: "arrans_overlay_workflow_builder_generator"
+    id: "overlay_workflow_builder_generator"
+    binary: "overlay_workflow_builder_generator"
     dir: cmd/generate
     env:
       - CGO_ENABLED=0
