@@ -23,7 +23,7 @@ env:
   github_owner: "sindresorhus"
   github_repo: "caprine"
   desktop_file: "caprine.desktop"
-  appimage_installed_name: jan
+  appimage_installed_name: caprine.AppImage
 
 jobs:
   check-and-create-ebuild:
@@ -80,7 +80,7 @@ jobs:
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
-                echo '  sed -i 's:^Exec=.*:Exec=/opt/bin/caprine:' squashfs-root/${{env.desktop_file}}'
+                echo '  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.appimage_installed_name }}:' squashfs-root/${{env.desktop_file}}'
                 echo '  eapply_user'
                 echo '}'
                 echo ''
@@ -101,9 +101,9 @@ jobs:
               } > $ebuild_file
 
               # Generate the manifest for the new ebuild
-              wget https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/Caprine-${version}.AppImage -O /tmp/${{ env.epn }}-${version}.AppImage
-              echo "DIST ${{ env.epn }}-${version}.AppImage $(stat -c %s "/tmp/${{ env.epn }}-${version}.AppImage") BLAKE2B $(b2sum "/tmp/${{ env.epn }}-${version}.AppImage" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/${{ env.epn }}-${version}.AppImage" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
-              rm "/tmp/${{ env.epn }}-${version}.AppImage"
+              wget https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/Caprine-${version}.AppImage -O /tmp/${{ env.epn }}-${version}.amd64
+              echo "DIST ${{ env.epn }}-${version}.amd64 $(stat -c %s "/tmp/${{ env.epn }}-${version}.amd64") BLAKE2B $(b2sum "/tmp/${{ env.epn }}-${version}.amd64" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/${{ env.epn }}-${version}.amd64" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
+              rm "/tmp/${{ env.epn }}-${version}.amd64"
               
               break
             fi
