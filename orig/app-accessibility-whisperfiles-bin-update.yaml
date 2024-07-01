@@ -60,11 +60,13 @@ jobs:
             fi;
           done
           for model in "${!grouped[@]}"; do
-            ebuild_name="${{env.ebuild_name_prefix}}${model}${{env.ebuild_name_suffix}}-0-r1"
+            ebuild_name="${{env.ebuild_name_prefix}}${model}${{env.ebuild_name_suffix}}"
             ebuild_dir="./${{env.ebuild_category}}/${ebuild_name}"
             echo "Processing model $model"
             mkdir -p $ebuild_dir
-            ebuild_file="${ebuild_dir}/${ebuild_name}-${version}.ebuild"
+            version=0
+            revision=-r1
+            ebuild_file="${ebuild_dir}/${ebuild_name}-${version}${revision}.ebuild"
             if [ ! -f "$ebuild_file" ]; then
               {
                 echo "# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflowfile }}"
@@ -171,10 +173,10 @@ jobs:
               # Generate the manifest for the new ebuild
               for variant in ${grouped[$model]}; do
                 url="https://huggingface.co/${{env.huggingface_owner}}/${{env.huggingface_repo}}/resolve/${{env.huggingface_repo_branch}}/whisper.${model}.llamafile?download=true"
-                fn="${ebuild_name}.amd64"
+                fn="${ebuild_name}-${version}.amd64"
                 if [ "${variant}" != "full" ]; then
                   url="https://huggingface.co/${{env.huggingface_owner}}/${{env.huggingface_repo}}/resolve/${{env.huggingface_repo_branch}}/whisper.${model}.${variant}.llamafile?download=true"
-                  fn="${ebuild_name}.${variant}.amd64"
+                  fn="${ebuild_name}-${version}.${variant}.amd64"
                 fi
                 wget "${url}" -O "/tmp/${fn}" --no-verbose
                 echo "DIST ${fn} $(stat -c %s "/tmp/${fn}") BLAKE2B $(b2sum "/tmp/${fn}" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/${fn}" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
