@@ -18,8 +18,8 @@ concurrency:
 env:
   ebuild_category: kde-misc
   ebuild_name: arrans-kde-keyboard-shortcuts-with-meta
-  repo_owner: arran4
-  repo_name: kde-keyboard-shortcuts
+  github_owner: arran4
+  github_repo: kde-keyboard-shortcuts
   description: "My keyboard bindings fast select."
   homepage: "https://arran4.github.io/"
 
@@ -45,10 +45,17 @@ jobs:
         run: |
           ebuild_dir="./${ebuild_category}/${ebuild_name}"
           mkdir -p $ebuild_dir
-          releases=$(curl -s https://api.github.com/repos/${repo_owner}/${repo_name}/releases | jq -r '.[].tag_name')
-          
-          for release in ${releases}; do
-            version=${release#v}
+          tags=$(curl -s https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[].tag_name')
+          for tag in $tags; do
+            version="${tag#v}"
+            if [ "${version}" = "${tag}" ]; then
+              echo "$version == $tag so there is no V removed skipping"
+              continue
+            fi
+            if ! echo "$version" | egrep '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((-|_)(alpha|beta|rc|p)[0-9]*)*$'; then
+              echo "$tag / $version doesn't match regexp";
+              continue; 
+            fi
             ebuild_file="${ebuild_dir}/${ebuild_name}-${version}.ebuild"
             if [ ! -f "$ebuild_file" ]; then
               # Create ebuild script
@@ -58,7 +65,7 @@ jobs:
                 echo "DESCRIPTION=\"$description\""
                 echo "HOMEPAGE=\"$homepage\""
                 echo 'IUSE=""'
-                echo "SRC_URI=\"  https://github.com/${repo_owner}/${repo_name}/archive/refs/tags/v\${PV}.tar.gz -> \${P}.tar.gz \""
+                echo "SRC_URI=\"  https://github.com/${{env.github_owner}}/${{env.github_repo}}/archive/refs/tags/v\${PV}.tar.gz -> \${P}.tar.gz \""
                 echo "LICENSE=\"unlicensed\""
                 echo "SLOT=\"0\""
                 echo 'KEYWORDS="~alpha amd64 hppa ~ia64 ~mips ppc ppc64 ~riscv sparc x86"'
@@ -78,7 +85,7 @@ jobs:
               } > $ebuild_file
 
               # Generate the manifest for the new ebuild
-              wget "https://github.com/${repo_owner}/${repo_name}/archive/refs/tags/v${version}.tar.gz" -O "/tmp/${ebuild_name}-${version}.tar.gz"
+              wget "https://github.com/${{env.github_owner}}/${{env.github_repo}}/archive/refs/tags/${tag}.tar.gz" -O "/tmp/${ebuild_name}-${version}.tar.gz"
               for e in "${ebuild_name}-${version}.tar.gz"; do
                 echo "DIST $e $(stat -c %s "/tmp/${e}") BLAKE2B $(b2sum "/tmp/${e}" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/${e}" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
                 rm "/tmp/${e}"

@@ -1,15 +1,15 @@
-name: dev-ml/llamafile-bin Update
+name: dev-ml/whisperfile-bin Update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '30 1 * * *'
+    - cron: '50 1 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/dev-ml-llamafile-bin-update.yaml'
+      - '.github/workflows/dev-ml-whisperfile-bin-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -17,12 +17,12 @@ concurrency:
 
 env:
   ebuild_category: dev-ml
-  ebuild_name: llamafile-bin
-  github_owner: Mozilla-Ocho
-  github_repo: llamafile
-  description: " Distribute and run LLMs with a single file. "
-  homepage: "https:// llamafile.ai/"
-  workflowfile: "dev-ml-llamafile-bin-update.yaml"
+  ebuild_name: whisperfile-bin
+  github_owner: cjpais
+  github_repo: whisperfile
+  description: "Distribute and run whisper LLMs with a single file."
+  homepage: "https://github.com/cjpais/whisperfile"
+  workflowfile: "dev-ml-whisperfile-bin-update.yaml"
   license: "Apache 2.0"
 
 jobs:
@@ -63,32 +63,30 @@ jobs:
                 echo "EAPI=8"
                 echo "DESCRIPTION=\"$description\""
                 echo "HOMEPAGE=\"$homepage\""
-                echo 'IUSE="doc man"'
-                echo 'SRC_URI="amd64? ( https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${PV}/${{env.github_repo}}-${PV}.zip -> ${P}.amd64.zip )"'
+                echo 'IUSE=""'
+                echo 'SRC_URI="amd64? ( https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${PV}/${{env.github_repo}}-${PV} -> ${P}.amd64 )"'
                 echo "LICENSE=\"${{ env.license }}\""
                 echo "SLOT=\"0\""
                 echo 'KEYWORDS="~amd64"'
                 echo 'RDEPEND=""'
                 echo 'DEPEND="${RDEPEND}"'
-                echo "S=\"\${WORKDIR}/${{env.github_repo}}-\${PV}\""
+                echo "S=\"\${WORKDIR}\""
+                echo ""
+                echo "src_unpack() {"
+                echo "    mv \"\${A}\" '${{env.github_repo}}'"
+                echo "    chmod +x '${{env.github_repo}}' or die 'failed to chmod ${{env.github_repo}}'"
+                echo "}"
                 echo ""
                 echo "src_install() {"
                 echo "    exeinto /opt/bin"
-                echo "    doexe bin/*"
-                echo "    if use doc; then"
-                echo "      dodoc README.md"
-                echo "      dodoc share/doc/llamafile/*"
-                echo "    fi"
-                echo "    if use man; then"
-                echo "      doman share/man/man1/*"
-                echo "    fi"
+                echo "    doexe \"\${WORKDIR}/${{env.github_repo}}\""
                 echo "}"
                 echo ""
               } > $ebuild_file
 
               # Generate the manifest for the new ebuild
-              wget "https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${tag}/${{env.github_repo}}-${version}.zip" -O "/tmp/${{env.ebuild_name}}-${version}.amd64.zip"
-              for e in "${{env.ebuild_name}}-${version}.amd64.zip"; do
+              wget "https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${tag}/${{env.github_repo}}-${version}" -O "/tmp/${{env.ebuild_name}}-${version}.amd64"
+              for e in "${{env.ebuild_name}}-${version}.amd64"; do
                 echo "DIST $e $(stat -c %s "/tmp/${e}") BLAKE2B $(b2sum "/tmp/${e}" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/${e}" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
                 rm "/tmp/${e}"
               done
