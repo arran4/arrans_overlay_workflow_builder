@@ -1,29 +1,29 @@
-name: dev-ml/whisperfile-bin Update
+name: app-admin/g2-bin Update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '50 1 * * *'
+    - cron: '5 2 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/dev-ml-whisperfile-bin-update.yaml'
+      - '.github/workflows/app-admin-g2-bin-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  ebuild_category: dev-ml
-  ebuild_name: whisperfile-bin
-  github_owner: cjpais
-  github_repo: whisperfile
-  description: "Distribute and run whisper LLMs with a single file."
-  homepage: "https://github.com/cjpais/whisperfile"
-  workflowfile: "dev-ml-whisperfile-bin-update.yaml"
-  license: "Apache 2.0"
+  ebuild_category: app-admin
+  ebuild_name: g2-bin
+  github_owner: arran4
+  github_repo: g2
+  description: "Arrans Gentoo specific tools"
+  PFN: "g2"
+  EFN: "g2"
+  homepage: "https://github.com/arran4/g2/"
 
 jobs:
   check-and-create-ebuild:
@@ -45,48 +45,53 @@ jobs:
       - name: Process each release
         id: process_releases
         run: |
-          ebuild_dir="./${{env.ebuild_category}}/${{env.ebuild_name}}"
+          ebuild_dir="./${ebuild_category}/${ebuild_name}"
           mkdir -p $ebuild_dir
           tags=$(curl -s https://api.github.com/repos/${{env.github_owner}}/${{env.github_repo}}/releases | jq -r '.[].tag_name')
           
           for tag in ${tags}; do
-            version=${tag}
+            version=${tag#v}
+            if [ "${version}" = "${tag}" ]; then
+              echo "$version == $tag so there is no V removed skipping"
+              continue
+            fi
             if ! echo "$version" | egrep '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((-|_)(alpha|beta|rc|p)[0-9]*)*$'; then
-              echo "$version doesn't match regexp";
+              echo "tag / $version doesn't match regexp";
               continue; 
             fi
-            ebuild_file="${ebuild_dir}/${{env.ebuild_name}}-${version}.ebuild"
+            ebuild_file="${ebuild_dir}/${ebuild_name}-${version}.ebuild"
             if [ ! -f "$ebuild_file" ]; then
               # Create ebuild script
               {
-                echo "# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflowfile }}"
+                echo "# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/app-admin-g2-bin-update.yaml"
                 echo "EAPI=8"
                 echo "DESCRIPTION=\"$description\""
                 echo "HOMEPAGE=\"$homepage\""
                 echo 'IUSE=""'
-                echo 'SRC_URI="amd64? ( https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${PV}/${{env.github_repo}}-${PV} -> ${P}.amd64 )"'
-                echo "LICENSE=\"${{ env.license }}\""
+                echo 'SRC_URI="'
+                echo "  amd64? ( https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/v\${PV}/${PFN}_\${PV}_linux_amd64.tar.gz -> \${P}.amd64.tar.gz )"
+                echo "  arm? ( https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/v\${PV}/${PFN}_\${PV}_linux_armv7.tar.gz -> \${P}.arm.tar.gz )"
+                echo "  arm64? ( https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/v\${PV}/${PFN}_\${PV}_linux_arm64.tar.gz -> \${P}.arm64.tar.gz )"
+                echo '" '
+                echo "LICENSE=\"Unknown\""
                 echo "SLOT=\"0\""
-                echo 'KEYWORDS="~amd64"'
+                echo 'KEYWORDS="~amd64 ~arm ~arm64"'
                 echo 'RDEPEND=""'
                 echo 'DEPEND="${RDEPEND}"'
                 echo "S=\"\${WORKDIR}\""
                 echo ""
-                echo "src_unpack() {"
-                echo "    mv \"\${A}\" '${{env.github_repo}}'"
-                echo "    chmod +x '${{env.github_repo}}' or die 'failed to chmod ${{env.github_repo}}'"
-                echo "}"
-                echo ""
                 echo "src_install() {"
                 echo "    exeinto /opt/bin"
-                echo "    doexe \"\${WORKDIR}/${{env.github_repo}}\""
+                echo "    doexe ${EFN}"
                 echo "}"
                 echo ""
               } > $ebuild_file
 
               # Generate the manifest for the new ebuild
-              wget "https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${tag}/${{env.github_repo}}-${version}" -O "/tmp/${{env.ebuild_name}}-${version}.amd64"
-              for e in "${{env.ebuild_name}}-${version}.amd64"; do
+              wget https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${tag}/${PFN}_${version}_linux_amd64.tar.gz -O /tmp/${ebuild_name}-${version}.amd64.tar.gz
+              wget https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${tag}/${PFN}_${version}_linux_armv7.tar.gz -O /tmp/${ebuild_name}-${version}.arm.tar.gz
+              wget https://github.com/${{env.github_owner}}/${{env.github_repo}}/releases/download/${tag}/${PFN}_${version}_linux_arm64.tar.gz -O /tmp/${ebuild_name}-${version}.arm64.tar.gz
+              for e in ${ebuild_name}-${version}.amd64.tar.gz ${ebuild_name}-${version}.arm.tar.gz ${ebuild_name}-${version}.arm64.tar.gz; do
                 echo "DIST $e $(stat -c %s "/tmp/${e}") BLAKE2B $(b2sum "/tmp/${e}" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/${e}" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
                 rm "/tmp/${e}"
               done
