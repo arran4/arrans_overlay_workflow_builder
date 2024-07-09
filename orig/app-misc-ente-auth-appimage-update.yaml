@@ -50,7 +50,7 @@ jobs:
         run: |
           ebuild_dir="./${ecn}/${epn}"
           mkdir -p $ebuild_dir
-          tags=$(curl -s https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[].tag_name | select(startswith("auth-v")) ')
+          tags=$(curl -s --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[].tag_name | select(startswith("auth-v")) ')
           for tag in $tags; do
             version=${tag#auth-v}
             if [ "${version}" = "${tag}" ]; then
