@@ -55,6 +55,10 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 	if err != nil {
 		return fmt.Errorf("github repo fetch: %w", err)
 	}
+	var licenseName *string
+	if repo.License != nil {
+		licenseName = repo.License.Name
+	}
 	ic := &InputConfig{
 		Type:             "Github AppImage",
 		GithubProjectUrl: gitRepo,
@@ -64,7 +68,7 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 		Homepage:    StringOrDefault(repo.Homepage, ""),
 		GithubRepo:  repoName,
 		GithubOwner: ownerName,
-		License:     StringOrDefault(repo.LicenseTemplate, "unknown"),
+		License:     StringOrDefault(licenseName, "unknown"),
 	}
 	latestRelease, _, err := client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
 	if err != nil {
