@@ -31,6 +31,12 @@ func main() {
 			os.Exit(-1)
 			return
 		}
+	case "config":
+		if err := config.cmdConfig(fs.Args()[2:]); err != nil {
+			log.Printf("config error: %s", err)
+			os.Exit(-1)
+			return
+		}
 	default:
 		log.Printf("Unknown command %s", fs.Arg(1))
 		log.Printf("Try %s for %s", "generate", "commands to generate github action workflows output")
@@ -85,6 +91,88 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubAppImage(args []string) error 
 		return arrans_overlay_workflow_builder.GenerateGithubAppImage(*config.InputFile)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdConfigArgConfig struct {
+	*MainArgConfig
+}
+
+func (mac *MainArgConfig) cmdConfig(args []string) error {
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config := &CmdConfigArgConfig{
+		MainArgConfig: mac,
+	}
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "add":
+		if err := config.cmdConfigAdd(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config add: %w", err)
+		}
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "add", "Adds an configuration to a configuration file.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdConfigAddArgConfig struct {
+	*CmdConfigArgConfig
+	ConfigFile *string
+}
+
+func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
+	config := &CmdConfigAddArgConfig{
+		CmdConfigArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.ConfigFile = fs.String("to", "input.config", "The input with config")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "add":
+		if err := config.cmdConfigAddAppImageGithubReleases(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config add: %w", err)
+		}
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdConfigAddAppImageGithubReleasesArgConfig struct {
+	*CmdConfigAddArgConfig
+	GithubUrl *string
+}
+
+func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []string) error {
+	config := &CmdConfigAddAppImageGithubReleasesArgConfig{
+		CmdConfigAddArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to add")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "github-appimage":
+		if config.ConfigFile == nil || *config.ConfigFile == "" {
+			return fmt.Errorf("config file to modify argument missing")
+		}
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to add is missing")
+		}
+		return arrans_overlay_workflow_builder.ConfigAddAppImageGithubReleases(*config.ConfigFile, *config.GithubUrl)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "github-appimage", "Adds an configuration to a configuration file.")
 		os.Exit(-1)
 	}
 	return nil

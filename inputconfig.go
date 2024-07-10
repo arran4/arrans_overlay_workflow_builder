@@ -3,8 +3,8 @@ package arrans_overlay_workflow_builder
 import (
 	"bufio"
 	"fmt"
+	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"io"
-	"net/url"
 	"sort"
 	"strings"
 	"unicode"
@@ -15,8 +15,6 @@ type InputConfig struct {
 	EntryNumber       int
 	Type              string
 	GithubProjectUrl  string
-	DesktopFile       string
-	InstalledFilename string
 	Category          string
 	EbuildName        string
 	Description       string
@@ -24,6 +22,8 @@ type InputConfig struct {
 	GithubRepo        string
 	GithubOwner       string
 	License           string
+	InstalledFilename string
+	DesktopFile       string
 	ReleasesFilename  map[string]string
 }
 
@@ -205,18 +205,18 @@ func SanitizeAndAppendInputConfig(parseFields map[string][]string, configs []*In
 		if err != nil {
 			return nil, fmt.Errorf("on ReleasesFilename: %v: %w", parseFields["ReleasesFilename"], err)
 		}
-		currentConfig.GithubOwner, currentConfig.GithubRepo, err = ExtractOrgRepo(currentConfig.GithubProjectUrl)
+		currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
 		if err != nil {
 			return nil, fmt.Errorf("github url parser: %w", err)
 		}
 		if currentConfig.EbuildName == "" {
 			currentConfig.EbuildName = currentConfig.GithubRepo
 		}
-		currentConfig.EbuildName = TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-appimage", "-AppImage") + "-appimage.ebuild"
+		currentConfig.EbuildName = util.TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-appimage", "-AppImage") + "-appimage.ebuild"
 		if currentConfig.DesktopFile == "" {
 			currentConfig.DesktopFile = currentConfig.GithubRepo
 		}
-		currentConfig.DesktopFile = TrimSuffixes(currentConfig.DesktopFile, ".desktop") + ".desktop"
+		currentConfig.DesktopFile = util.TrimSuffixes(currentConfig.DesktopFile, ".desktop") + ".desktop"
 	default:
 		return nil, fmt.Errorf("uknown type: %s", currentConfig.Type)
 	}
@@ -265,37 +265,4 @@ func onlyOrFail(i []string) (string, error) {
 	default:
 		return "", fmt.Errorf("too many values")
 	}
-}
-
-// TrimSuffixes removes the first matching suffix from the input string.
-func TrimSuffixes(s string, suffixes ...string) string {
-	for _, suffix := range suffixes {
-		if strings.HasSuffix(s, suffix) {
-			return strings.TrimSuffix(s, suffix)
-		}
-	}
-	return s
-}
-
-// ExtractOrgRepo extracts the organization and repository from a GitHub URL.
-func ExtractOrgRepo(githubURL string) (string, string, error) {
-	parsedURL, err := url.Parse(githubURL)
-	if err != nil {
-		return "", "", err
-	}
-
-	// Ensure the URL is a GitHub URL
-	if !strings.Contains(parsedURL.Host, "github.com") {
-		return "", "", fmt.Errorf("not a valid GitHub URL: %s", githubURL)
-	}
-
-	// Split the path and get the org and repo
-	pathParts := strings.Split(strings.Trim(parsedURL.Path, "/"), "/")
-	if len(pathParts) < 2 {
-		return "", "", fmt.Errorf("URL does not contain enough parts to extract org and repo: %s", githubURL)
-	}
-
-	org := pathParts[0]
-	repo := pathParts[1]
-	return org, repo, nil
 }
