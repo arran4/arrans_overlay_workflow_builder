@@ -123,7 +123,6 @@ func (mac *MainArgConfig) cmdConfig(args []string) error {
 
 type CmdConfigAddArgConfig struct {
 	*CmdConfigArgConfig
-	ConfigFile *string
 }
 
 func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
@@ -131,12 +130,11 @@ func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
 		CmdConfigArgConfig: mac,
 	}
 	fs := flag.NewFlagSet("", flag.ExitOnError)
-	config.ConfigFile = fs.String("to", "input.config", "The input with config")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
 	switch fs.Arg(0) {
-	case "add":
+	case "github-release-appimage":
 		if err := config.cmdConfigAddAppImageGithubReleases(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config add: %w", err)
 		}
@@ -149,7 +147,8 @@ func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
 
 type CmdConfigAddAppImageGithubReleasesArgConfig struct {
 	*CmdConfigAddArgConfig
-	GithubUrl *string
+	GithubUrl  *string
+	ConfigFile *string
 }
 
 func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []string) error {
@@ -157,12 +156,13 @@ func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []stri
 		CmdConfigAddArgConfig: mac,
 	}
 	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.ConfigFile = fs.String("to", "input.config", "The input with config")
 	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to add")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
 	switch fs.Arg(0) {
-	case "github-appimage":
+	case "":
 		if config.ConfigFile == nil || *config.ConfigFile == "" {
 			return fmt.Errorf("config file to modify argument missing")
 		}

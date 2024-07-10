@@ -49,6 +49,7 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 	if err != nil {
 		return fmt.Errorf("github url parse: %w", err)
 	}
+	log.Printf("Getting details for %s's %s", ownerName, repoName)
 	ctx := context.Background()
 	repo, _, err := client.Repositories.Get(ctx, ownerName, repoName)
 	if err != nil {
@@ -76,36 +77,47 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 	}
 	version := v.String()
 
-	var wordMap = GroupAndSort(GenerateWordMeanings(gitRepo, version))
+	log.Printf("Latest release %s", version)
+
+	var wordMap = GroupAndSort(GenerateWordMeanings(repoName, version))
 
 	var appImages []*Meaning
 	for _, asset := range latestRelease.Assets {
 		n := asset.GetName()
+		log.Printf("Is %s an AppImage?", n)
 		result := DecodeFilename(wordMap, n)
 		if len(result) == 0 {
+			log.Printf("Can't decode %s", n)
 			continue
 		}
 		compiled, ok := CompileMeanings(result, asset, n)
 		if !ok {
+			log.Printf("Can't simplify %s", n)
 			continue
 		}
 		if !compiled.AppImage {
+			log.Printf("Doesn't have AppImage in it %s", n)
 			continue
 		}
 		if compiled.OS != "" && compiled.OS != "linux" {
+			log.Printf("Not for linux %s", n)
 			continue
 		}
 		appImages = append(appImages, compiled)
 	}
 
 	for _, appImage := range appImages {
-		url := appImage.ReleaseAsset.GetURL()
-		log.Printf("Getting %s", url)
+		url := appImage.ReleaseAsset.GetBrowserDownloadURL()
+		log.Printf("Downloading %s", url)
 		tempFile, err := downloadUrlToTempFile(url)
 		if err != nil {
 			return fmt.Errorf("downloading release: %w", err)
 		}
+		log.Printf("Got %s", tempFile)
 		ic.InstalledFilename = fmt.Sprintf("%s.AppImage", ic.GithubRepo)
+		if ic.ReleasesFilename == nil {
+			ic.ReleasesFilename = map[string]string{}
+		}
 		ic.ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
 		ai, err := goappimage.NewAppImage(tempFile)
 		if err != nil {
@@ -115,6 +127,7 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 		for _, f := range files {
 			if strings.HasSuffix(f, ".desktop") {
 				ic.DesktopFile = f
+				log.Printf("Found a desktop file %s", ic.DesktopFile)
 				break
 			}
 		}
@@ -124,6 +137,7 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 		}
 	}
 
+	log.Printf("Reading config")
 	config, err := ReadConfigurationFile(toConfig)
 	if err != nil {
 		return fmt.Errorf("reading configuration file: %s: %w", toConfig, err)
@@ -135,6 +149,7 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 		}
 	}
 
+	log.Printf("Appending to config as entry id: %d", ic.EntryNumber)
 	if err := AppendToConfigurationFile(toConfig, ic); err != nil {
 		return fmt.Errorf("appending to configuration file: %s: %w", toConfig, err)
 	}
