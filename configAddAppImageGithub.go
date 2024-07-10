@@ -107,6 +107,10 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 			log.Printf("Not for linux %s", n)
 			continue
 		}
+		if compiled.Keyword == "" {
+			// Default to amd64 because that's just a thing you do.
+			compiled.Keyword = "~amd64"
+		}
 		appImages = append(appImages, compiled)
 	}
 
