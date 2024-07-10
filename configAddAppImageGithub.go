@@ -215,6 +215,7 @@ func CompileMeanings(input []*Meaning, releaseAsset *github.ReleaseAsset, filena
 	result := &Meaning{
 		Filename:     filename,
 		ReleaseAsset: releaseAsset,
+		SuffixOnly:   true,
 	}
 	for _, each := range input {
 
@@ -246,6 +247,14 @@ func CompileMeanings(input []*Meaning, releaseAsset *github.ReleaseAsset, filena
 			result.Containers = append(result.Containers, each.Container)
 		}
 
+		if each.Version {
+			result.Version = each.Version
+		}
+
+		if each.ProjectName {
+			result.ProjectName = each.ProjectName
+		}
+
 		if each.AppImage {
 			result.AppImage = each.AppImage
 		}
@@ -253,7 +262,7 @@ func CompileMeanings(input []*Meaning, releaseAsset *github.ReleaseAsset, filena
 	return result, true
 }
 
-func DecodeFilename(groupedWordMap map[string][]*Meaning, filename string) []*Meaning {
+func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) []*Meaning {
 	var result []*Meaning
 	length := len(filename)
 	suffixOnly := false
@@ -263,25 +272,25 @@ func DecodeFilename(groupedWordMap map[string][]*Meaning, filename string) []*Me
 		if meanings, found := groupedWordMap[firstChar]; found {
 			matched := false
 			for _, meaning := range meanings {
-				keywordLen := len(meaning.Keyword)
-				if i+keywordLen <= length && filename[i:i+keywordLen] == meaning.Keyword {
+				keyLen := len(meaning.Key)
+				if i+keyLen <= length && filename[i:i+keyLen] == meaning.Key {
 					if suffixOnly && !meaning.SuffixOnly {
 						continue
 					}
-					result = append(result, meaning)
+					result = append(result, meaning.Meaning)
 					if meaning.SuffixOnly {
 						suffixOnly = true
 					}
-					i += keywordLen
+					i += keyLen
 					matched = true
 					break
 				}
 			}
 			if !matched {
-				i++
+				return nil
 			}
 		} else {
-			i++
+			return nil
 		}
 
 		// Skip separators
@@ -293,28 +302,26 @@ func DecodeFilename(groupedWordMap map[string][]*Meaning, filename string) []*Me
 	return result
 }
 
-func GroupAndSort(wordMap map[string]*Meaning) map[string][]*Meaning {
-	grouped := make(map[string][]*Meaning)
+type KeyedMeaning struct {
+	*Meaning
+	Key string
+}
 
-	// Create a map of first characters to lists of keys
-	keyGroups := make(map[string][]string)
+func GroupAndSort(wordMap map[string]*Meaning) map[string][]*KeyedMeaning {
+	keyGroups := make(map[string][]*KeyedMeaning)
 	for key := range wordMap {
 		firstChar := string(key[0])
-		keyGroups[firstChar] = append(keyGroups[firstChar], key)
-	}
-
-	// Sort each list of keys by length descending
-	for firstChar, keys := range keyGroups {
-		sort.Slice(keys, func(i, j int) bool {
-			return len(keys[i]) > len(keys[j])
+		keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning{
+			Meaning: wordMap[key],
+			Key:     key,
 		})
-		// Create the sorted list of *Meaning for each first character
-		for _, key := range keys {
-			grouped[firstChar] = append(grouped[firstChar], wordMap[key])
-		}
 	}
-
-	return grouped
+	for letter := range keyGroups {
+		sort.Slice(keyGroups[letter], func(i, j int) bool {
+			return len(keyGroups[letter][i].Key) > len(keyGroups[letter][j].Key)
+		})
+	}
+	return keyGroups
 }
 
 func GenerateWordMeanings(gitRepo string, version string) map[string]*Meaning {
