@@ -36,9 +36,12 @@ func (ggaitd *GenerateGithubAppImageTemplateData) WorkflowName() string {
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) KeywordList() []string {
-	keywords := make([]string, 0, len(ggaitd.ReleasesFilename))
-	for key := range ggaitd.ReleasesFilename {
-		keywords = append(keywords, key)
+	// TODO this is obsolete as it needs to be specific per program, migrate it to program
+	keywords := make([]string, 0)
+	for programName := range ggaitd.Programs {
+		for key := range ggaitd.Programs[programName].ReleasesFilename {
+			keywords = append(keywords, key)
+		}
 	}
 	sort.Strings(keywords)
 	return keywords
@@ -84,7 +87,8 @@ func (wf *WgetFile) EbuildVariableSubstitutor(s string) string {
 	case "GITHUB_REPO":
 		return "${{ env.github_repo }}"
 	case "RELEASE_FILENAME":
-		return wf.EbuildVariableSubstitutor(wf.GenerateGithubAppImageTemplateData.ReleasesFilename[wf.Keyword])
+		//return wf.EbuildVariableSubstitutor(wf.GenerateGithubAppImageTemplateData.ReleasesFilename[wf.Keyword])
+		return "TODO" // TODO migrate to program.
 	case "KEYWORD":
 		return wf.Keyword
 	default:
@@ -103,7 +107,8 @@ func (wf *WgetFile) GHAVariableSubstitutor(s string) string {
 	case "GITHUB_REPO":
 		return "${{ env.github_repo }}"
 	case "RELEASE_FILENAME":
-		return wf.GHAVariableSubstitutor(wf.GenerateGithubAppImageTemplateData.ReleasesFilename[wf.Keyword])
+		//return wf.GHAVariableSubstitutor(wf.GenerateGithubAppImageTemplateData.ReleasesFilename[wf.Keyword])
+		return "TODO" // TODO migrate to program.
 	case "KEYWORD":
 		return wf.Keyword
 	default:
@@ -116,15 +121,17 @@ func (wf *WgetFile) SrcUri() string {
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() WgetFiles {
-	result := make(WgetFiles, 0, len(ggaitd.ReleasesFilename))
-	for kw, rfn := range ggaitd.ReleasesFilename {
-		result = append(result, &WgetFile{
-			GenerateGithubAppImageTemplateData: ggaitd,
-			UrlTemplate:                        "https://github.com//${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${TAG}/" + rfn,
-			LocalFilenameTemplate:              "${{ env.epn }}-${VERSION}.${KEYWORD}",
-			Keyword:                            kw,
-			Extension:                          filepath.Ext(rfn),
-		})
+	result := make(WgetFiles, 0)
+	for programName := range ggaitd.Programs {
+		for kw, rfn := range ggaitd.Programs[programName].ReleasesFilename {
+			result = append(result, &WgetFile{
+				GenerateGithubAppImageTemplateData: ggaitd,
+				UrlTemplate:                        "https://github.com//${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${TAG}/" + rfn,
+				LocalFilenameTemplate:              "${{ env.epn }}-${VERSION}.${KEYWORD}",
+				Keyword:                            kw,
+				Extension:                          filepath.Ext(rfn),
+			})
+		}
 	}
 	return result
 }
@@ -175,7 +182,7 @@ func GenerateGithubAppImage(file string) error {
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", file, err)
 	}
-	inputConfigs, err := ParseInputConfigFile(bytes.NewReader(b))
+	inputConfigs, err := ParseInputConfigReader(bytes.NewReader(b))
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", file, err)
 	}
