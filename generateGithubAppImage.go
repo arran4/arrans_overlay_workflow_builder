@@ -137,8 +137,8 @@ func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() WgetFiles 
 		for kw, rfn := range ggaitd.Programs[programName].ReleasesFilename {
 			result = append(result, &WgetFile{
 				GenerateGithubAppImageTemplateData: ggaitd,
-				UrlTemplate:                        "https://github.com//${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${TAG}/" + rfn,
-				LocalFilenameTemplate: strings.Join(slices.DeleteFunc(slices.Clone([]string{"${{ env.epn }}", programName, "${VERSION}"}), func(s string) bool {
+				UrlTemplate:                        "https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${TAG}/" + rfn,
+				LocalFilenameTemplate: strings.Join(slices.DeleteFunc(slices.Clone([]string{"\\${P}", programName}), func(s string) bool {
 					return s == ""
 				}), "-") + ".${KEYWORD}",
 				Keyword:   kw,

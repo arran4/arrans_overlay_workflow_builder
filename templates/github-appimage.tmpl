@@ -31,7 +31,7 @@ env:
   [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: "[[ $prog.DesktopFile ]]"
   [[- end ]]
   [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: "[[ $prog.InstalledFilename ]]"
-  [[ join (filterEmpty $pname "archive_name" ) "_" ]]: "[[ $prog.InstalledFilename ]]_${ARCH}"
+  [[ join (filterEmpty $pname "archive_name" ) "_" ]]: "\${P}-[[ $pname ]].\${ARCH}"
   [[- end ]]
 
 jobs:
@@ -92,7 +92,6 @@ jobs:
                 echo 'src_unpack() {'
 [[- range $pname, $prog := .Programs ]]
                 echo '  cp "${DISTDIR}/${{ env.[[ join (filterEmpty $pname "archive_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t copy archive file"'
-                echo '  cp "${DISTDIR}/${{ env.[[ join (filterEmpty $pname "archive_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t copy archive file"'
                 echo '  chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
 [[- if $prog.HasDesktopFile ]]
                 echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
@@ -137,10 +136,10 @@ jobs:
 [[- end ]]
               } > $ebuild_file
 
+              # Manifest generation
               [[ range $i, $wgetfile := .ExternalResources ]] 
-              # Generate the manifest for the new ebuild: [[ $wgetfile.WgetLocalFilename ]]
               g2 manifest upsert-from-url "[[ $wgetfile.UrlWget ]]" "/tmp/[[ $wgetfile.WgetLocalFilename ]]" "${ebuild_dir}/Manifest"
-              [[ end ]]
+              [[- end ]]
               echo "::set-output name=generated_tag::$tag"
               break
             fi
