@@ -216,7 +216,7 @@ func GenerateGithubAppImage(file string) error {
 			InputConfig: inputConfig,
 		}
 		if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", data); err != nil {
-			return fmt.Errorf("excuting template: %w", err)
+			return fmt.Errorf("for %s excuting template: %w", inputConfig.EbuildName, err)
 		}
 		n := filepath.Join(outputDir, data.WorkflowFileName())
 		if err := os.WriteFile(n, out.Bytes(), 0644); err != nil {
