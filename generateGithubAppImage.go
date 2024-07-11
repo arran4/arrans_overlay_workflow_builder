@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -185,6 +186,16 @@ func GenerateGithubAppImage(file string) error {
 	inputConfigs, err := ParseInputConfigReader(bytes.NewReader(b))
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", file, err)
+	}
+	missing := false
+	for _, inputConfig := range inputConfigs {
+		if inputConfig.Category == "" {
+			log.Printf("%s needs a category", inputConfig.EbuildName)
+			missing = true
+		}
+	}
+	if missing {
+		return fmt.Errorf("missing required fields")
 	}
 	subFs, err := fs.Sub(templateFiles, "templates")
 	if err != nil {
