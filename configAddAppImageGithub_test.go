@@ -158,6 +158,19 @@ func TestCompileMeanings(t *testing.T) {
 			want:         nil,
 			ok:           false,
 		},
+		{
+			name: "appimaged-838-aarch64-asdf.AppImage",
+			input: []*Meaning{
+				{Unmatched: "appimaged-838"},
+				{Keyword: "~arm64"},
+				{Unmatched: "asdf"},
+				{AppImage: true, SuffixOnly: true, OS: "linux"},
+			},
+			releaseAsset: nil,
+			filename:     "appimaged-838-aarch64-asdf.AppImage",
+			want:         nil,
+			ok:           false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
