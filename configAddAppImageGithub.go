@@ -18,10 +18,11 @@ import (
 
 type Meaning struct {
 	// Core properties
-	Keyword   string
-	OS        string
-	Toolchain string
-	Container string
+	Keyword     string
+	OS          string
+	Toolchain   string
+	Container   string
+	ProgramName string
 
 	// Compiled only
 	Containers []string
@@ -283,6 +284,13 @@ func CompileMeanings(input []*Meaning, releaseAsset *github.ReleaseAsset, filena
 
 		if each.AppImage {
 			result.AppImage = each.AppImage
+		}
+
+		if each.Unmatched != "" {
+			if result.ProgramName != "" || each.SuffixOnly {
+				return nil, false
+			}
+			result.ProgramName = each.Unmatched
 		}
 	}
 	return result, true

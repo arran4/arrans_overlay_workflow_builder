@@ -121,6 +121,43 @@ func TestCompileMeanings(t *testing.T) {
 			},
 			ok: true,
 		},
+		{
+			name: "appimaged-838-aarch64.AppImage",
+			input: []*Meaning{
+				{Unmatched: "appimaged-838"},
+				{Keyword: "~arm64"},
+				{AppImage: true, SuffixOnly: true, OS: "linux"},
+			},
+			releaseAsset: nil,
+			filename:     "appimaged-838-aarch64.AppImage",
+			want: &Meaning{
+				Keyword:       "~arm64",
+				OS:            "linux",
+				Toolchain:     "",
+				Container:     "",
+				ProgramName:   "appimaged-838",
+				Containers:    nil,
+				Filename:      "appimaged-838-aarch64.AppImage",
+				AppImage:      true,
+				SuffixOnly:    true,
+				CaseSensitive: false,
+				ReleaseAsset:  nil,
+			},
+			ok: true,
+		},
+		{
+			name: "appimaged-838-aarch64.AppImage.zsync",
+			input: []*Meaning{
+				{Unmatched: "appimaged-838"},
+				{Keyword: "~arm64"},
+				{AppImage: true, SuffixOnly: true, OS: "linux"},
+				{Unmatched: "zsync", SuffixOnly: true},
+			},
+			releaseAsset: nil,
+			filename:     "appimaged-838-aarch64.AppImage.zsync",
+			want:         nil,
+			ok:           false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
