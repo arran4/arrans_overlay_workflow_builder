@@ -38,6 +38,7 @@ type Meaning struct {
 	SuffixOnly    bool
 	CaseSensitive bool
 	ReleaseAsset  *github.ReleaseAsset
+	Unmatched     string
 }
 
 func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
@@ -291,14 +292,23 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 	var result []*Meaning
 	length := len(filename)
 	suffixOnly := false
-
+	unmatched := -1
 	for i := 0; i < length; {
+		matched := false
 		firstChar := string(filename[i])
 		if meanings, found := groupedWordMap[firstChar]; found {
-			matched := false
 			for _, meaning := range meanings {
 				keyLen := len(meaning.Key)
 				if i+keyLen <= length && filename[i:i+keyLen] == meaning.Key {
+					if unmatched != -1 {
+						if unmatched < i-2 {
+							result = append(result, &Meaning{
+								Unmatched:  filename[unmatched : i-1],
+								SuffixOnly: suffixOnly,
+							})
+						}
+						unmatched = -1
+					}
 					if suffixOnly && !meaning.SuffixOnly {
 						continue
 					}
@@ -311,17 +321,31 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 					break
 				}
 			}
-			if !matched {
-				return nil
+		}
+
+		if !matched {
+			if unmatched == -1 {
+				unmatched = i
 			}
-		} else {
-			return nil
+			for i < length && !(filename[i] == '-' || filename[i] == '_' || filename[i] == '.') {
+				i++
+			}
 		}
 
 		// Skip separators
-		for i < length-1 && (filename[i] == '-' || filename[i] == '_' || filename[i] == '.') {
+		if i < length && (filename[i] == '-' || filename[i] == '_' || filename[i] == '.') {
 			i++
 		}
+	}
+
+	if unmatched != -1 {
+		if unmatched < length {
+			result = append(result, &Meaning{
+				Unmatched:  filename[unmatched:],
+				SuffixOnly: suffixOnly,
+			})
+		}
+		unmatched = -1
 	}
 
 	return result

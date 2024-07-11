@@ -6,6 +6,34 @@ import (
 	"testing"
 )
 
+/**
+Identify all from list:
+	appimaged-838-aarch64.AppImage
+	appimaged-838-aarch64.AppImage.zsync
+	appimaged-838-armhf.AppImage
+	appimaged-838-armhf.AppImage.zsync
+	appimaged-838-i686.AppImage
+	appimaged-838-i686.AppImage.zsync
+	appimaged-838-x86_64.AppImage
+	appimaged-838-x86_64.AppImage.zsync
+	appimagetool-838-aarch64.AppImage
+	appimagetool-838-aarch64.AppImage.zsync
+	appimagetool-838-armhf.AppImage
+	appimagetool-838-armhf.AppImage.zsync
+	appimagetool-838-i686.AppImage
+	appimagetool-838-i686.AppImage.zsync
+	appimagetool-838-x86_64.AppImage
+	appimagetool-838-x86_64.AppImage.zsync
+	mkappimage-838-aarch64.AppImage
+	mkappimage-838-aarch64.AppImage.zsync
+	mkappimage-838-armhf.AppImage
+	mkappimage-838-armhf.AppImage.zsync
+	mkappimage-838-i686.AppImage
+	mkappimage-838-i686.AppImage.zsync
+	mkappimage-838-x86_64.AppImage
+	mkappimage-838-x86_64.AppImage.zsync
+*/
+
 func TestDecodeFilename(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -23,6 +51,27 @@ func TestDecodeFilename(t *testing.T) {
 				{Keyword: "~amd64"},
 				{Version: true},
 				{AppImage: true, SuffixOnly: true, OS: "linux"},
+			},
+		},
+		{
+			name:           "appimaged-838-aarch64.AppImage",
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("go-appimage", "0")),
+			filename:       "appimaged-838-aarch64.AppImage",
+			want: []*Meaning{
+				{Unmatched: "appimaged-838"},
+				{Keyword: "~arm64"},
+				{AppImage: true, SuffixOnly: true, OS: "linux"},
+			},
+		},
+		{
+			name:           "appimaged-838-aarch64.AppImage.zsync",
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("go-appimage", "0")),
+			filename:       "appimaged-838-aarch64.AppImage.zsync",
+			want: []*Meaning{
+				{Unmatched: "appimaged-838"},
+				{Keyword: "~arm64"},
+				{AppImage: true, SuffixOnly: true, OS: "linux"},
+				{Unmatched: "zsync", SuffixOnly: true},
 			},
 		},
 	}
