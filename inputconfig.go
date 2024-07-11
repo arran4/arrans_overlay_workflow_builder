@@ -68,6 +68,10 @@ type Program struct {
 	ReleasesFilename  map[string]string
 }
 
+func (p *Program) HasDesktopFile() bool {
+	return p.DesktopFile != ""
+}
+
 func (p *Program) String() string {
 	var sb strings.Builder
 	if p.ProgramName != "" {

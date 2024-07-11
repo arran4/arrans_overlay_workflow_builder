@@ -22,12 +22,17 @@ env:
   epn: [[ .PackageName ]]
   description: "[[ .Description ]]"
   homepage: "[[ .Homepage ]]"
-  desktop_file: "[[ .DesktopFile ]]"
-  appimage_installed_name: [[ .InstalledFilename ]]
   github_owner: [[ .GithubOwner ]]
   github_repo: [[ .GithubRepo ]]
   keywords: [[ .Keywords ]]
   workflow_filename: [[ .WorkflowFileName ]]
+  [[- range $pname, $prog := .Programs ]]
+  [[- if $prog.HasDesktopFile ]]
+  [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: "[[ $prog.DesktopFile ]]"
+  [[- end ]]
+  [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: "[[ $prog.InstalledFilename ]]"
+  [[ join (filterEmpty $pname "archive_name" ) "_" ]]: "[[ $prog.InstalledFilename ]]_${ARCH}"
+  [[- end ]]
 
 jobs:
   check-and-create-ebuild:
@@ -72,39 +77,59 @@ jobs:
                 echo 'RDEPEND=""'
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
+[[- if .HasDesktopFile ]]
                 echo ''
                 echo "inherit xdg-utils"
+[[- end ]]
                 echo ''
                 [[ .SrcUriEchos ]]
                 echo ''
                 echo 'src_unpack() {'
-                echo '  cp "${DISTDIR}/${A}" "${A}"  || die "Can'\''t copy archive file"'
-                echo '  chmod a+x "${A}"  || die "Can'\''t chmod archive file"'
-                echo "  ./\${A} --appimage-extract ${{env.desktop_file}} || die \"Failed to extract .desktop from appimage\""
-                echo "  ./\${A} --appimage-extract usr/share/icons || die \"Failed to extract icons from app image\""
+[[- range $pname, $prog := .Programs ]]
+                echo '  cp "${DISTDIR}/${{ env.[[ join (filterEmpty $pname "archive_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t copy archive file"'
+                echo '  cp "${DISTDIR}/${{ env.[[ join (filterEmpty $pname "archive_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t copy archive file"'
+                echo '  chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
+[[- if $prog.HasDesktopFile ]]
+                echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
+                echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "usr/share/icons" || die "Failed to extract icons from app image"'
+[[- end ]]
+[[- end ]]
                 echo '}'
                 echo ''
+[[- if .HasDesktopFile ]]
                 echo 'src_prepare() {'
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.appimage_installed_name }}:' squashfs-root/${{env.desktop_file}}"
+[[- range $pname, $prog := .Programs ]]
+[[- if $prog.HasDesktopFile ]]
+                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}:' 'squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}'"
+[[- end ]]
+[[- end ]]
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
                 echo "  find squashfs-root -type d -exec rmdir -p {} \; "
                 echo '  eapply_user'
                 echo '}'
+[[- end ]]
                 echo ''
                 echo 'src_install() {'
-                echo '  mv "${P}.amd64" "${{ env.appimage_installed_name }}" || die "Failed to rename AppImage"'
                 echo '  exeinto /opt/bin'
-                echo '  doexe "${{ env.appimage_installed_name }}" || die "Failed to install AppImage"'
+[[- range $pname, $prog := .Programs ]]
+                echo '  doexe "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
+[[- end ]]
+[[- if .HasDesktopFile ]]
                 echo '  insinto /usr/share/applications'
-                echo '  doins squashfs-root/${{env.desktop_file}} || die "Failed to install desktop file"'
+[[- range $pname, $prog := .Programs ]]
+                echo '  doins "squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to install desktop file"'
+[[- end ]]
                 echo '  insinto /usr/share/icons'
                 echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
+[[- end ]]
                 echo '}'
                 echo ""
+[[- if .HasDesktopFile ]]
                 echo "pkg_postinst() {"
                 echo "  xdg_desktop_database_update"
                 echo "}"
                 echo ""
+[[- end ]]
               } > $ebuild_file
 
               [[ range $i, $wgetfile := .ExternalResources ]] 

@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"text/template"
@@ -121,6 +122,15 @@ func (wf *WgetFile) SrcUri() string {
 	return fmt.Sprintf("%s -> %s", os.Expand(wf.UrlTemplate, wf.EbuildVariableSubstitutor), os.Expand(wf.LocalFilenameTemplate, wf.EbuildVariableSubstitutor))
 }
 
+func (ggaitd *GenerateGithubAppImageTemplateData) HasDesktopFile() bool {
+	for _, p := range ggaitd.Programs {
+		if p.HasDesktopFile() {
+			return true
+		}
+	}
+	return false
+}
+
 func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() WgetFiles {
 	result := make(WgetFiles, 0)
 	for programName := range ggaitd.Programs {
@@ -128,9 +138,11 @@ func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() WgetFiles 
 			result = append(result, &WgetFile{
 				GenerateGithubAppImageTemplateData: ggaitd,
 				UrlTemplate:                        "https://github.com//${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${TAG}/" + rfn,
-				LocalFilenameTemplate:              "${{ env.epn }}-${VERSION}.${KEYWORD}",
-				Keyword:                            kw,
-				Extension:                          filepath.Ext(rfn),
+				LocalFilenameTemplate: strings.Join(slices.DeleteFunc(slices.Clone([]string{"${{ env.epn }}", programName, "${VERSION}"}), func(s string) bool {
+					return s == ""
+				}), "-") + ".${KEYWORD}",
+				Keyword:   kw,
+				Extension: filepath.Ext(rfn),
 			})
 		}
 	}
@@ -201,7 +213,17 @@ func GenerateGithubAppImage(file string) error {
 	if err != nil {
 		return fmt.Errorf("searching templates subdirectory: %w", err)
 	}
-	templates, err := template.New("").Delims("[[", "]]").ParseFS(subFs, "*.tmpl")
+	templates, err := template.New("").
+		Delims("[[", "]]").
+		Funcs(map[string]any{
+			"join": strings.Join,
+			"filterEmpty": func(strs ...string) []string {
+				return slices.DeleteFunc(slices.Clone(strs), func(s string) bool {
+					return s == ""
+				})
+			},
+		}).
+		ParseFS(subFs, "*.tmpl")
 	if err != nil {
 		return fmt.Errorf("parsing templates: %w", err)
 	}
