@@ -173,13 +173,17 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 			return nil, fmt.Errorf("downloading release: %w", err)
 		}
 		log.Printf("Got %s", tempFile)
-		var programName string // TODO from app image (create a mode "unidentified string" - can be used to figure out programName)
-		ic.Programs[programName] = &Program{
-			ProgramName:       programName,
-			InstalledFilename: fmt.Sprintf("%s.AppImage", ic.GithubRepo),
-			ReleasesFilename:  map[string]string{},
+		var programName string = appImage.ProgramName
+		program, ok := ic.Programs[programName]
+		if !ok {
+			program = &Program{
+				ProgramName:       programName,
+				InstalledFilename: fmt.Sprintf("%s.AppImage", ic.GithubRepo),
+				ReleasesFilename:  map[string]string{},
+			}
+			ic.Programs[programName] = program
 		}
-		ic.Programs[programName].ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
+		program.ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
 		ai, err := goappimage.NewAppImage(tempFile)
 		if err != nil {
 			return nil, fmt.Errorf("reading AppImage %s: %w", url, err)
@@ -187,8 +191,8 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		files := ai.ListFiles(".")
 		for _, f := range files {
 			if strings.HasSuffix(f, ".desktop") {
-				ic.Programs[programName].DesktopFile = f
-				log.Printf("Found a desktop file %s", ic.Programs[programName].DesktopFile)
+				program.DesktopFile = f
+				log.Printf("Found a desktop file %s", program.DesktopFile)
 				break
 			}
 		}
