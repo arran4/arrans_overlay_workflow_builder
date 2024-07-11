@@ -150,7 +150,6 @@ func (c *InputConfig) String() string {
 		sort.Strings(programs)
 		for _, programName := range programs {
 			sb.WriteString(c.Programs[programName].String())
-			sb.WriteString("\n")
 		}
 	default:
 		sb.WriteString(fmt.Sprintf("# Unknown type\n"))
@@ -167,9 +166,11 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 	scanner := bufio.NewScanner(file)
 	breakCount := 0
 	var lastProgramName string
+	var lineNumber = 0
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+		lineNumber++
 		if strings.HasPrefix(line, "#") {
 			continue
 		}
@@ -182,7 +183,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 			var err error
 			configs, err = CreateSanitizeAndAppendInputConfig(parseFields, parseProgramFields, configs)
 			if err != nil {
-				return nil, fmt.Errorf("sanitiization issue with %d: %w", len(configs), err)
+				return nil, fmt.Errorf("line %d: sanitiization issue with %d: %w", lineNumber, len(configs), err)
 			}
 			parseFields = nil
 			parseProgramFields = nil
@@ -276,7 +277,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 		var err error
 		configs, err = CreateSanitizeAndAppendInputConfig(parseFields, parseProgramFields, configs)
 		if err != nil {
-			return nil, fmt.Errorf("sanitiization issue with %d: %w", len(configs), err)
+			return nil, fmt.Errorf("sanitiization issue with last(%d): %w", len(configs), err)
 		}
 	}
 
