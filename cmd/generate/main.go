@@ -113,9 +113,14 @@ func (mac *MainArgConfig) cmdConfig(args []string) error {
 		if err := config.cmdConfigAdd(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config add: %w", err)
 		}
+	case "view":
+		if err := config.cmdConfigView(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config view: %w", err)
+		}
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "add", "Adds an configuration to a configuration file.")
+		log.Printf("Try %s for %s", "view", "Provides a bunch of options for viewing.")
 		os.Exit(-1)
 	}
 	return nil
@@ -173,6 +178,58 @@ func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []stri
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-appimage", "Adds an configuration to a configuration file.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdConfigViewArgConfig struct {
+	*CmdConfigArgConfig
+}
+
+func (mac *CmdConfigArgConfig) cmdConfigView(args []string) error {
+	config := &CmdConfigViewArgConfig{
+		CmdConfigArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "github-release-appimage":
+		if err := config.cmdConfigViewAppImageGithubReleases(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config view: %w", err)
+		}
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdConfigViewAppImageGithubReleasesArgConfig struct {
+	*CmdConfigViewArgConfig
+	GithubUrl *string
+}
+
+func (mac *CmdConfigViewArgConfig) cmdConfigViewAppImageGithubReleases(args []string) error {
+	config := &CmdConfigViewAppImageGithubReleasesArgConfig{
+		CmdConfigViewArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to view is missing")
+		}
+		return arrans_overlay_workflow_builder.ConfigViewAppImageGithubReleases(*config.GithubUrl)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "github-appimage", "Views an addition to a configuration file for a particular query.")
 		os.Exit(-1)
 	}
 	return nil

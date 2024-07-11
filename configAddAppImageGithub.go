@@ -43,19 +43,56 @@ type Meaning struct {
 }
 
 func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
+	ic, err := GenerateAppImageGithubRelaseConfigEntry(gitRepo)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Reading config")
+	config, err := ReadConfigurationFile(toConfig)
+	if err != nil {
+		return fmt.Errorf("reading configuration file: %s: %w", toConfig, err)
+	}
+
+	for _, entry := range config {
+		if entry.EntryNumber >= ic.EntryNumber {
+			ic.EntryNumber = entry.EntryNumber + 1
+		}
+	}
+
+	log.Printf("Appending to config as entry id: %d", ic.EntryNumber)
+	if err := AppendToConfigurationFile(toConfig, ic); err != nil {
+		return fmt.Errorf("appending to configuration file: %s: %w", toConfig, err)
+	}
+	return nil
+}
+
+func ConfigViewAppImageGithubReleases(gitRepo string) error {
+	ic, err := GenerateAppImageGithubRelaseConfigEntry(gitRepo)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Showing potential addition to config as entry id: %d", ic.EntryNumber)
+	_ = os.Stderr.Sync()
+	fmt.Printf("%s", ic.String())
+	return nil
+}
+
+func GenerateAppImageGithubRelaseConfigEntry(gitRepo string) (*InputConfig, error) {
 	client := github.NewClient(nil)
 	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
 		client = client.WithAuthToken(token)
 	}
 	ownerName, repoName, err := util.ExtractGithubOwnerRepo(gitRepo)
 	if err != nil {
-		return fmt.Errorf("github url parse: %w", err)
+		return nil, fmt.Errorf("github url parse: %w", err)
 	}
 	log.Printf("Getting details for %s's %s", ownerName, repoName)
 	ctx := context.Background()
 	repo, _, err := client.Repositories.Get(ctx, ownerName, repoName)
 	if err != nil {
-		return fmt.Errorf("github repo fetch: %w", err)
+		return nil, fmt.Errorf("github repo fetch: %w", err)
 	}
 	var licenseName *string
 	if repo.License != nil {
@@ -74,12 +111,12 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 	}
 	latestRelease, _, err := client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
 	if err != nil {
-		return fmt.Errorf("github latest release fetch: %w", err)
+		return nil, fmt.Errorf("github latest release fetch: %w", err)
 	}
 
 	v, err := semver.NewVersion(latestRelease.GetTagName())
 	if err != nil {
-		return fmt.Errorf("github latest release tag parse %s: %w", latestRelease.GetTagName(), err)
+		return nil, fmt.Errorf("github latest release tag parse %s: %w", latestRelease.GetTagName(), err)
 	}
 	version := v.String()
 
@@ -121,7 +158,7 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 		log.Printf("Downloading %s", url)
 		tempFile, err := downloadUrlToTempFile(url)
 		if err != nil {
-			return fmt.Errorf("downloading release: %w", err)
+			return nil, fmt.Errorf("downloading release: %w", err)
 		}
 		log.Printf("Got %s", tempFile)
 		var programName string // TODO from app image (create a mode "unidentified string" - can be used to figure out programName)
@@ -133,7 +170,7 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 		ic.Programs[programName].ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
 		ai, err := goappimage.NewAppImage(tempFile)
 		if err != nil {
-			return fmt.Errorf("reading AppImage %s: %w", url, err)
+			return nil, fmt.Errorf("reading AppImage %s: %w", url, err)
 		}
 		files := ai.ListFiles(".")
 		for _, f := range files {
@@ -148,24 +185,7 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 			log.Printf("Error removing temp file: %s", err)
 		}
 	}
-
-	log.Printf("Reading config")
-	config, err := ReadConfigurationFile(toConfig)
-	if err != nil {
-		return fmt.Errorf("reading configuration file: %s: %w", toConfig, err)
-	}
-
-	for _, entry := range config {
-		if entry.EntryNumber >= ic.EntryNumber {
-			ic.EntryNumber = entry.EntryNumber + 1
-		}
-	}
-
-	log.Printf("Appending to config as entry id: %d", ic.EntryNumber)
-	if err := AppendToConfigurationFile(toConfig, ic); err != nil {
-		return fmt.Errorf("appending to configuration file: %s: %w", toConfig, err)
-	}
-	return nil
+	return ic, nil
 }
 
 func AppendToConfigurationFile(config string, ic *InputConfig) error {
