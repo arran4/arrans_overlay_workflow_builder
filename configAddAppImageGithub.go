@@ -43,7 +43,7 @@ type Meaning struct {
 }
 
 func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
-	ic, err := GenerateAppImageGithubRelaseConfigEntry(gitRepo)
+	ic, err := GenerateAppImageGithubReleaseConfigEntry(gitRepo, "")
 	if err != nil {
 		return err
 	}
@@ -67,8 +67,8 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 	return nil
 }
 
-func ConfigViewAppImageGithubReleases(gitRepo string) error {
-	ic, err := GenerateAppImageGithubRelaseConfigEntry(gitRepo)
+func ConfigViewAppImageGithubReleases(gitRepo, tagOverride string) error {
+	ic, err := GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func ConfigViewAppImageGithubReleases(gitRepo string) error {
 	return nil
 }
 
-func GenerateAppImageGithubRelaseConfigEntry(gitRepo string) (*InputConfig, error) {
+func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*InputConfig, error) {
 	client := github.NewClient(nil)
 	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
 		client = client.WithAuthToken(token)
@@ -109,23 +109,33 @@ func GenerateAppImageGithubRelaseConfigEntry(gitRepo string) (*InputConfig, erro
 		GithubOwner: ownerName,
 		License:     StringOrDefault(licenseName, "unknown"),
 	}
-	latestRelease, _, err := client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
-	if err != nil {
-		return nil, fmt.Errorf("github latest release fetch: %w", err)
+	var versions = []string{tagOverride}
+	var releaseInfo *github.RepositoryRelease
+	if tagOverride == "" {
+		releaseInfo, _, err = client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
+		if err != nil {
+			return nil, fmt.Errorf("github latest release fetch: %w", err)
+		}
+
+		v, err := semver.NewVersion(releaseInfo.GetTagName())
+		if err != nil {
+			return nil, fmt.Errorf("github latest release tag parse %s: %w", releaseInfo.GetTagName(), err)
+		}
+		versions = []string{v.String(), "v" + v.String()}
+	} else {
+		releaseInfo, _, err = client.Repositories.GetReleaseByTag(ctx, ownerName, repoName, tagOverride)
+		if err != nil {
+			return nil, fmt.Errorf("github latest release fetch: %w", err)
+		}
+
 	}
 
-	v, err := semver.NewVersion(latestRelease.GetTagName())
-	if err != nil {
-		return nil, fmt.Errorf("github latest release tag parse %s: %w", latestRelease.GetTagName(), err)
-	}
-	version := v.String()
+	log.Printf("Latest release %v", versions)
 
-	log.Printf("Latest release %s", version)
-
-	var wordMap = GroupAndSort(GenerateWordMeanings(repoName, version))
+	var wordMap = GroupAndSort(GenerateWordMeanings(repoName, versions))
 
 	var appImages []*Meaning
-	for _, asset := range latestRelease.Assets {
+	for _, asset := range releaseInfo.Assets {
 		n := asset.GetName()
 		log.Printf("Is %s an AppImage?", n)
 		result := DecodeFilename(wordMap, n)
@@ -152,7 +162,9 @@ func GenerateAppImageGithubRelaseConfigEntry(gitRepo string) (*InputConfig, erro
 		}
 		appImages = append(appImages, compiled)
 	}
-
+	if ic.Programs == nil {
+		ic.Programs = map[string]*Program{}
+	}
 	for _, appImage := range appImages {
 		url := appImage.ReleaseAsset.GetBrowserDownloadURL()
 		log.Printf("Downloading %s", url)
@@ -401,7 +413,7 @@ func GroupAndSort(wordMap map[string]*Meaning) map[string][]*KeyedMeaning {
 	return keyGroups
 }
 
-func GenerateWordMeanings(gitRepo string, version string) map[string]*Meaning {
+func GenerateWordMeanings(gitRepo string, versions []string) map[string]*Meaning {
 	wordMap := map[string]*Meaning{
 		// Gentoo
 		"alpha":  {Keyword: "~alpha"},
@@ -492,15 +504,12 @@ func GenerateWordMeanings(gitRepo string, version string) map[string]*Meaning {
 	} else {
 		wordMap[gitRepo] = &Meaning{ProjectName: true}
 	}
-	if v, ok := wordMap[version]; ok {
-		v.Version = true
-	} else {
-		wordMap[version] = &Meaning{Version: true}
-	}
-	if v, ok := wordMap["v"+version]; ok {
-		v.Version = true
-	} else {
-		wordMap["v"+version] = &Meaning{Version: true}
+	for _, version := range versions {
+		if v, ok := wordMap[version]; ok {
+			v.Version = true
+		} else {
+			wordMap[version] = &Meaning{Version: true}
+		}
 	}
 
 	return wordMap
