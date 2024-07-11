@@ -48,8 +48,13 @@ jobs:
 
       - name: Install required tools
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget jq coreutils tar
+            sudo apt-get update
+            sudo apt-get install -y wget jq coreutils tar
+            url="$(curl -s --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/arran4/g2/releases/latest | jq -r '.assets[].browser_download_url | select(endswith("_linux_amd64.deb"))')"
+            echo "$url"
+            wget "${url}" -O /tmp/g2.deb
+            sudo dpkg -i /tmp/g2.deb
+            rm /tmp/g2.deb
 
       - name: Process each release
         id: process_releases
@@ -134,9 +139,7 @@ jobs:
 
               [[ range $i, $wgetfile := .ExternalResources ]] 
               # Generate the manifest for the new ebuild: [[ $wgetfile.WgetLocalFilename ]]
-              wget "[[ $wgetfile.UrlWget ]]" -O "/tmp/[[ $wgetfile.WgetLocalFilename ]]"
-              echo "DIST [[ $wgetfile.WgetLocalFilename ]] $(stat -c %s "/tmp/[[ $wgetfile.WgetLocalFilename ]]") BLAKE2B $(b2sum "/tmp/[[ $wgetfile.WgetLocalFilename ]]" | cut -d' ' -f1) SHA512 $(sha512sum "/tmp/[[ $wgetfile.WgetLocalFilename ]]" | cut -d' ' -f1)" | tee -a "${ebuild_dir}/Manifest"
-              rm "/tmp/[[ $wgetfile.WgetLocalFilename ]]"
+              g2 manifest upsert-from-url "[[ $wgetfile.UrlWget ]]" "/tmp/[[ $wgetfile.WgetLocalFilename ]]" "${ebuild_dir}/Manifest"
               [[ end ]]
               echo "::set-output name=generated_tag::$tag"
               break

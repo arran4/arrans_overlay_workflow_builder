@@ -1,27 +1,27 @@
-name: kde-misc/arrans-kde-keyboard-shortcuts-with-meta Update
+name: app-emulation/86box-roms Update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '20 1 * * *'
+    - cron: '25 2 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/kde-misc-arrans-kde-keyboard-shortcuts-with-meta-update.yaml'
+      - '.github/workflows/app-emulation-86box-roms-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  ebuild_category: kde-misc
-  ebuild_name: arrans-kde-keyboard-shortcuts-with-meta
-  github_owner: arran4
-  github_repo: kde-keyboard-shortcuts
-  description: "My keyboard bindings fast select."
-  homepage: "https://arran4.github.io/"
+  ebuild_category: app-emulation
+  ebuild_name: 86box-roms
+  github_owner: 86Box
+  github_repo: roms
+  description: "ROMs for the 86Box emulator."
+  homepage: "https://github.com/86Box/roms/"
 
 jobs:
   check-and-create-ebuild:
@@ -50,42 +50,48 @@ jobs:
         run: |
           ebuild_dir="./${ebuild_category}/${ebuild_name}"
           mkdir -p $ebuild_dir
-          tags=$(curl -s --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[].tag_name')
-          for tag in $tags; do
-            version="${tag#v}"
+          tags=$(curl -s --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{env.github_owner}}/${{env.github_repo}}/releases | jq -r '.[].tag_name')
+          
+          for tag in ${tags}; do
+            version=${tag#v}
             if [ "${version}" = "${tag}" ]; then
               echo "$version == $tag so there is no V removed skipping"
               continue
             fi
             if ! echo "$version" | egrep '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
-              echo "$tag / $version doesn't match regexp";
+              echo "tag / $version doesn't match regexp";
               continue; 
             fi
             ebuild_file="${ebuild_dir}/${ebuild_name}-${version}.ebuild"
             if [ ! -f "$ebuild_file" ]; then
               # Create ebuild script
               {
-                echo "# Generated via: https://github.com/arran4/arrans-private-overlay/blob/main/.github/workflows/kde-misc-arrans-kde-keyboard-shortcuts-with-meta-update.yaml"
+                echo "# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/app-emulation-86box-roms-update.yaml"
                 echo "EAPI=8"
                 echo "DESCRIPTION=\"$description\""
                 echo "HOMEPAGE=\"$homepage\""
                 echo 'IUSE=""'
-                echo "SRC_URI=\"  https://github.com/${{env.github_owner}}/${{env.github_repo}}/archive/refs/tags/v\${PV}.tar.gz -> \${P}.tar.gz \""
-                echo "LICENSE=\"unlicensed\""
+                echo 'SRC_URI="https://github.com/86Box/roms/archive/refs/tags/v${PV}.tar.gz -> ${P}.tar.gz"'
+                echo "LICENSE=\"proprietary\""
                 echo "SLOT=\"0\""
-                echo 'KEYWORDS="~alpha amd64 hppa ~ia64 ~mips ppc ppc64 ~riscv sparc x86"'
+                echo 'KEYWORDS="~amd64 ~x86 ~arm ~arm64"'
                 echo 'RDEPEND=""'
                 echo 'DEPEND="${RDEPEND}"'
-                echo "S=\"\${WORKDIR}\"/kde-keyboard-shortcuts-\${PV}/"
+                echo 'S="${WORKDIR}/roms-${PV}"'
+                echo 'RESTRICT="binchecks strip"'
                 echo ""
-                echo "src_unpack() {"
-                echo "    unpack \${A}"
-                echo "}"
-                echo ""
-                echo "src_install() {"
-                echo "    insinto /usr/share/kcmkeys"
-                echo "    doins arrans-kde-keyboard-shortcuts-with-meta.kksrc"
-                echo "}"
+                echo 'src_install() {'
+                echo '    insinto "/usr/share/86box-roms"'
+                echo '    doins -r "${S}/floppy"'
+                echo '    doins -r "${S}/hdd"'
+                echo '    doins -r "${S}/machines"'
+                echo '    doins -r "${S}/network"'
+                echo '    doins -r "${S}/printer"'
+                echo '    doins -r "${S}/scsi"'
+                echo '    doins -r "${S}/sound"'
+                echo '    doins -r "${S}/video"'
+                echo '    dodoc "README.md"'
+                echo '}'
                 echo ""
               } > $ebuild_file
 
