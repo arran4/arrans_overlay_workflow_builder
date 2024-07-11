@@ -174,14 +174,17 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		}
 		log.Printf("Got %s", tempFile)
 		var programName string = appImage.ProgramName
+		if programName == "" {
+			programName = repoName
+		}
 		program, ok := ic.Programs[programName]
 		if !ok {
 			program = &Program{
 				ProgramName:       programName,
-				InstalledFilename: fmt.Sprintf("%s.AppImage", ic.GithubRepo),
+				InstalledFilename: fmt.Sprintf("%s.AppImage", programName),
 				ReleasesFilename:  map[string]string{},
 			}
-			ic.Programs[programName] = program
+			ic.Programs[appImage.ProgramName] = program
 		}
 		program.ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
 		ai, err := goappimage.NewAppImage(tempFile)
