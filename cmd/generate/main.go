@@ -40,6 +40,7 @@ func main() {
 	default:
 		log.Printf("Unknown command %s", fs.Arg(1))
 		log.Printf("Try %s for %s", "generate", "commands to generate github action workflows output")
+		log.Printf("Try %s for %s", "config", "commands to view results and content")
 		os.Exit(-1)
 	}
 }
