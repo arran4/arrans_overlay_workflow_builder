@@ -14,6 +14,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 type Meaning struct {
@@ -36,10 +37,10 @@ type Meaning struct {
 	ProjectName bool
 
 	// Match rules
-	SuffixOnly    bool
-	CaseSensitive bool
-	ReleaseAsset  *github.ReleaseAsset
-	Unmatched     string
+	SuffixOnly      bool
+	CaseInsensitive bool
+	ReleaseAsset    *github.ReleaseAsset
+	Unmatched       string
 }
 
 func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
@@ -346,7 +347,7 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 		if meanings, found := groupedWordMap[firstChar]; found {
 			for _, meaning := range meanings {
 				keyLen := len(meaning.Key)
-				if i+keyLen <= length && filename[i:i+keyLen] == meaning.Key {
+				if i+keyLen <= length && (!meaning.CaseInsensitive && filename[i:i+keyLen] == meaning.Key || meaning.CaseInsensitive && strings.EqualFold(filename[i:i+keyLen], meaning.Key)) {
 					if unmatched != -1 {
 						if unmatched < i-2 {
 							result = append(result, &Meaning{
@@ -406,11 +407,23 @@ type KeyedMeaning struct {
 func GroupAndSort(wordMap map[string]*Meaning) map[string][]*KeyedMeaning {
 	keyGroups := make(map[string][]*KeyedMeaning)
 	for key := range wordMap {
+		meaning := wordMap[key]
 		firstChar := string(key[0])
 		keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning{
 			Meaning: wordMap[key],
 			Key:     key,
 		})
+		if meaning.CaseInsensitive {
+			if unicode.IsUpper(rune(firstChar[0])) {
+				firstChar = string(unicode.ToLower(rune(firstChar[0])))
+			} else {
+				firstChar = string(unicode.ToUpper(rune(firstChar[0])))
+			}
+			keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning{
+				Meaning: wordMap[key],
+				Key:     key,
+			})
+		}
 	}
 	for letter := range keyGroups {
 		sort.Slice(keyGroups[letter], func(i, j int) bool {
@@ -422,6 +435,7 @@ func GroupAndSort(wordMap map[string]*Meaning) map[string][]*KeyedMeaning {
 
 func GenerateWordMeanings(gitRepo string, versions []string) map[string]*Meaning {
 	wordMap := map[string]*Meaning{
+		"x86-64": {Keyword: "~amd64"},
 		// Gentoo
 		"alpha":  {Keyword: "~alpha"},
 		"~alpha": {Keyword: "~alpha"},
@@ -509,7 +523,7 @@ func GenerateWordMeanings(gitRepo string, versions []string) map[string]*Meaning
 	if v, ok := wordMap[gitRepo]; ok {
 		v.ProjectName = true
 	} else {
-		wordMap[gitRepo] = &Meaning{ProjectName: true}
+		wordMap[gitRepo] = &Meaning{ProjectName: true, CaseInsensitive: true}
 	}
 	for _, version := range versions {
 		if v, ok := wordMap[version]; ok {
