@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:45:54.083587603 +1000 AEST m=+0.001091763
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:51:49.025156192 +1000 AEST m=+0.001069960
 
 name: app-misc/localsend-appimage update
 
@@ -96,7 +96,7 @@ jobs:
                 echo "    unpack \"\${DISTDIR}/\${P}-LocalSend-1.14.0-linux-x86-64.AppImage\" || die \"Can't unpack archive file\""
                 echo '  fi'
                 echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/${{ env.localsend_release_name_amd64 }}\" \"${{ env.localsend_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo "    cp \"\${DISTDIR}/\${P}-${{ env.localsend_release_name_amd64 }}\" \"${{ env.localsend_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
                 echo '  chmod a+x "${{ env.localsend_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '  ./${{ env.localsend_appimage_installed_name }} --appimage-extract "${{ env.localsend_desktop_file }}" || die "Failed to extract .desktop from appimage"'
