@@ -14,58 +14,12 @@ const (
 	defaultDesktopFileEnabled = false
 )
 
-/* TODO
-
-Type Github AppImage
-GithubProjectUrl https://github.com/janhq/jan/
-DesktopFile jan.desktop
-InstalledFilename jan.AppImage
-EbuildName jan-appimage
-Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
-Homepage https://jan.ai/
-License GNU Affero General Public License v3.0
-ReleasesFilename amd64=>jan-linux-x86_64-0.5.1.AppImage
-
-To support 2 modes, repo default named, and multiple executable nemed:
-
-Type Github AppImage
-GithubProjectUrl https://github.com/janhq/jan/
-EbuildName jan-appimage
-Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
-Homepage https://jan.ai/
-License GNU Affero General Public License v3.0
-DesktopFile jan.desktop
-InstalledFilename jan.AppImage
-ReleasesFilename amd64=>jan-linux-x86_64-0.5.1.AppImage
-
-^ defaults to reponame so "jan"
-
-Type Github AppImage
-GithubProjectUrl https://github.com/janhq/jan/
-EbuildName jan-appimage
-Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
-Homepage https://jan.ai/
-License GNU Affero General Public License v3.0
-DesktopFile jan.desktop
-InstalledFilename jan.AppImage
-ReleasesFilename amd64=>jan-linux-x86_64-0.5.1.AppImage
-ProgramName bill
-DesktopFile bill.desktop
-InstalledFilename bill.AppImage
-ReleasesFilename amd64=>bill-linux-x86_64-0.5.1.AppImage
-ProgramName carter
-DesktopFile carter.desktop
-InstalledFilename carter.AppImage
-ReleasesFilename amd64=>carter-linux-x86_64-0.5.1.AppImage
-
-
-*/
-
 type Program struct {
 	ProgramName       string
 	InstalledFilename string
 	DesktopFile       string
 	ReleasesFilename  map[string]string
+	ArchiveFilename   map[string]string
 }
 
 func (p *Program) HasDesktopFile() bool {
@@ -91,13 +45,22 @@ func (p *Program) String() string {
 	for _, kw := range keywords {
 		sb.WriteString(fmt.Sprintf("ReleasesFilename %s=>%s\n", kw, p.ReleasesFilename[kw]))
 	}
+	keywords = make([]string, 0, len(p.ArchiveFilename))
+	for key := range p.ArchiveFilename {
+		keywords = append(keywords, key)
+	}
+	sort.Strings(keywords)
+	for _, kw := range keywords {
+		sb.WriteString(fmt.Sprintf("ArchiveFilename %s=>%s\n", kw, p.ArchiveFilename[kw]))
+	}
 	return sb.String()
 }
 
 func (p *Program) IsEmpty() bool {
 	return len(p.InstalledFilename) == 0 &&
 		len(p.DesktopFile) == 0 &&
-		len(p.ReleasesFilename) == 0
+		len(p.ReleasesFilename) == 0 &&
+		len(p.ArchiveFilename) == 0
 }
 
 // InputConfig represents a single configuration entry.
@@ -208,6 +171,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"InstalledFilename": nil,
 				"DesktopFile":       nil,
 				"ReleasesFilename":  nil,
+				"ArchiveFilename":   nil,
 			}
 			parseProgramFields = map[string]map[string][]string{}
 			lastProgramName = ""
@@ -233,6 +197,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 							"InstalledFilename": nil,
 							"DesktopFile":       nil,
 							"ReleasesFilename":  nil,
+							"ArchiveFilename":   nil,
 						}
 					}
 					parseProgramFields[lastProgramName][prefix] = append(parseProgramFields[lastProgramName][prefix], value)
@@ -262,6 +227,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 							"InstalledFilename": nil,
 							"DesktopFile":       nil,
 							"ReleasesFilename":  nil,
+							"ArchiveFilename":   nil,
 						}
 					}
 					parseFields[prefix] = append(parseFields[prefix], value)
@@ -379,6 +345,10 @@ func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, pr
 	program.ReleasesFilename, err = parseMapType1(programFields["ReleasesFilename"])
 	if err != nil {
 		return nil, fmt.Errorf("on ReleasesFilename: %v: %w", programFields["ReleasesFilename"], err)
+	}
+	program.ArchiveFilename, err = parseMapType1(programFields["ArchiveFilename"])
+	if err != nil {
+		return nil, fmt.Errorf("on ArchiveFilename: %v: %w", programFields["ArchiveFilename"], err)
 	}
 	if defaultDesktopFileEnabled && program.DesktopFile == "" {
 		program.DesktopFile = c.GithubRepo
