@@ -76,6 +76,7 @@ func (ggaitd *GenerateGithubAppImageTemplateData) PackageName() string {
 type ExternalResource struct {
 	Keyword         string
 	ReleaseFilename string
+	Archived        bool
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) HasDesktopFile() bool {
@@ -98,11 +99,12 @@ func (ggaitd *GenerateGithubAppImageTemplateData) IsArchived() bool {
 
 func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() map[string]*ExternalResource {
 	result := make(map[string]*ExternalResource)
-	for programName := range ggaitd.Programs {
+	for programName, program := range ggaitd.Programs {
 		for kw, rfn := range ggaitd.Programs[programName].ReleasesFilename {
 			result[rfn] = &ExternalResource{
 				Keyword:         kw,
 				ReleaseFilename: rfn,
+				Archived:        len(program.ArchiveFilename) > 0,
 			}
 		}
 	}

@@ -108,9 +108,11 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
+  [[- if $externalResource.Archived ]]
                 echo '  if use [[ $externalResource.Keyword ]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
+  [[- end ]]
 [[- end ]]
 [[- range $pname, $prog := .Programs ]]
 [[- if .IsArchived ]]
@@ -142,7 +144,7 @@ jobs:
 [[- end ]]
 [[- end ]]
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
-                echo "  find squashfs-root -type d -exec rmdir -p {} \; "
+                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
                 echo '  eapply_user'
                 echo '}'
 [[- end ]]
