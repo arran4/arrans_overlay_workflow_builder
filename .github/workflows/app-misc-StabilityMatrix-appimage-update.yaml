@@ -1,43 +1,35 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder [[.Type]] [[.ConfigFile]] [[.Now]]
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 17:57:12.132971578 +1000 AEST m=+0.001071842
 
-name: [[ .WorkflowName ]]
+name: app-misc/StabilityMatrix-appimage update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '[[ .Cron ]]'
+    - cron: '18 2 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/[[ .WorkflowFileName ]]'
+      - '.github/workflows/app-misc-StabilityMatrix-appimage-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  ecn: [[ .Category ]]
-  epn: [[ .PackageName ]]
-  description: "[[ .Description ]]"
-  homepage: "[[ .Homepage ]]"
-  github_owner: [[ .GithubOwner ]]
-  github_repo: [[ .GithubRepo ]]
-  keywords: [[ .MaskedKeywords ]]
-  workflow_filename: [[ .WorkflowFileName ]]
-  [[- range $pname, $prog := .Programs ]]
-  [[- if $prog.HasDesktopFile ]]
-  [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: "[[ $prog.DesktopFile ]]"
-  [[- end ]]
-  [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: "[[ $prog.InstalledFilename ]]"
-  [[- if $prog.IsArchived ]]
-  [[- range $keyword, $archive := $prog.ArchiveFilename ]]
-  [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: "[[ $archive ]]"
-  [[- end ]]
-  [[- end ]]
-  [[ join (filterEmpty $pname "archive_name" ) "_" ]]: "\${P}-[[ $pname ]].\${ARCH}"
-  [[- end ]]
+  ecn: app-misc
+  epn: StabilityMatrix-appimage
+  description: "Multi-Platform Package Manager for Stable Diffusion"
+  homepage: "https://lykos.ai"
+  github_owner: LykosAI
+  github_repo: StabilityMatrix
+  keywords: ~amd64
+  workflow_filename: app-misc-StabilityMatrix-appimage-update.yaml
+  StabilityMatrix_desktop_file: "zone.lykos.stabilitymatrix.desktop"
+  StabilityMatrix_appimage_installed_name: "StabilityMatrix.AppImage"
+  StabilityMatrix_appimage_archived_name_amd64: "StabilityMatrix.AppImage"
+  StabilityMatrix_archive_name: "\${P}-StabilityMatrix.\${ARCH}"
 
 jobs:
   check-and-create-ebuild:
@@ -93,74 +85,46 @@ jobs:
                 echo 'RDEPEND=""'
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
-[[- if .HasDesktopFile ]]
                 echo ''
                 echo "inherit xdg-utils"
-[[- end ]]
                 echo ''
-                [[ .SrcUriEchos ]]
+                echo "SRC_URI=\"https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/v\${PV}/StabilityMatrix-linux-x64.zip -> \${P}-StabilityMatrix.amd64\""
                 echo ''
                 echo 'src_unpack() {'
-[[- range $pname, $prog := .Programs ]]
-
-[[- if .IsArchived ]]
-  [[- range $keyword, $archive := $prog.ArchiveFilename ]]
-                echo '  if use [[ $keyword ]]; then'
-                echo '    unpack "${DISTDIR}/${{ env.[[ join (filterEmpty $pname "archive_name" ) "_" ]] }}" || die "Can'\''t unpack archive file"'
-                echo '    mv "${DESTDIR}/${{ env.[[ join (filterEmpty $pname "appimage_archived_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t move archived file"'
+                echo '  if use amd64; then'
+                echo '    unpack "${DISTDIR}/${{ env.StabilityMatrix_archive_name }}" || die "Can'\''t unpack archive file"'
+                echo '    mv "${DESTDIR}/${{ env.StabilityMatrix_appimage_archived_name }}" "${{ env.StabilityMatrix_appimage_installed_name }}"  || die "Can'\''t move archived file"'
                 echo '  fi'
-  [[- end ]]
-[[- else ]]
-                echo '  cp "${DISTDIR}/${{ env.[[ join (filterEmpty $pname "archive_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t copy downloaded file"'
-[[- end ]]
-                echo '  chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
-[[- if $prog.HasDesktopFile ]]
-                echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
-                echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "usr/share/icons" || die "Failed to extract icons from app image"'
-[[- end ]]
-[[- end ]]
+                echo '  chmod a+x "${{ env.StabilityMatrix_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
+                echo '  ./${{ env.StabilityMatrix_appimage_installed_name }} --appimage-extract "${{ env.StabilityMatrix_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+                echo '  ./${{ env.StabilityMatrix_appimage_installed_name }} --appimage-extract "usr/share/icons" || die "Failed to extract icons from app image"'
                 echo '}'
                 echo ''
-[[- if .HasDesktopFile ]]
                 echo 'src_prepare() {'
-[[- range $pname, $prog := .Programs ]]
-[[- if $prog.HasDesktopFile ]]
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}:' 'squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}'"
-[[- end ]]
-[[- end ]]
+                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.StabilityMatrix_appimage_installed_name }}:' 'squashfs-root/${{ env.StabilityMatrix_desktop_file }}'"
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
                 echo "  find squashfs-root -type d -exec rmdir -p {} \; "
                 echo '  eapply_user'
                 echo '}'
-[[- end ]]
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
-[[- range $pname, $prog := .Programs ]]
-                echo '  doexe "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
-[[- end ]]
-[[- if .HasDesktopFile ]]
+                echo '  doexe "${{ env.StabilityMatrix_appimage_installed_name }}" || die "Failed to install AppImage"'
                 echo '  insinto /usr/share/applications'
-[[- range $pname, $prog := .Programs ]]
-                echo '  doins "squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to install desktop file"'
-[[- end ]]
+                echo '  doins "squashfs-root/${{ env.StabilityMatrix_desktop_file }}" || die "Failed to install desktop file"'
                 echo '  insinto /usr/share/icons'
                 echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
-[[- end ]]
                 echo '}'
                 echo ""
-[[- if .HasDesktopFile ]]
                 echo "pkg_postinst() {"
                 echo "  xdg_desktop_database_update"
                 echo "}"
                 echo ""
-[[- end ]]
               } > $ebuild_file
 
               # Manifest generation
-              [[ range $i, $wgetfile := .ExternalResources ]] 
-              g2 manifest upsert-from-url "[[ $wgetfile.UrlWget ]]" "/tmp/[[ $wgetfile.WgetLocalFilename ]]" "${ebuild_dir}/Manifest"
-              [[- end ]]
+               
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/StabilityMatrix-linux-x64.zip" "/tmp/\${P}-StabilityMatrix.amd64" "${ebuild_dir}/Manifest"
               echo "::set-output name=generated_tag::$tag"
             fi
             break
