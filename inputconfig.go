@@ -26,6 +26,10 @@ func (p *Program) HasDesktopFile() bool {
 	return p.DesktopFile != ""
 }
 
+func (p *Program) IsArchived() bool {
+	return len(p.ArchiveFilename) > 0
+}
+
 func (p *Program) String() string {
 	var sb strings.Builder
 	if p.ProgramName != "" {

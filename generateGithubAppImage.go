@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"slices"
@@ -28,8 +27,13 @@ type GenerateGithubAppImageTemplateData struct {
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) Cron() string {
-	minute := rand.Intn(60)
-	hour := rand.Intn(24)
+	i := uint64(0)
+	for _, r := range ggaitd.GithubRepo {
+		i += uint64(r)
+	}
+	minute := i % 60
+	i /= 60
+	hour := i % 24
 	return fmt.Sprintf("%d %d * * *", minute, hour)
 }
 
@@ -51,6 +55,14 @@ func (ggaitd *GenerateGithubAppImageTemplateData) KeywordList() []string {
 
 func (ggaitd *GenerateGithubAppImageTemplateData) Keywords() string {
 	return strings.Join(ggaitd.KeywordList(), " ")
+}
+
+func (ggaitd *GenerateGithubAppImageTemplateData) MaskedKeywords() string {
+	list := ggaitd.KeywordList()
+	for i := range list {
+		list[i] = "~" + strings.TrimPrefix(list[i], "~")
+	}
+	return strings.Join(list, " ")
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) WorkflowFileName() string {
@@ -125,6 +137,15 @@ func (wf *WgetFile) SrcUri() string {
 func (ggaitd *GenerateGithubAppImageTemplateData) HasDesktopFile() bool {
 	for _, p := range ggaitd.Programs {
 		if p.HasDesktopFile() {
+			return true
+		}
+	}
+	return false
+}
+
+func (ggaitd *GenerateGithubAppImageTemplateData) IsArchived() bool {
+	for _, p := range ggaitd.Programs {
+		if p.IsArchived() {
 			return true
 		}
 	}
