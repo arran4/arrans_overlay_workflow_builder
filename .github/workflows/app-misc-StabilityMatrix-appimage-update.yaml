@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 18:46:10.891831261 +1000 AEST m=+0.001083235
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:00:26.17199614 +1000 AEST m=+0.001079057
 
 name: app-misc/StabilityMatrix-appimage update
 
@@ -89,7 +89,9 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo "SRC_URI=\"https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/v\${PV}/StabilityMatrix-linux-x64.zip -> \${P}-StabilityMatrix.amd64\""
+                echo 'SRC="'
+                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/StabilityMatrix-linux-x64.zip => \${P}-StabilityMatrix-linux-x64.zip )"
+                echo '"'
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
@@ -125,7 +127,7 @@ jobs:
 
               # Manifest generation
                
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/StabilityMatrix-linux-x64.zip" "${{ env.epn }}-${version}-StabilityMatrix.amd64" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/StabilityMatrix-linux-x64.zip" "${{ env.epn }}-${version}-StabilityMatrix-linux-x64.zip" "${ebuild_dir}/Manifest"
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi
             break

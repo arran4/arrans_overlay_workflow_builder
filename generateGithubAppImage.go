@@ -73,69 +73,9 @@ func (ggaitd *GenerateGithubAppImageTemplateData) PackageName() string {
 	return strings.TrimSuffix(ggaitd.EbuildName, ".ebuild")
 }
 
-type WgetFile struct {
-	UrlTemplate                        string
-	LocalFilenameTemplate              string
-	Keyword                            string
-	GenerateGithubAppImageTemplateData *GenerateGithubAppImageTemplateData
-	// TODO use Extension to guide the template on how to unzip - requires additional config values for app image location
-	Extension string
-}
-
-func (wf *WgetFile) WgetLocalFilename() string {
-	return os.Expand(wf.LocalFilenameTemplate, wf.GHAVariableSubstitutor)
-}
-
-func (wf *WgetFile) UrlWget() string {
-	return os.Expand(wf.UrlTemplate, wf.GHAVariableSubstitutor)
-}
-
-func (wf *WgetFile) EbuildVariableSubstitutor(s string) string {
-	switch s {
-	case "VERSION":
-		return "\\${PV}"
-	case "TAG":
-		return "v\\${PV}"
-	case "P":
-		return "\\${P}"
-	case "GITHUB_OWNER":
-		return "${{ env.github_owner }}"
-	case "GITHUB_REPO":
-		return "${{ env.github_repo }}"
-	case "RELEASE_FILENAME":
-		//return wf.EbuildVariableSubstitutor(wf.GenerateGithubAppImageTemplateData.ReleasesFilename[wf.Keyword])
-		return "TODO" // TODO migrate to program.
-	case "KEYWORD":
-		return wf.Keyword
-	default:
-		return fmt.Sprintf("${%s}", s)
-	}
-}
-
-func (wf *WgetFile) GHAVariableSubstitutor(s string) string {
-	switch s {
-	case "VERSION":
-		return "${version}"
-	case "P":
-		return "${{ env.epn }}-${version}"
-	case "TAG":
-		return "${tag}"
-	case "GITHUB_OWNER":
-		return "${{ env.github_owner }}"
-	case "GITHUB_REPO":
-		return "${{ env.github_repo }}"
-	case "RELEASE_FILENAME":
-		//return wf.GHAVariableSubstitutor(wf.GenerateGithubAppImageTemplateData.ReleasesFilename[wf.Keyword])
-		return "TODO" // TODO migrate to program.
-	case "KEYWORD":
-		return wf.Keyword
-	default:
-		return fmt.Sprintf("${%s}", s)
-	}
-}
-
-func (wf *WgetFile) SrcUri() string {
-	return fmt.Sprintf("%s -> %s", os.Expand(wf.UrlTemplate, wf.EbuildVariableSubstitutor), os.Expand(wf.LocalFilenameTemplate, wf.EbuildVariableSubstitutor))
+type ExternalResource struct {
+	Keyword         string
+	ReleaseFilename string
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) HasDesktopFile() bool {
@@ -156,63 +96,17 @@ func (ggaitd *GenerateGithubAppImageTemplateData) IsArchived() bool {
 	return false
 }
 
-func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() WgetFiles {
-	result := make(WgetFiles, 0)
+func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() map[string]*ExternalResource {
+	result := make(map[string]*ExternalResource)
 	for programName := range ggaitd.Programs {
 		for kw, rfn := range ggaitd.Programs[programName].ReleasesFilename {
-			result = append(result, &WgetFile{
-				GenerateGithubAppImageTemplateData: ggaitd,
-				UrlTemplate:                        "https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${TAG}/" + rfn,
-				LocalFilenameTemplate: strings.Join(slices.DeleteFunc(slices.Clone([]string{"${P}", programName}), func(s string) bool {
-					return s == ""
-				}), "-") + ".${KEYWORD}",
-				Keyword:   kw,
-				Extension: filepath.Ext(rfn),
-			})
+			result[rfn] = &ExternalResource{
+				Keyword:         kw,
+				ReleaseFilename: rfn,
+			}
 		}
 	}
 	return result
-}
-
-type WgetFiles []*WgetFile
-
-func (wfs WgetFiles) SrcUris() []string {
-	result := make([]string, 0, len(wfs))
-	for _, wf := range wfs {
-		if len(wfs) == 1 {
-			result = append(result, wf.SrcUri())
-		} else {
-			result = append(result, fmt.Sprintf(" %s? ( %s )", wf.Keyword, wf.SrcUri()))
-		}
-	}
-	return result
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) SrcUriEchos() string {
-	surls := ggaitd.ExternalResources().SrcUris()
-	const lineIndentation = "                "
-	const openEco = `echo "`
-	const closeEcho = `"`
-	const openVariable = `SRC_URI=\"`
-	const closeVariable = `\"`
-	switch len(surls) {
-	case 0:
-		return "# Missing " + openEco + closeEcho // TODO consider
-	case 1:
-		return openEco + openVariable + surls[0] + closeVariable + closeEcho
-	default:
-		b := bytes.NewBufferString(openEco + openVariable)
-		b.WriteString(closeEcho + "\n")
-		b.WriteString(lineIndentation + openEco)
-		for _, surl := range surls {
-			// Assuming no quoting nonsense
-			b.WriteString(surl)
-			b.WriteString(closeEcho + "\n")
-			b.WriteString(lineIndentation + openEco)
-		}
-		b.WriteString(closeVariable + closeEcho)
-		return b.String()
-	}
 }
 
 func GenerateGithubAppImage(file string) error {

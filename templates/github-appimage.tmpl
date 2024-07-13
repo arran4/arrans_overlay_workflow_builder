@@ -101,7 +101,11 @@ jobs:
                 echo "inherit xdg-utils"
 [[- end ]]
                 echo ''
-                [[ .SrcUriEchos ]]
+                echo 'SRC="'
+[[- range $releaseFilename, $externalResource := .ExternalResources ]]
+                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename ]] => \${P}-[[ $releaseFilename ]] )"
+[[- end ]]
+                echo '"'
                 echo ''
                 echo 'src_unpack() {'
 [[- range $pname, $prog := .Programs ]]
@@ -161,8 +165,8 @@ jobs:
               } > $ebuild_file
 
               # Manifest generation
-              [[ range $i, $wgetfile := .ExternalResources ]] 
-              g2 manifest upsert-from-url "[[ $wgetfile.UrlWget ]]" "[[ $wgetfile.WgetLocalFilename ]]" "${ebuild_dir}/Manifest"
+              [[ range $releaseFilename, $externalResource := .ExternalResources ]] 
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename ]]" "${{ env.epn }}-${version}-[[ $releaseFilename ]]" "${ebuild_dir}/Manifest"
               [[- end ]]
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi
