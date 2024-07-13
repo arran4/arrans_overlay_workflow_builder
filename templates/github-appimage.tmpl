@@ -107,14 +107,13 @@ jobs:
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
-[[- range $pname, $prog := .Programs ]]
-
-[[- if .IsArchived ]]
-  [[- range $releaseFilename, $externalResource := .ExternalResources ]]
+[[- range $releaseFilename, $externalResource := .ExternalResources ]]
                 echo '  if use [[ $externalResource.Keyword ]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
-  [[- end ]]
+[[- end ]]
+[[- range $pname, $prog := .Programs ]]
+[[- if .IsArchived ]]
   [[- range $keyword, $archive := $prog.ArchiveFilename ]]
                 echo '  if use [[ $keyword ]]; then'
                 echo '    mv "${DESTDIR}/${{ env.[[ join (filterEmpty $pname "appimage_archived_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t move archived file"'

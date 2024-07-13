@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:00:26.17199614 +1000 AEST m=+0.001079057
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:32:44.200598757 +1000 AEST m=+0.001103735
 
 name: app-misc/StabilityMatrix-appimage update
 
@@ -30,7 +30,6 @@ env:
   StabilityMatrix_appimage_installed_name: 'StabilityMatrix.AppImage'
   StabilityMatrix_appimage_archived_name_amd64: 'StabilityMatrix.AppImage'
   StabilityMatrix_release_name_amd64: 'StabilityMatrix-linux-x64.zip'
-  StabilityMatrix_archive_name: '${P}-StabilityMatrix.${ARCH}'
 
 jobs:
   check-and-create-ebuild:
@@ -95,7 +94,9 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo '    unpack "${DISTDIR}/${{ env.StabilityMatrix_archive_name }}" || die "Can'\''t unpack archive file"'
+                echo "    unpack \"\${DISTDIR}/\${P}-StabilityMatrix-linux-x64.zip\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use amd64; then'
                 echo '    mv "${DESTDIR}/${{ env.StabilityMatrix_appimage_archived_name }}" "${{ env.StabilityMatrix_appimage_installed_name }}"  || die "Can'\''t move archived file"'
                 echo '  fi'
                 echo '  chmod a+x "${{ env.StabilityMatrix_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
