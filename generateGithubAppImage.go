@@ -117,7 +117,7 @@ func (wf *WgetFile) GHAVariableSubstitutor(s string) string {
 	case "VERSION":
 		return "${version}"
 	case "P":
-		return "${{ env.PackageName }}-${tag}"
+		return "${{ env.epn }}-${version}"
 	case "TAG":
 		return "${tag}"
 	case "GITHUB_OWNER":
