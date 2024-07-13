@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -143,6 +144,7 @@ func GenerateGithubWorkflows(file string) error {
 					return s == ""
 				})
 			},
+			"quoteStr": strconv.Quote,
 		}).
 		ParseFS(subFs, "*.tmpl")
 	if err != nil {

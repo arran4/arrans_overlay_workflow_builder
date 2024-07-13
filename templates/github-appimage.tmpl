@@ -20,8 +20,8 @@ concurrency:
 env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
-  description: "[[ .Description ]]"
-  homepage: "[[ .Homepage ]]"
+  description: [[ .Description | quoteStr ]]
+  homepage: [[ .Homepage  | quoteStr ]]
   github_owner: [[ .GithubOwner ]]
   github_repo: [[ .GithubRepo ]]
   keywords: [[ .MaskedKeywords ]]
