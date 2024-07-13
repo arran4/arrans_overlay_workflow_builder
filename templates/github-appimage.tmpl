@@ -28,15 +28,15 @@ env:
   workflow_filename: [[ .WorkflowFileName ]]
   [[- range $pname, $prog := .Programs ]]
   [[- if $prog.HasDesktopFile ]]
-  [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: "[[ $prog.DesktopFile ]]"
+  [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: '[[ $prog.DesktopFile ]]'
   [[- end ]]
-  [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: "[[ $prog.InstalledFilename ]]"
+  [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
   [[- if $prog.IsArchived ]]
   [[- range $keyword, $archive := $prog.ArchiveFilename ]]
-  [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: "[[ $archive ]]"
+  [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ $archive ]]'
   [[- end ]]
   [[- end ]]
-  [[ join (filterEmpty $pname "archive_name" ) "_" ]]: "\${P}-[[ $pname ]].\${ARCH}"
+  [[ join (filterEmpty $pname "archive_name" ) "_" ]]: '\${P}-[[ $pname ]].\${ARCH}'
   [[- end ]]
 
 jobs:
