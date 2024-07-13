@@ -173,4 +173,4 @@ jobs:
           git commit -m "Add ebuilds for new ${{ env.epn }} releases" &&
           git pull --rebase &&
           git push || true
-        if: steps.check_releases.outputs.generated_tag != 0
+        if: env.generated_tag != 0
