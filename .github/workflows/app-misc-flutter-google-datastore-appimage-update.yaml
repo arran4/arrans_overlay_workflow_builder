@@ -13,6 +13,7 @@ on:
     paths:
       - '.github/workflows/app-misc-flutter-google-datastore-appimage-update.yaml'
 
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false

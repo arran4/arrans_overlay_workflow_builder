@@ -234,8 +234,12 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 		}
 		ic.Programs[appImage.ProgramName] = program
 	}
-	program.ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Container
-	program.ArchiveFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
+	if appImage.Container != "" {
+		program.ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Container
+		program.ArchiveFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
+	} else {
+		program.ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
+	}
 	ai, err := goappimage.NewAppImage(appImage.tempFile)
 	if err != nil {
 		return fmt.Errorf("reading AppImage %s %s: %w", appImage.Filename, url, err)
