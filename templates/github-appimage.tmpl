@@ -102,7 +102,7 @@ jobs:
                 echo ''
                 echo 'SRC_URI="'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
-                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename ]] => \${P}-[[ $releaseFilename ]] )"
+                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename ]] -> \${P}-[[ $releaseFilename ]] )"
 [[- end ]]
                 echo '"'
                 echo ''
