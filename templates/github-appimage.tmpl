@@ -117,9 +117,11 @@ jobs:
 [[- range $pname, $prog := .Programs ]]
 [[- if .IsArchived ]]
   [[- range $keyword, $archive := $prog.ArchiveFilename ]]
+    [[- if ne $archive $prog.InstalledFilename ]]
                 echo '  if use [[ $keyword ]]; then'
                 echo "    mv \"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't move archived file\""
                 echo '  fi'
+    [[- end ]]
   [[- end ]]
 [[- else ]]
   [[- range $keyword, $release := $prog.ReleasesFilename ]]
