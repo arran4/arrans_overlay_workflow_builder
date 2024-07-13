@@ -184,7 +184,8 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 				appImages = append(appImages, nai...)
 			}
 		}
-	} else {
+	}
+	if len(appImages) == 0 && len(containers) == 0 {
 		return nil, fmt.Errorf("no app imagee or archives/compressed files found")
 	}
 	if ic.Programs == nil {
