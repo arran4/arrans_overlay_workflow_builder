@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 18:04:15.236721169 +1000 AEST m=+0.001074514
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 18:07:13.706525301 +1000 AEST m=+0.001052841
 
 name: app-misc/StabilityMatrix-appimage update
 
@@ -137,4 +137,4 @@ jobs:
           git commit -m "Add ebuilds for new ${{ env.epn }} releases" &&
           git pull --rebase &&
           git push || true
-        if: steps.check_releases.outputs.generated_tag != 0
+        if: env.generated_tag != 0
