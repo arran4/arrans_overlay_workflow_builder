@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:51:49.025156192 +1000 AEST m=+0.001069960
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-14 00:13:51.957334334 +1000 AEST m=+0.001057096
 
 name: app-misc/localsend-appimage update
 
@@ -93,9 +93,6 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-LocalSend-1.14.0-linux-x86-64.AppImage\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use amd64; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.localsend_release_name_amd64 }}\" \"${{ env.localsend_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
                 echo '  chmod a+x "${{ env.localsend_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
@@ -106,7 +103,7 @@ jobs:
                 echo 'src_prepare() {'
                 echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.localsend_appimage_installed_name }}:' 'squashfs-root/${{ env.localsend_desktop_file }}'"
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
-                echo "  find squashfs-root -type d -exec rmdir -p {} \; "
+                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
                 echo '  eapply_user'
                 echo '}'
                 echo ''
