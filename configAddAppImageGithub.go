@@ -9,6 +9,7 @@ import (
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-github/v62/github"
 	"github.com/probonopd/go-appimage/src/goappimage"
+	"github.com/stoewer/go-strcase"
 	"io"
 	"log"
 	"net/http"
@@ -113,7 +114,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		Type:             "Github AppImage",
 		GithubProjectUrl: gitRepo,
 		//Category:          "",
-		EbuildName:  fmt.Sprintf("%s-appimage", util.TrimSuffixes(repoName, "-AppImage", "-appimage")),
+		EbuildName:  fmt.Sprintf("%s-appimage", util.TrimSuffixes(strcase.KebabCase(repoName), "-AppImage", "-appimage")),
 		Description: StringOrDefault(repo.Description, "TODO"),
 		Homepage:    StringOrDefault(repo.Homepage, ""),
 		GithubRepo:  repoName,

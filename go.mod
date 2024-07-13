@@ -29,6 +29,7 @@ require (
 	github.com/seaweedfs/fuse v1.2.2 // indirect
 	github.com/sergi/go-diff v1.0.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
+	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
