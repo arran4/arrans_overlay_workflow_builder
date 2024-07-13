@@ -1,17 +1,17 @@
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:27:47.475446344 +1000 AEST m=+0.001049016
 
-name: app-misc/rustdesk-appimage update
+name: app-misc/localsend-appimage update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '45 14 * * *'
+    - cron: '49 15 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/app-misc-rustdesk-appimage-update.yaml'
+      - '.github/workflows/app-misc-localsend-appimage-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -19,16 +19,16 @@ concurrency:
 
 env:
   ecn: app-misc
-  epn: rustdesk-appimage
-  description: "An open-source remote desktop application designed for self-hosting, as an alternative to TeamViewer."
-  homepage: "https://rustdesk.com"
-  github_owner: rustdesk
-  github_repo: rustdesk
+  epn: localsend-appimage
+  description: "An open-source cross-platform alternative to AirDrop"
+  homepage: "https://localsend.org"
+  github_owner: localsend
+  github_repo: localsend
   keywords: ~amd64
-  workflow_filename: app-misc-rustdesk-appimage-update.yaml
-  rustdesk_desktop_file: 'rustdesk.desktop'
-  rustdesk_appimage_installed_name: 'rustdesk.AppImage'
-  rustdesk_release_name_amd64: 'rustdesk-1.2.6-x86_64.AppImage'
+  workflow_filename: app-misc-localsend-appimage-update.yaml
+  localsend_desktop_file: 'org.localsend.localsend_app.desktop'
+  localsend_appimage_installed_name: 'localsend.AppImage'
+  localsend_release_name_amd64: 'LocalSend-1.14.0-linux-x86-64.AppImage'
 
 jobs:
   check-and-create-ebuild:
@@ -88,20 +88,20 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC="'
-                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-1.2.6-x86_64.AppImage => \${P}-rustdesk-1.2.6-x86_64.AppImage )"
+                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/LocalSend-1.14.0-linux-x86-64.AppImage => \${P}-LocalSend-1.14.0-linux-x86-64.AppImage )"
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/${{ env.rustdesk_release_name_amd64 }}\" \"${{ env.rustdesk_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo "    cp \"\${DISTDIR}/${{ env.localsend_release_name_amd64 }}\" \"${{ env.localsend_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
-                echo '  chmod a+x "${{ env.rustdesk_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
-                echo '  ./${{ env.rustdesk_appimage_installed_name }} --appimage-extract "${{ env.rustdesk_desktop_file }}" || die "Failed to extract .desktop from appimage"'
-                echo '  ./${{ env.rustdesk_appimage_installed_name }} --appimage-extract "usr/share/icons" || die "Failed to extract icons from app image"'
+                echo '  chmod a+x "${{ env.localsend_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
+                echo '  ./${{ env.localsend_appimage_installed_name }} --appimage-extract "${{ env.localsend_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+                echo '  ./${{ env.localsend_appimage_installed_name }} --appimage-extract "usr/share/icons" || die "Failed to extract icons from app image"'
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.rustdesk_appimage_installed_name }}:' 'squashfs-root/${{ env.rustdesk_desktop_file }}'"
+                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.localsend_appimage_installed_name }}:' 'squashfs-root/${{ env.localsend_desktop_file }}'"
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
                 echo "  find squashfs-root -type d -exec rmdir -p {} \; "
                 echo '  eapply_user'
@@ -109,9 +109,9 @@ jobs:
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
-                echo '  doexe "${{ env.rustdesk_appimage_installed_name }}" || die "Failed to install AppImage"'
+                echo '  doexe "${{ env.localsend_appimage_installed_name }}" || die "Failed to install AppImage"'
                 echo '  insinto /usr/share/applications'
-                echo '  doins "squashfs-root/${{ env.rustdesk_desktop_file }}" || die "Failed to install desktop file"'
+                echo '  doins "squashfs-root/${{ env.localsend_desktop_file }}" || die "Failed to install desktop file"'
                 echo '  insinto /usr/share/icons'
                 echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
                 echo '}'
@@ -124,7 +124,7 @@ jobs:
 
               # Manifest generation
                
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-1.2.6-x86_64.AppImage" "${{ env.epn }}-${version}-rustdesk-1.2.6-x86_64.AppImage" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/LocalSend-1.14.0-linux-x86-64.AppImage" "${{ env.epn }}-${version}-LocalSend-1.14.0-linux-x86-64.AppImage" "${ebuild_dir}/Manifest"
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi
             break
