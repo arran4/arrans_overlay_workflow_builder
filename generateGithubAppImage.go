@@ -96,6 +96,8 @@ func (wf *WgetFile) EbuildVariableSubstitutor(s string) string {
 		return "\\${PV}"
 	case "TAG":
 		return "v\\${PV}"
+	case "P":
+		return "\\${P}"
 	case "GITHUB_OWNER":
 		return "${{ env.github_owner }}"
 	case "GITHUB_REPO":
@@ -114,6 +116,8 @@ func (wf *WgetFile) GHAVariableSubstitutor(s string) string {
 	switch s {
 	case "VERSION":
 		return "${version}"
+	case "P":
+		return "${{ env.PackageName }}-${tag}"
 	case "TAG":
 		return "${tag}"
 	case "GITHUB_OWNER":
@@ -159,7 +163,7 @@ func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() WgetFiles 
 			result = append(result, &WgetFile{
 				GenerateGithubAppImageTemplateData: ggaitd,
 				UrlTemplate:                        "https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download/${TAG}/" + rfn,
-				LocalFilenameTemplate: strings.Join(slices.DeleteFunc(slices.Clone([]string{"\\${P}", programName}), func(s string) bool {
+				LocalFilenameTemplate: strings.Join(slices.DeleteFunc(slices.Clone([]string{"${P}", programName}), func(s string) bool {
 					return s == ""
 				}), "-") + ".${KEYWORD}",
 				Keyword:   kw,

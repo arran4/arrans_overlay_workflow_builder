@@ -36,6 +36,9 @@ env:
   [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ $archive ]]'
   [[- end ]]
   [[- end ]]
+  [[- range $keyword, $release := $prog.ReleasesFilename ]]
+  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ $release ]]'
+  [[- end ]]
   [[ join (filterEmpty $pname "archive_name" ) "_" ]]: '\${P}-[[ $pname ]].\${ARCH}'
   [[- end ]]
 
@@ -159,7 +162,7 @@ jobs:
 
               # Manifest generation
               [[ range $i, $wgetfile := .ExternalResources ]] 
-              g2 manifest upsert-from-url "[[ $wgetfile.UrlWget ]]" "/tmp/[[ $wgetfile.WgetLocalFilename ]]" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "[[ $wgetfile.UrlWget ]]" "[[ $wgetfile.WgetLocalFilename ]]" "${ebuild_dir}/Manifest"
               [[- end ]]
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi
