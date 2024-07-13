@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:27:47.475446344 +1000 AEST m=+0.001049016
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:35:08.599925441 +1000 AEST m=+0.001083783
 
 name: app-misc/localsend-appimage update
 
@@ -87,11 +87,14 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo 'SRC="'
+                echo 'SRC_URI="'
                 echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/LocalSend-1.14.0-linux-x86-64.AppImage => \${P}-LocalSend-1.14.0-linux-x86-64.AppImage )"
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
+                echo '  if use amd64; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-LocalSend-1.14.0-linux-x86-64.AppImage\" || die \"Can't unpack archive file\""
+                echo '  fi'
                 echo '  if use amd64; then'
                 echo "    cp \"\${DISTDIR}/${{ env.localsend_release_name_amd64 }}\" \"${{ env.localsend_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'

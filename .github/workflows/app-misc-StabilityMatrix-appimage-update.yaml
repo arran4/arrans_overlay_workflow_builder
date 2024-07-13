@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:32:44.200598757 +1000 AEST m=+0.001103735
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-13 19:35:08.599925441 +1000 AEST m=+0.001083783
 
 name: app-misc/StabilityMatrix-appimage update
 
@@ -88,7 +88,7 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo 'SRC="'
+                echo 'SRC_URI="'
                 echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/StabilityMatrix-linux-x64.zip => \${P}-StabilityMatrix-linux-x64.zip )"
                 echo '"'
                 echo ''
