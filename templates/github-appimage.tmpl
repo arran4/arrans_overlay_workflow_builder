@@ -39,7 +39,6 @@ env:
   [[- range $keyword, $release := $prog.ReleasesFilename ]]
   [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ $release ]]'
   [[- end ]]
-  [[ join (filterEmpty $pname "archive_name" ) "_" ]]: '${P}-[[ $pname ]].${ARCH}'
   [[- end ]]
 
 jobs:
@@ -111,14 +110,22 @@ jobs:
 [[- range $pname, $prog := .Programs ]]
 
 [[- if .IsArchived ]]
+  [[- range $releaseFilename, $externalResource := .ExternalResources ]]
+                echo '  if use [[ $externalResource.Keyword ]]; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename ]]\" || die \"Can't unpack archive file\""
+                echo '  fi'
+  [[- end ]]
   [[- range $keyword, $archive := $prog.ArchiveFilename ]]
                 echo '  if use [[ $keyword ]]; then'
-                echo '    unpack "${DISTDIR}/${{ env.[[ join (filterEmpty $pname "archive_name" ) "_" ]] }}" || die "Can'\''t unpack archive file"'
                 echo '    mv "${DESTDIR}/${{ env.[[ join (filterEmpty $pname "appimage_archived_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t move archived file"'
                 echo '  fi'
   [[- end ]]
 [[- else ]]
-                echo '  cp "${DISTDIR}/${{ env.[[ join (filterEmpty $pname "archive_name" ) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t copy downloaded file"'
+  [[- range $keyword, $release := $prog.ReleasesFilename ]]
+                echo '  if use [[ $keyword ]]; then'
+                echo "    cp \"\${DISTDIR}/${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
+                echo '  fi'
+  [[- end ]]
 [[- end ]]
                 echo '  chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
 [[- if $prog.HasDesktopFile ]]
