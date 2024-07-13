@@ -58,25 +58,25 @@ func (mac *MainArgConfig) cmdGenerate(args []string) error {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
 	switch fs.Arg(0) {
-	case "github-appimage":
-		if err := config.cmdGenerateGithubAppImage(fs.Args()[1:]); err != nil {
+	case "workflows":
+		if err := config.cmdGenerateGithubWorkflows(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("github appimage: %w", err)
 		}
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
-		log.Printf("Try %s for %s", "github-appimage", "a command specific to generating appimage ebuilds from github repos that use github releases to release appimages.")
+		log.Printf("Try %s for %s", "workflows", "Generate workflows from a configfile.")
 		os.Exit(-1)
 	}
 	return nil
 }
 
-type CmdGenerateGithubAppImageArgConfig struct {
+type CmdGenerateGithubWorkflowsArgConfig struct {
 	*CmdGenerateArgConfig
 	InputFile *string
 }
 
-func (mac *CmdGenerateArgConfig) cmdGenerateGithubAppImage(args []string) error {
-	config := &CmdGenerateGithubAppImageArgConfig{
+func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error {
+	config := &CmdGenerateGithubWorkflowsArgConfig{
 		CmdGenerateArgConfig: mac,
 	}
 	fs := flag.NewFlagSet("", flag.ExitOnError)
@@ -89,7 +89,7 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubAppImage(args []string) error 
 		if config.InputFile == nil || *config.InputFile == "" {
 			return fmt.Errorf("input file argument missing")
 		}
-		return arrans_overlay_workflow_builder.GenerateGithubAppImage(*config.InputFile)
+		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)

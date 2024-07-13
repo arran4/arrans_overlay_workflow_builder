@@ -111,7 +111,7 @@ func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() map[string
 	return result
 }
 
-func GenerateGithubAppImage(file string) error {
+func GenerateGithubWorkflows(file string) error {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", file, err)
@@ -153,15 +153,22 @@ func GenerateGithubAppImage(file string) error {
 	_ = os.MkdirAll(outputDir, 0755)
 	for _, inputConfig := range inputConfigs {
 		out := bytes.NewBuffer(nil)
-		data := &GenerateGithubAppImageTemplateData{
-			Now:         now,
-			ConfigFile:  file,
-			InputConfig: inputConfig,
+		var workflowName string
+		switch inputConfig.Type {
+		case "Github AppImage":
+			data := &GenerateGithubAppImageTemplateData{
+				Now:         now,
+				ConfigFile:  file,
+				InputConfig: inputConfig,
+			}
+			if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", data); err != nil {
+				return fmt.Errorf("for %s excuting template: %w", inputConfig.EbuildName, err)
+			}
+			workflowName = data.WorkflowFileName()
+		default:
+			return fmt.Errorf("unknown type %s: %w", inputConfig.Type, err)
 		}
-		if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", data); err != nil {
-			return fmt.Errorf("for %s excuting template: %w", inputConfig.EbuildName, err)
-		}
-		n := filepath.Join(outputDir, data.WorkflowFileName())
+		n := filepath.Join(outputDir, workflowName)
 		if err := os.WriteFile(n, out.Bytes(), 0644); err != nil {
 			return fmt.Errorf("writing %s: %w", n, err)
 		}
