@@ -5,6 +5,7 @@ name: app-misc/im-hex-appimage update
 permissions:
   contents: write
 
+
 on:
   schedule:
     - cron: '55 7 * * *'

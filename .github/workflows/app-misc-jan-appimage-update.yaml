@@ -5,6 +5,7 @@ name: app-misc/jan-appimage update
 permissions:
   contents: write
 
+
 on:
   schedule:
     - cron: '13 5 * * *'
