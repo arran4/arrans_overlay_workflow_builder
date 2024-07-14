@@ -102,7 +102,7 @@ jobs:
                 echo ''
                 echo 'SRC_URI="'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
-                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename ]] -> \${P}-[[ $releaseFilename ]] )"
+                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted ]] -> \${P}-[[ $releaseFilename ]] )"
 [[- end ]]
                 echo '"'
                 echo ''
@@ -176,7 +176,7 @@ jobs:
 
               # Manifest generation
               [[ range $releaseFilename, $externalResource := .ExternalResources ]] 
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename ]]" "${{ env.epn }}-${version}-[[ $releaseFilename ]]" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
               [[- end ]]
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi

@@ -11,3 +11,10 @@ func TrimSuffixes(s string, suffixes ...string) string {
 	}
 	return s
 }
+
+func StringOrDefault(description *string, defaultStr string) string {
+	if description == nil {
+		return defaultStr
+	}
+	return *description
+}

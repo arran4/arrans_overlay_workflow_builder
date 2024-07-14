@@ -2,9 +2,12 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"io"
+	"log"
+	"os"
 	"sort"
 	"strings"
 	"unicode"
@@ -404,4 +407,43 @@ func onlyOrFail(i []string) (string, error) {
 	default:
 		return "", fmt.Errorf("too many values")
 	}
+}
+
+func AppendToConfigurationFile(config string, ic *InputConfig) error {
+	f, err := os.OpenFile(config, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("opening configuration file to append: %w", err)
+	}
+
+	if _, err := f.WriteString("\n" + ic.String() + "\n"); err != nil {
+		return fmt.Errorf("writing: %w", err)
+	}
+
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("Error closing file: %s", err)
+		}
+	}()
+	return nil
+}
+
+func ReadConfigurationFile(configFn string) ([]*InputConfig, error) {
+	var config []*InputConfig
+	f, err := os.Open(configFn)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("opening configuration file: %w", err)
+	} else if err == nil {
+		config, err = ParseInputConfigReader(f)
+		if err != nil {
+			return nil, fmt.Errorf("parsing configuration file: %w", err)
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Printf("Error closing file: %s", err)
+			}
+		}()
+	} else {
+		config = make([]*InputConfig, 0)
+	}
+	return config, nil
 }

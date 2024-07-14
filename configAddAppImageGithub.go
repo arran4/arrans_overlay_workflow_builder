@@ -3,16 +3,13 @@ package arrans_overlay_workflow_builder
 import (
 	"archive/zip"
 	"context"
-	"errors"
 	"fmt"
 	"github.com/Masterminds/semver"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-github/v62/github"
 	"github.com/probonopd/go-appimage/src/goappimage"
 	"github.com/stoewer/go-strcase"
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -30,6 +27,9 @@ type FileInfo struct {
 	// contained file
 	Container   string
 	ProgramName string
+	// The separator -_-
+	Separator bool
+	Captured  string
 
 	// Compiled only
 	Containers []string
@@ -48,10 +48,11 @@ type FileInfo struct {
 	CaseInsensitive bool
 	// Required for the URL only atm:
 	ReleaseAsset *github.ReleaseAsset
-	Unmatched    string
+	Unmatched    bool
 
 	// Transient information
-	tempFile string
+	tempFile         string
+	OriginalFilename string
 }
 
 func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
@@ -115,11 +116,11 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		GithubProjectUrl: gitRepo,
 		//Category:          "",
 		EbuildName:  fmt.Sprintf("%s-appimage", util.TrimSuffixes(strcase.KebabCase(repoName), "-AppImage", "-appimage")),
-		Description: StringOrDefault(repo.Description, "TODO"),
-		Homepage:    StringOrDefault(repo.Homepage, ""),
+		Description: util.StringOrDefault(repo.Description, "TODO"),
+		Homepage:    util.StringOrDefault(repo.Homepage, ""),
 		GithubRepo:  repoName,
 		GithubOwner: ownerName,
-		License:     StringOrDefault(licenseName, "unknown"),
+		License:     util.StringOrDefault(licenseName, "unknown"),
 	}
 	var versions = []string{tagOverride}
 	var releaseInfo *github.RepositoryRelease
@@ -206,7 +207,7 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 	var err error
 	if appImage.tempFile == "" {
 		log.Printf("Downloading %s", url)
-		appImage.tempFile, err = downloadUrlToTempFile(url)
+		appImage.tempFile, err = util.DownloadUrlToTempFile(url)
 		if err != nil {
 			return fmt.Errorf("downloading release: %w", err)
 		}
@@ -255,20 +256,11 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 	return nil
 }
 
-type ReaderCloser struct {
-	Closer func() error
-	io.Reader
-}
-
-func (oc *ReaderCloser) Close() error {
-	return oc.Closer()
-}
-
 func SearchArchiveForFiles(container *FileInfo) ([]*FileInfo, error) {
 	url := container.ReleaseAsset.GetBrowserDownloadURL()
 	log.Printf("Downloading %s", url)
 	var err error
-	container.tempFile, err = downloadUrlToTempFile(url)
+	container.tempFile, err = util.DownloadUrlToTempFile(url)
 	if err != nil {
 		return nil, fmt.Errorf("downloading release: %w", err)
 	}
@@ -296,7 +288,7 @@ func SearchArchiveForFiles(container *FileInfo) ([]*FileInfo, error) {
 		}()
 		for _, f := range zf.File {
 			zfr, err := f.Open()
-			tmpFile, err := SaveReaderToTempFile(zfr)
+			tmpFile, err := util.SaveReaderToTempFile(zfr)
 			if err != nil {
 				return archivedFiles, fmt.Errorf("extracting file %s from %s: %w", f.Name, url, err)
 			}
@@ -354,96 +346,6 @@ func ExtractAppsAndContainers(base []*FileInfo, wordMap map[string][]*KeyedMeani
 	return appImages, containers
 }
 
-func AppendToConfigurationFile(config string, ic *InputConfig) error {
-	f, err := os.OpenFile(config, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("opening configuration file to append: %w", err)
-	}
-
-	if _, err := f.WriteString("\n" + ic.String() + "\n"); err != nil {
-		return fmt.Errorf("writing: %w", err)
-	}
-
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Printf("Error closing file: %s", err)
-		}
-	}()
-	return nil
-}
-
-func ReadConfigurationFile(configFn string) ([]*InputConfig, error) {
-	var config []*InputConfig
-	f, err := os.Open(configFn)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("opening configuration file: %w", err)
-	} else if err == nil {
-		config, err = ParseInputConfigReader(f)
-		if err != nil {
-			return nil, fmt.Errorf("parsing configuration file: %w", err)
-		}
-		defer func() {
-			if err := f.Close(); err != nil {
-				log.Printf("Error closing file: %s", err)
-			}
-		}()
-	} else {
-		config = make([]*InputConfig, 0)
-	}
-	return config, nil
-}
-
-func downloadUrlToTempFile(url string) (string, error) {
-	// Create a temporary file
-	file, err := os.CreateTemp("", "download-*.tmp")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary file: %v", err)
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Printf("Temp file close issue: %s", err)
-		}
-	}(file)
-	response, err := http.Get(url)
-	if err != nil {
-		return "", fmt.Errorf("failed to download file: %v", err)
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Printf("File download close issue: %s", err)
-		}
-	}(response.Body)
-
-	_, err = io.Copy(file, response.Body)
-	if err != nil {
-		return "", fmt.Errorf("writing %s to file %s: %v", url, file.Name(), err)
-	}
-
-	return file.Name(), nil
-}
-
-func SaveReaderToTempFile(reader io.Reader) (string, error) {
-	// Create a temporary file
-	file, err := os.CreateTemp("", "extracted-*.tmp")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary file: %v", err)
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Printf("Temp file close issue: %s", err)
-		}
-	}(file)
-	_, err = io.Copy(file, reader)
-	if err != nil {
-		return "", fmt.Errorf("writing to file: %v: %s", file.Name(), err)
-	}
-
-	return file.Name(), nil
-}
-
 func CompileMeanings(input []*FileInfo, base *FileInfo) (*FileInfo, bool) {
 	result := &FileInfo{
 		SuffixOnly: true,
@@ -451,14 +353,19 @@ func CompileMeanings(input []*FileInfo, base *FileInfo) (*FileInfo, bool) {
 	if base != nil {
 		result.ReleaseAsset = base.ReleaseAsset
 		result.Container = base.Container
-		result.Filename = base.Filename
+		result.OriginalFilename = base.Filename
 		result.OS = base.OS
 		result.Keyword = base.Keyword
 		result.Toolchain = base.Toolchain
 		result.tempFile = base.tempFile
 	}
 	for _, each := range input {
-
+		switch {
+		case each.Version:
+			result.Filename += "${VERSION}"
+		default:
+			result.Filename += each.Captured
+		}
 		if each.Keyword != "" {
 			if result.Keyword != "" && result.Keyword != each.Keyword {
 				return nil, false
@@ -499,11 +406,11 @@ func CompileMeanings(input []*FileInfo, base *FileInfo) (*FileInfo, bool) {
 			result.AppImage = each.AppImage
 		}
 
-		if each.Unmatched != "" {
+		if each.Unmatched {
 			if result.ProgramName != "" || each.SuffixOnly {
 				return nil, false
 			}
-			result.ProgramName = each.Unmatched
+			result.ProgramName = each.Captured
 		}
 	}
 	return result, true
@@ -514,6 +421,7 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 	length := len(filename)
 	suffixOnly := false
 	unmatched := -1
+	var sep *FileInfo
 	for i := 0; i < length; {
 		matched := false
 		firstChar := string(filename[i])
@@ -524,16 +432,23 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 					if unmatched != -1 {
 						if unmatched < i-2 {
 							result = append(result, &FileInfo{
-								Unmatched:  filename[unmatched : i-1],
+								Unmatched:  true,
+								Captured:   filename[unmatched : i-1],
 								SuffixOnly: suffixOnly,
 							})
+							if sep != nil {
+								result = append(result, sep)
+								sep = nil
+							}
 						}
 						unmatched = -1
 					}
 					if suffixOnly && !meaning.SuffixOnly {
 						continue
 					}
-					result = append(result, meaning.FileInfo)
+					var fi = *meaning.FileInfo
+					fi.Captured = filename[i : i+keyLen]
+					result = append(result, &fi)
 					if meaning.SuffixOnly {
 						suffixOnly = true
 					}
@@ -555,6 +470,14 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 
 		// Skip separators
 		if i < length && (filename[i] == '-' || filename[i] == '_' || filename[i] == '.') {
+			sep = &FileInfo{
+				Captured:  string(filename[i]),
+				Separator: true,
+			}
+			if unmatched == -1 {
+				result = append(result, sep)
+				sep = nil
+			}
 			i++
 		}
 	}
@@ -562,7 +485,8 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 	if unmatched != -1 {
 		if unmatched < length {
 			result = append(result, &FileInfo{
-				Unmatched:  filename[unmatched:],
+				Unmatched:  true,
+				Captured:   filename[unmatched:],
 				SuffixOnly: suffixOnly,
 			})
 		}
@@ -709,11 +633,4 @@ func GenerateWordMeanings(gitRepo string, versions []string) map[string]*FileInf
 	}
 
 	return wordMap
-}
-
-func StringOrDefault(description *string, defaultStr string) string {
-	if description == nil {
-		return defaultStr
-	}
-	return *description
 }
