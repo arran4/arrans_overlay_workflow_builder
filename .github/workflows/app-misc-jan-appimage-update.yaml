@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-14 23:35:59.951867122 +1000 AEST m=+0.001058287
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-14 23:52:22.872748868 +1000 AEST m=+0.001043998
 
 name: app-misc/jan-appimage update
 
@@ -28,7 +28,7 @@ env:
   workflow_filename: app-misc-jan-appimage-update.yaml
   jan_desktop_file: 'jan.desktop'
   jan_appimage_installed_name: 'jan.AppImage'
-  jan_release_name_amd64: 'jan-linux-x86_64-${VERSION}.AppImage'
+  jan_release_name_amd64: 'jan-linux-x86_64-\${PV}.AppImage'
 
 jobs:
   check-and-create-ebuild:
@@ -88,7 +88,7 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI="'
-                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/jan-linux-x86_64-\${PV}.AppImage -> \${P}-jan-linux-x86_64-${VERSION}.AppImage )"
+                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/jan-linux-x86_64-\${PV}.AppImage -> \${P}-jan-linux-x86_64-\${PV}.AppImage )"
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'

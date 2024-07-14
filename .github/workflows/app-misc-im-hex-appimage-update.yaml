@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-14 23:35:59.951867122 +1000 AEST m=+0.001058287
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-14 23:52:22.872748868 +1000 AEST m=+0.001043998
 
 name: app-misc/im-hex-appimage update
 
@@ -28,7 +28,7 @@ env:
   workflow_filename: app-misc-im-hex-appimage-update.yaml
   ImHex_desktop_file: 'imhex.desktop'
   ImHex_appimage_installed_name: 'ImHex.AppImage'
-  ImHex_release_name_amd64: 'imhex-${VERSION}-x86_64.AppImage'
+  ImHex_release_name_amd64: 'imhex-\${PV}-x86_64.AppImage'
 
 jobs:
   check-and-create-ebuild:
@@ -88,7 +88,7 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI="'
-                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/imhex-\${PV}-x86_64.AppImage -> \${P}-imhex-${VERSION}-x86_64.AppImage )"
+                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/imhex-\${PV}-x86_64.AppImage -> \${P}-imhex-\${PV}-x86_64.AppImage )"
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'

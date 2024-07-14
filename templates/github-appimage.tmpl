@@ -37,7 +37,7 @@ env:
   [[- end ]]
   [[- end ]]
   [[- range $keyword, $release := $prog.ReleasesFilename ]]
-  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ $release ]]'
+  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ $release  | ebuildvardoublequoted ]]'
   [[- end ]]
   [[- end ]]
 
@@ -102,7 +102,7 @@ jobs:
                 echo ''
                 echo 'SRC_URI="'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
-                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted ]] -> \${P}-[[ $releaseFilename ]] )"
+                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
 [[- end ]]
                 echo '"'
                 echo ''
@@ -110,7 +110,7 @@ jobs:
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
                 echo '  if use [[ $externalResource.Keyword ]]; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename ]]\" || die \"Can't unpack archive file\""
+                echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
   [[- end ]]
 [[- end ]]
