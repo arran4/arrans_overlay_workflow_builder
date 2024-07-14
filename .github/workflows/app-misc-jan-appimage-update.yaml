@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-14 00:52:29.84329649 +1000 AEST m=+0.001076478
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-14 23:35:59.951867122 +1000 AEST m=+0.001058287
 
 name: app-misc/jan-appimage update
 
@@ -26,9 +26,9 @@ env:
   github_repo: jan
   keywords: ~amd64
   workflow_filename: app-misc-jan-appimage-update.yaml
-  desktop_file: 'jan.desktop'
-  appimage_installed_name: 'jan'
-  release_name_amd64: 'jan-linux-x86_64-${VERSION}.AppImage'
+  jan_desktop_file: 'jan.desktop'
+  jan_appimage_installed_name: 'jan.AppImage'
+  jan_release_name_amd64: 'jan-linux-x86_64-${VERSION}.AppImage'
 
 jobs:
   check-and-create-ebuild:
@@ -88,20 +88,20 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI="'
-                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/jan-linux-x86_64-${VERSION}.AppImage -> \${P}-jan-linux-x86_64-${VERSION}.AppImage )"
+                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/jan-linux-x86_64-\${PV}.AppImage -> \${P}-jan-linux-x86_64-${VERSION}.AppImage )"
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.release_name_amd64 }}\" \"${{ env.appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo "    cp \"\${DISTDIR}/\${P}-${{ env.jan_release_name_amd64 }}\" \"${{ env.jan_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
-                echo '  chmod a+x "${{ env.appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
-                echo '  ./${{ env.appimage_installed_name }} --appimage-extract "${{ env.desktop_file }}" || die "Failed to extract .desktop from appimage"'
-                echo '  ./${{ env.appimage_installed_name }} --appimage-extract "usr/share/icons" || die "Failed to extract icons from app image"'
+                echo '  chmod a+x "${{ env.jan_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
+                echo '  ./${{ env.jan_appimage_installed_name }} --appimage-extract "${{ env.jan_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+                echo '  ./${{ env.jan_appimage_installed_name }} --appimage-extract "usr/share/icons" || die "Failed to extract icons from app image"'
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.appimage_installed_name }}:' 'squashfs-root/${{ env.desktop_file }}'"
+                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.jan_appimage_installed_name }}:' 'squashfs-root/${{ env.jan_desktop_file }}'"
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
                 echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
                 echo '  eapply_user'
@@ -109,9 +109,9 @@ jobs:
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
-                echo '  doexe "${{ env.appimage_installed_name }}" || die "Failed to install AppImage"'
+                echo '  doexe "${{ env.jan_appimage_installed_name }}" || die "Failed to install AppImage"'
                 echo '  insinto /usr/share/applications'
-                echo '  doins "squashfs-root/${{ env.desktop_file }}" || die "Failed to install desktop file"'
+                echo '  doins "squashfs-root/${{ env.jan_desktop_file }}" || die "Failed to install desktop file"'
                 echo '  insinto /usr/share/icons'
                 echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
                 echo '}'
@@ -124,7 +124,7 @@ jobs:
 
               # Manifest generation
                
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/jan-linux-x86_64-${VERSION}.AppImage" "${{ env.epn }}-${version}-jan-linux-x86_64-${VERSION}.AppImage" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/jan-linux-x86_64-${version}.AppImage" "${{ env.epn }}-${version}-jan-linux-x86_64-${version}.AppImage" "${ebuild_dir}/Manifest"
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi
             break
