@@ -16,7 +16,7 @@ func TestDecodeFilename(t *testing.T) {
 	}{
 		{
 			name:           "jan-linux-x86_64-0.5.1.AppImage",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("jan", []string{"0.5.1"})),
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("jan", []string{"0.5.1"}, []string{"v0.5.1"})),
 			filename:       "jan-linux-x86_64-0.5.1.AppImage",
 			want: []*FileInfo{
 				{ProjectName: true, CaseInsensitive: true, Captured: "jan"},
@@ -32,7 +32,7 @@ func TestDecodeFilename(t *testing.T) {
 		},
 		{
 			name:           "appimaged-838-aarch64.AppImage",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("go-appimage", []string{"0"})),
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("go-appimage", []string{"0"}, []string{"v0"})),
 			filename:       "appimaged-838-aarch64.AppImage",
 			want: []*FileInfo{
 				{Unmatched: true, Captured: "appimaged-838"},
@@ -44,7 +44,7 @@ func TestDecodeFilename(t *testing.T) {
 		},
 		{
 			name:           "appimaged-838-aarch64.AppImage.zsync",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("go-appimage", []string{"0"})),
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("go-appimage", []string{"0"}, []string{"v0"})),
 			filename:       "appimaged-838-aarch64.AppImage.zsync",
 			want: []*FileInfo{
 				{Unmatched: true, Captured: "appimaged-838"},
@@ -58,7 +58,7 @@ func TestDecodeFilename(t *testing.T) {
 		},
 		{
 			name:           "LocalSend-1.14.0-linux-x86-64.AppImage",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("localsend", []string{"1.14.0"})),
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("localsend", []string{"1.14.0"}, []string{"v1.14.0"})),
 			filename:       "LocalSend-1.14.0-linux-x86-64.AppImage",
 			want: []*FileInfo{
 				{ProjectName: true, CaseInsensitive: true, Captured: "LocalSend"},
@@ -75,7 +75,7 @@ func TestDecodeFilename(t *testing.T) {
 		},
 		{
 			name:           "StabilityMatrix-linux-x64.zip",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("StabilityMatrix", []string{"v2.11.4"})),
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("StabilityMatrix", []string{"2.11.4"}, []string{"v2.11.4"})),
 			filename:       "StabilityMatrix-linux-x64.zip",
 			want: []*FileInfo{
 				{ProjectName: true, CaseInsensitive: true, Captured: "StabilityMatrix"},

@@ -41,6 +41,7 @@ type FileInfo struct {
 
 	// Identification
 	Version     bool
+	Tag         bool
 	ProjectName bool
 
 	// Match rules
@@ -122,7 +123,8 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		GithubOwner: ownerName,
 		License:     util.StringOrDefault(licenseName, "unknown"),
 	}
-	var versions = []string{tagOverride}
+	var versions = []string{}
+	var tags = []string{tagOverride}
 	var releaseInfo *github.RepositoryRelease
 	if tagOverride == "" {
 		releaseInfo, _, err = client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
@@ -134,7 +136,8 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		if err != nil {
 			return nil, fmt.Errorf("github latest release tag parse %s: %w", releaseInfo.GetTagName(), err)
 		}
-		versions = []string{v.String(), "v" + v.String()}
+		versions = []string{v.String()}
+		tags = []string{"v" + v.String()}
 	} else {
 		releaseInfo, _, err = client.Repositories.GetReleaseByTag(ctx, ownerName, repoName, tagOverride)
 		if err != nil {
@@ -145,7 +148,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 
 	log.Printf("Latest release %v", versions)
 
-	var wordMap = GroupAndSort(GenerateWordMeanings(repoName, versions))
+	var wordMap = GroupAndSort(GenerateWordMeanings(repoName, versions, tags))
 
 	var files []*FileInfo
 	for _, asset := range releaseInfo.Assets {
@@ -363,6 +366,8 @@ func CompileMeanings(input []*FileInfo, base *FileInfo) (*FileInfo, bool) {
 		switch {
 		case each.Version:
 			result.Filename += "${VERSION}"
+		case each.Tag:
+			result.Filename += "${TAG}"
 		default:
 			result.Filename += each.Captured
 		}
@@ -396,6 +401,10 @@ func CompileMeanings(input []*FileInfo, base *FileInfo) (*FileInfo, bool) {
 
 		if each.Version {
 			result.Version = each.Version
+		}
+
+		if each.Tag {
+			result.Tag = each.Tag
 		}
 
 		if each.ProjectName {
@@ -530,7 +539,7 @@ func GroupAndSort(wordMap map[string]*FileInfo) map[string][]*KeyedMeaning {
 	return keyGroups
 }
 
-func GenerateWordMeanings(gitRepo string, versions []string) map[string]*FileInfo {
+func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[string]*FileInfo {
 	wordMap := map[string]*FileInfo{
 		"x86-64": {Keyword: "~amd64"},
 		// Gentoo
@@ -629,6 +638,13 @@ func GenerateWordMeanings(gitRepo string, versions []string) map[string]*FileInf
 			v.Version = true
 		} else {
 			wordMap[version] = &FileInfo{Version: true}
+		}
+	}
+	for _, tag := range tags {
+		if v, ok := wordMap[tag]; ok {
+			v.Tag = true
+		} else {
+			wordMap[tag] = &FileInfo{Tag: true}
 		}
 	}
 
