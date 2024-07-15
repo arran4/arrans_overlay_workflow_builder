@@ -1,10 +1,9 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-14 23:52:22.872748868 +1000 AEST m=+0.001043998
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder Github AppImage testdata/testinputconfig.config 2024-07-15 17:14:22.54990307 +1000 AEST m=+0.001080334
 
 name: app-misc/im-hex-appimage update
 
 permissions:
   contents: write
-
 
 on:
   schedule:
@@ -98,13 +97,12 @@ jobs:
                 echo '  fi'
                 echo '  chmod a+x "${{ env.ImHex_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '  ./${{ env.ImHex_appimage_installed_name }} --appimage-extract "${{ env.ImHex_desktop_file }}" || die "Failed to extract .desktop from appimage"'
-                echo '  ./${{ env.ImHex_appimage_installed_name }} --appimage-extract "usr/share/icons" || die "Failed to extract icons from app image"'
+                echo '  ./${{ env.ImHex_appimage_installed_name }} --appimage-extract "usr/share/pixmaps" || die "Failed to extract pixmaps icons from app image"'
+                echo '  ./${{ env.ImHex_appimage_installed_name }} --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
                 echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.ImHex_appimage_installed_name }}:' 'squashfs-root/${{ env.ImHex_desktop_file }}'"
-                echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
-                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
                 echo '  eapply_user'
                 echo '}'
                 echo ''
@@ -113,8 +111,10 @@ jobs:
                 echo '  doexe "${{ env.ImHex_appimage_installed_name }}" || die "Failed to install AppImage"'
                 echo '  insinto /usr/share/applications'
                 echo '  doins "squashfs-root/${{ env.ImHex_desktop_file }}" || die "Failed to install desktop file"'
-                echo '  insinto /usr/share/icons'
-                echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
+                echo '  insinto /usr/share/pixmaps'
+                echo '  doins squashfs-root/usr/share/pixmaps/*.png || die "Failed to install icons"'
+                echo '  insinto /usr/share/pixmaps'
+                echo '  doins squashfs-root/*.png || die "Failed to install icons"'
                 echo '}'
                 echo ""
                 echo "pkg_postinst() {"

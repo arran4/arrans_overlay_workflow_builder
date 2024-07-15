@@ -260,11 +260,29 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 	if err != nil {
 		return fmt.Errorf("reading AppImage %s %s: %w", appImage.Filename, url, err)
 	}
-	files := ai.ListFiles(".")
-	for _, f := range files {
+	for _, f := range ai.ListFiles("usr/share/icons/hicolor/128x128/apps") {
+		if strings.HasSuffix(f, ".png") {
+			program.Icons = append(program.Icons, "hicolor-apps")
+			break
+		}
+	}
+	for _, f := range ai.ListFiles("usr/share/pixmaps") {
+		if strings.HasSuffix(f, ".png") {
+			program.Icons = append(program.Icons, "pixmaps")
+			break
+		}
+	}
+	found := false
+	for _, f := range ai.ListFiles(".") {
+		if strings.HasSuffix(f, ".png") {
+			found = true
+			program.Icons = append(program.Icons, "root")
+		}
 		if strings.HasSuffix(f, ".desktop") {
 			program.DesktopFile = f
 			log.Printf("Found a desktop file %s", program.DesktopFile)
+		}
+		if found && program.DesktopFile != "" {
 			break
 		}
 	}

@@ -21,12 +21,20 @@ type Program struct {
 	ProgramName       string
 	InstalledFilename string
 	DesktopFile       string
+	Icons             []string
 	ReleasesFilename  map[string]string
 	ArchiveFilename   map[string]string
 }
 
 func (p *Program) HasDesktopFile() bool {
 	return p.DesktopFile != ""
+}
+
+func (p *Program) FirstIcons() string {
+	if len(p.Icons) == 0 {
+		return ""
+	}
+	return p.Icons[0]
 }
 
 func (p *Program) IsArchived() bool {
@@ -40,6 +48,9 @@ func (p *Program) String() string {
 	}
 	if p.DesktopFile != "" {
 		sb.WriteString(fmt.Sprintf("DesktopFile %s\n", p.DesktopFile))
+	}
+	if len(p.Icons) > 0 {
+		sb.WriteString(fmt.Sprintf("Icons %s\n", strings.Join(p.Icons, " ")))
 	}
 	if p.InstalledFilename != "" {
 		sb.WriteString(fmt.Sprintf("InstalledFilename %s\n", p.InstalledFilename))
@@ -66,6 +77,7 @@ func (p *Program) String() string {
 func (p *Program) IsEmpty() bool {
 	return len(p.InstalledFilename) == 0 &&
 		len(p.DesktopFile) == 0 &&
+		len(p.Icons) == 0 &&
 		len(p.ReleasesFilename) == 0 &&
 		len(p.ArchiveFilename) == 0
 }
@@ -190,6 +202,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"ProgramName":       nil,
 				"InstalledFilename": nil,
 				"DesktopFile":       nil,
+				"Icons":             nil,
 				"ReleasesFilename":  nil,
 				"Workaround":        nil,
 				"ArchiveFilename":   nil,
@@ -217,6 +230,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 							"ProgramName":       {value},
 							"InstalledFilename": nil,
 							"DesktopFile":       nil,
+							"Icons":             nil,
 							"ReleasesFilename":  nil,
 							"ArchiveFilename":   nil,
 						}
@@ -247,6 +261,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 							"ProgramName":       {value},
 							"InstalledFilename": nil,
 							"DesktopFile":       nil,
+							"Icons":             nil,
 							"ReleasesFilename":  nil,
 							"ArchiveFilename":   nil,
 						}
@@ -367,6 +382,10 @@ func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, pr
 	if err != nil {
 		return nil, fmt.Errorf("on DesktopFile: %v: %w", programFields["DesktopFile"], err)
 	}
+	program.Icons, err = emptyOrAppendStringArray(program.Icons, programFields["Icons"])
+	if err != nil {
+		return nil, fmt.Errorf("on Icons: %v: %w", programFields["Icons"], err)
+	}
 	program.ReleasesFilename, err = parseMapType1(programFields["ReleasesFilename"])
 	if err != nil {
 		return nil, fmt.Errorf("on ReleasesFilename: %v: %w", programFields["ReleasesFilename"], err)
@@ -438,6 +457,17 @@ func emptyOrOnlyOrFail(i []string) (string, error) {
 	default:
 		return "", fmt.Errorf("too many values")
 	}
+}
+
+func emptyOrAppendStringArray(o []string, i []string) ([]string, error) {
+	if len(i) > 0 {
+		for _, e := range i {
+			for _, s := range strings.Split(e, " ") {
+				o = append(o, strings.TrimSpace(s))
+			}
+		}
+	}
+	return o, nil
 }
 
 func emptyOrLast(i []string) (string, error) {

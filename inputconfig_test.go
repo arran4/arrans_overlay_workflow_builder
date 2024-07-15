@@ -25,6 +25,7 @@ ReleasesFilename arm64=>jan-linux-arm64-${VERSION}.AppImage
 Type Github AppImage
 GithubProjectUrl https://github.com/anotherorg/anotherrepo/
 InstalledFilename anotherapp
+Icons hicolor-apps root
 ReleasesFilename amd64=>anotherrepo-${VERSION}.AppImage
 
 Type Github AppImage
@@ -93,6 +94,7 @@ func TestParseConfigFile(t *testing.T) {
 			Programs: map[string]*Program{
 				"": {
 					ProgramName:       "",
+					Icons:             []string{"hicolor-apps", "root"},
 					InstalledFilename: "anotherapp",
 					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
@@ -172,6 +174,7 @@ func TestConfigString(t *testing.T) {
 				ReleasesFilename: map[string]string{
 					"amd64": "anotherrepo-${VERSION}.AppImage",
 				},
+				Icons: []string{"hicolor-apps", "root"},
 			},
 		},
 	}
@@ -185,6 +188,7 @@ Homepage https://jan.ai/
 Workaround Test Workaround
 Workaround Test Workaround with value => Values
 DesktopFile jan.desktop
+Icons hicolor-apps root
 InstalledFilename jan
 ReleasesFilename amd64=>anotherrepo-${VERSION}.AppImage
 `
