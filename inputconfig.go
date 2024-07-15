@@ -13,8 +13,8 @@ import (
 	"unicode"
 )
 
-const (
-	defaultDesktopFileEnabled = false
+var (
+	DefaultDesktopFileEnabled = false
 )
 
 type Program struct {
@@ -82,6 +82,7 @@ type InputConfig struct {
 	GithubRepo       string
 	GithubOwner      string
 	License          string
+	Workarounds      map[string]string
 	Programs         map[string]*Program
 }
 
@@ -116,6 +117,18 @@ func (c *InputConfig) String() string {
 		}
 		if c.License != "" {
 			sb.WriteString(fmt.Sprintf("License %s\n", c.License))
+		}
+		var workarounds []string
+		for key := range c.Workarounds {
+			workarounds = append(workarounds, key)
+		}
+		sort.Strings(workarounds)
+		for _, workaround := range workarounds {
+			if len(c.Workarounds[workaround]) == 0 {
+				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
+			} else {
+				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, c.Workarounds[workaround]))
+			}
 		}
 		var programs []string
 		for key := range c.Programs {
@@ -178,6 +191,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"InstalledFilename": nil,
 				"DesktopFile":       nil,
 				"ReleasesFilename":  nil,
+				"Workaround":        nil,
 				"ArchiveFilename":   nil,
 			}
 			parseProgramFields = map[string]map[string][]string{}
@@ -302,6 +316,10 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 		if err != nil {
 			return nil, fmt.Errorf("github url parser: %w", err)
 		}
+		currentConfig.Workarounds, err = parseOptionalMapType1(parsedFields["Workaround"])
+		if err != nil {
+			return nil, fmt.Errorf("on Workarounds: %v: %w", parsedFields["Workaround"], err)
+		}
 		if currentConfig.EbuildName == "" {
 			currentConfig.EbuildName = currentConfig.GithubRepo
 		}
@@ -357,13 +375,33 @@ func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, pr
 	if err != nil {
 		return nil, fmt.Errorf("on ArchiveFilename: %v: %w", programFields["ArchiveFilename"], err)
 	}
-	if defaultDesktopFileEnabled && program.DesktopFile == "" {
+	if DefaultDesktopFileEnabled && program.DesktopFile == "" {
 		program.DesktopFile = c.GithubRepo
 	}
 	if program.DesktopFile != "" {
 		program.DesktopFile = util.TrimSuffixes(program.DesktopFile, ".desktop") + ".desktop"
 	}
 	return program, nil
+}
+
+func (c *InputConfig) WorkaroundSemanticVersionWithout() bool {
+	if c.Workarounds == nil {
+		return false
+	}
+	_, ok := c.Workarounds["Semantic Version Without V"]
+	return ok
+}
+
+func (c *InputConfig) Validate() error {
+	// TODO more validation
+	for workaround := range c.Workarounds {
+		switch workaround {
+		case "Semantic Version Without V":
+		default:
+			return fmt.Errorf("unknown workaround: %s", workaround)
+		}
+	}
+	return nil
 }
 
 func parseMapType1(a []string) (map[string]string, error) {
@@ -374,6 +412,19 @@ func parseMapType1(a []string) (map[string]string, error) {
 			return nil, fmt.Errorf("entry %d, can't split %#v", i, v)
 		}
 		result[strings.TrimSpace(s[0])] = strings.TrimSpace(s[1])
+	}
+	return result, nil
+}
+
+func parseOptionalMapType1(a []string) (map[string]string, error) {
+	result := make(map[string]string, len(a))
+	for _, v := range a {
+		s := strings.SplitN(v, "=>", 2)
+		if len(s) != 2 {
+			result[strings.TrimSpace(s[0])] = ""
+		} else {
+			result[strings.TrimSpace(s[0])] = strings.TrimSpace(s[1])
+		}
 	}
 	return result, nil
 }

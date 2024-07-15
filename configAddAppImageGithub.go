@@ -121,10 +121,15 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		Homepage:    util.StringOrDefault(repo.Homepage, ""),
 		GithubRepo:  repoName,
 		GithubOwner: ownerName,
+		Workarounds: map[string]string{},
+		Programs:    map[string]*Program{},
 		License:     util.StringOrDefault(licenseName, "unknown"),
 	}
 	var versions = []string{}
-	var tags = []string{tagOverride}
+	var tags = []string{}
+	if tagOverride != "" {
+		tags = append(tags, tagOverride)
+	}
 	var releaseInfo *github.RepositoryRelease
 	if tagOverride == "" {
 		releaseInfo, _, err = client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
@@ -132,18 +137,25 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 			return nil, fmt.Errorf("github latest release fetch: %w", err)
 		}
 
-		v, err := semver.NewVersion(releaseInfo.GetTagName())
+		tag := releaseInfo.GetTagName()
+		v, err := semver.NewVersion(tag)
 		if err != nil {
-			return nil, fmt.Errorf("github latest release tag parse %s: %w", releaseInfo.GetTagName(), err)
+			return nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
 		}
 		versions = []string{v.String()}
-		tags = []string{"v" + v.String()}
+		if strings.HasPrefix(tag, "v") {
+			tags = []string{tag}
+		} else {
+			ic.Workarounds["Semantic Version Without V"] = ""
+		}
 	} else {
 		releaseInfo, _, err = client.Repositories.GetReleaseByTag(ctx, ownerName, repoName, tagOverride)
 		if err != nil {
 			return nil, fmt.Errorf("github latest release fetch: %w", err)
 		}
-
+		if !strings.HasPrefix(tagOverride, "v") {
+			ic.Workarounds["Semantic Version Without V"] = ""
+		}
 	}
 
 	log.Printf("Latest release %v", versions)

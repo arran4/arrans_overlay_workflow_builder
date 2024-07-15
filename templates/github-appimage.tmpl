@@ -69,12 +69,17 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p $ebuild_dir
           tags=$(curl -s  --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[].tag_name')
+[[- if .WorkaroundSemanticVersionWithout ]]
+          for tag in $tags; do
+            version="${tag}"
+[[- else ]]
           for tag in $tags; do
             version="${tag#v}"
             if [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no V removed skipping"
                 continue
             fi
+[[- end ]]
             if ! echo "$version" | egrep '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "tag / $version doesn't match regexp";
                 continue; 
@@ -144,6 +149,9 @@ jobs:
 [[- if $prog.HasDesktopFile ]]
                 echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}:' 'squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}'"
 [[- end ]]
+
+
+
 [[- end ]]
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
                 echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "

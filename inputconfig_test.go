@@ -16,6 +16,8 @@ InstalledFilename jan
 Category app-misc
 EbuildName jan-appimage
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
+Workaround Test Workaround
+Workaround Test Workaround with value => Values
 Homepage https://jan.ai/
 ReleasesFilename amd64=>jan-linux-x86_64-${VERSION}.AppImage
 ReleasesFilename arm64=>jan-linux-arm64-${VERSION}.AppImage
@@ -59,14 +61,19 @@ func TestParseConfigFile(t *testing.T) {
 			EbuildName:       "jan-appimage.ebuild",
 			Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 			Homepage:         "https://jan.ai/",
-			GithubOwner:      "janhq",
-			GithubRepo:       "jan",
-			License:          "unknown",
+			Workarounds: map[string]string{
+				"Test Workaround":            "",
+				"Test Workaround with value": "Values",
+			},
+			GithubOwner: "janhq",
+			GithubRepo:  "jan",
+			License:     "unknown",
 			Programs: map[string]*Program{
 				"": {
 					ProgramName:       "",
 					DesktopFile:       "jan.desktop",
 					InstalledFilename: "jan",
+					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
 						"amd64": "jan-linux-x86_64-${VERSION}.AppImage",
 						"arm64": "jan-linux-arm64-${VERSION}.AppImage",
@@ -80,12 +87,14 @@ func TestParseConfigFile(t *testing.T) {
 			Category:         "app-misc",
 			EbuildName:       "anotherrepo-appimage.ebuild",
 			GithubOwner:      "anotherorg",
+			Workarounds:      map[string]string{},
 			GithubRepo:       "anotherrepo",
 			License:          "unknown",
 			Programs: map[string]*Program{
 				"": {
 					ProgramName:       "",
 					InstalledFilename: "anotherapp",
+					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
 						"amd64": "anotherrepo-${VERSION}.AppImage",
 					},
@@ -98,6 +107,7 @@ func TestParseConfigFile(t *testing.T) {
 			Category:         "app-misc",
 			Description:      "Go implementation of AppImage tools",
 			EbuildName:       "go-appimage-appimage.ebuild",
+			Workarounds:      map[string]string{},
 			GithubOwner:      "probonopd",
 			GithubRepo:       "go-appimage",
 			License:          "MIT",
@@ -105,12 +115,14 @@ func TestParseConfigFile(t *testing.T) {
 				"": {
 					ProgramName:       "",
 					InstalledFilename: "appimagetool.AppImage",
+					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
 						"amd64": "appimagetool-838-x86_64.AppImage",
 					},
 				},
 				"appimaged": {
 					ProgramName:       "appimaged",
+					ArchiveFilename:   map[string]string{},
 					InstalledFilename: "appimaged.AppImage",
 					ReleasesFilename: map[string]string{
 						"amd64": "appimaged-838-x86_64.AppImage",
@@ -119,6 +131,7 @@ func TestParseConfigFile(t *testing.T) {
 				"mkappimage": {
 					ProgramName:       "mkappimage",
 					InstalledFilename: "mkappimage.AppImage",
+					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
 						"amd64": "mkappimage-838-x86_64.AppImage",
 					},
@@ -146,10 +159,15 @@ func TestConfigString(t *testing.T) {
 		EbuildName:       "jan-appimage.ebuild",
 		Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 		Homepage:         "https://jan.ai/",
+		Workarounds: map[string]string{
+			"Test Workaround":            "",
+			"Test Workaround with value": "Values",
+		},
 		Programs: map[string]*Program{
 			"": {
 				ProgramName:       "",
 				DesktopFile:       "jan.desktop",
+				ArchiveFilename:   map[string]string{},
 				InstalledFilename: "jan",
 				ReleasesFilename: map[string]string{
 					"amd64": "anotherrepo-${VERSION}.AppImage",
@@ -164,10 +182,11 @@ Category app-misc
 EbuildName jan-appimage.ebuild
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
 Homepage https://jan.ai/
+Workaround Test Workaround
+Workaround Test Workaround with value => Values
 DesktopFile jan.desktop
 InstalledFilename jan
 ReleasesFilename amd64=>anotherrepo-${VERSION}.AppImage
-
 `
 
 	result := config.String()

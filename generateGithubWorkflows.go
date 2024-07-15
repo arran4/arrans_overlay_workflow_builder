@@ -188,6 +188,9 @@ func GenerateGithubWorkflows(file string) error {
 	now := time.Now()
 	_ = os.MkdirAll(outputDir, 0755)
 	for _, inputConfig := range inputConfigs {
+		if err := inputConfig.Validate(); err != nil {
+			return fmt.Errorf("for %s validating config: %w", inputConfig.EbuildName, err)
+		}
 		out := bytes.NewBuffer(nil)
 		var workflowName string
 		switch inputConfig.Type {
