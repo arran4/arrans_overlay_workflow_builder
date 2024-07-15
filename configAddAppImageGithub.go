@@ -89,7 +89,7 @@ func ConfigViewAppImageGithubReleases(gitRepo, tagOverride string) error {
 
 	log.Printf("Showing potential addition to config as entry id: %d", ic.EntryNumber)
 	_ = os.Stderr.Sync()
-	fmt.Printf("%s", ic.String())
+	fmt.Printf("%s\n", ic.String())
 	return nil
 }
 
@@ -112,11 +112,12 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 	if repo.License != nil {
 		licenseName = repo.License.Name
 	}
+	ebuildNamePart := strings.ReplaceAll(repoName, ".", "-")
 	ic := &InputConfig{
 		Type:             "Github AppImage",
 		GithubProjectUrl: gitRepo,
 		//Category:          "",
-		EbuildName:  fmt.Sprintf("%s-appimage", util.TrimSuffixes(strcase.KebabCase(repoName), "-AppImage", "-appimage")),
+		EbuildName:  fmt.Sprintf("%s-appimage", util.TrimSuffixes(strcase.KebabCase(ebuildNamePart), "-AppImage", "-appimage")),
 		Description: util.StringOrDefault(repo.Description, "TODO"),
 		Homepage:    util.StringOrDefault(repo.Homepage, ""),
 		GithubRepo:  repoName,
