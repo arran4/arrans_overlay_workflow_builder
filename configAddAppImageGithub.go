@@ -10,6 +10,7 @@ import (
 	"github.com/google/go-github/v62/github"
 	"github.com/probonopd/go-appimage/src/goappimage"
 	"github.com/stoewer/go-strcase"
+	"io"
 	"log"
 	"os"
 	"sort"
@@ -292,7 +293,7 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 		}
 	}
 
-	unknownSymbols, err := ReadDependencies(appImage, program)
+	unknownSymbols, err := ReadDependencies(appImage.tempFile, program)
 	if err != nil {
 		return err
 	}
@@ -304,26 +305,44 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 	return nil
 }
 
-func ReadDependencies(appImage *FileInfo, program *Program) ([]string, error) {
+func ReadDependencies(file string, program *Program) ([]string, error) {
 	unknownSymbols := []string{}
-	f, err := os.Open(appImage.tempFile)
+	f, err := os.Open(file)
 	if err != nil {
 		return nil, fmt.Errorf("opening file for symbols: %w", err)
 	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Printf("Error closing %s: %s", file, err)
+		}
+	}()
+	unknownSymbols, err = ReadDependenciesFromReader(program, f, unknownSymbols)
+	if err != nil {
+		return nil, fmt.Errorf("file %s: %w", file, err)
+	}
+	return unknownSymbols, err
+}
+
+func ReadDependenciesFromReader(program *Program, f io.ReaderAt, unknownSymbols []string) ([]string, error) {
 	e, err := elf.NewFile(f)
 	if err != nil {
 		return nil, fmt.Errorf("reading elf: %w", err)
 	}
-	symbols, err := e.DynamicSymbols()
+	defer func() {
+		if err := e.Close(); err != nil {
+			log.Printf("Error closing elf: %s", err)
+		}
+	}()
+	importedLibraries, err := e.ImportedLibraries()
 	if err != nil {
-		return nil, fmt.Errorf("reading dynamic symobls: %w", err)
+		return nil, fmt.Errorf("reading imported libraries: %w", err)
 	}
-	libraries := make(map[string]elf.Symbol, len(symbols))
-	for _, symbol := range symbols {
-		if symbol.Library == "" {
+	libraries := make(map[string]struct{}, len(importedLibraries))
+	for _, symbol := range importedLibraries {
+		if symbol == "" {
 			continue
 		}
-		libraries[symbol.Library] = symbol
+		libraries[symbol] = struct{}{}
 	}
 	addedDeps := map[string]struct{}{}
 	for library := range libraries {
@@ -340,6 +359,7 @@ func ReadDependencies(appImage *FileInfo, program *Program) ([]string, error) {
 		program.Dependencies = append(program.Dependencies, dep)
 		addedDeps[dep] = struct{}{}
 	}
+
 	return unknownSymbols, nil
 }
 
@@ -352,6 +372,10 @@ var (
 		"libdl.so.2":      "sys-libs/glibc",
 		"libdl.so":        "sys-libs/glibc",
 		"libc.so":         "sys-libs/glibc",
+		"libz.so.1":       "sys-libs/zlib",
+		"libz.so":         "sys-libs/zlib",
+		"libthai.so":      "dev-libs/libthai",
+		"libthai.so.0":    "dev-libs/libthai",
 	}
 )
 
