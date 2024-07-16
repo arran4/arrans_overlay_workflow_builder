@@ -97,7 +97,7 @@ jobs:
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo 'IUSE=""'
                 echo 'DEPEND=""'
-                echo 'RDEPEND=""'
+                echo 'RDEPEND="[[range $i, $dep := .Dependencies]][[$dep]] [[end]]"'
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
 [[- if .HasDesktopFile ]]

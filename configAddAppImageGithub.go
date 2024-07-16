@@ -3,6 +3,7 @@ package arrans_overlay_workflow_builder
 import (
 	"archive/zip"
 	"context"
+	"debug/elf"
 	"fmt"
 	"github.com/Masterminds/semver"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
@@ -246,6 +247,9 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 		program = &Program{
 			ProgramName:       programName,
 			InstalledFilename: fmt.Sprintf("%s.AppImage", programName),
+			DesktopFile:       "",
+			Icons:             []string{},
+			Dependencies:      []string{},
 			ReleasesFilename:  map[string]string{},
 			ArchiveFilename:   map[string]string{},
 		}
@@ -287,7 +291,73 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 			break
 		}
 	}
+
+	unknownSymbols, err := ReadDependencies(appImage, program)
+	if err != nil {
+		return err
+	}
+
+	if len(unknownSymbols) > 0 {
+		return fmt.Errorf("unknown dependencies: %s", strings.Join(unknownSymbols, ", "))
+	}
+
 	return nil
+}
+
+func ReadDependencies(appImage *FileInfo, program *Program) ([]string, error) {
+	unknownSymbols := []string{}
+	f, err := os.Open(appImage.tempFile)
+	if err != nil {
+		return nil, fmt.Errorf("opening file for symbols: %w", err)
+	}
+	e, err := elf.NewFile(f)
+	if err != nil {
+		return nil, fmt.Errorf("reading elf: %w", err)
+	}
+	symbols, err := e.DynamicSymbols()
+	if err != nil {
+		return nil, fmt.Errorf("reading dynamic symobls: %w", err)
+	}
+	libraries := make(map[string]elf.Symbol, len(symbols))
+	for _, symbol := range symbols {
+		if symbol.Library == "" {
+			continue
+		}
+		libraries[symbol.Library] = symbol
+	}
+	addedDeps := map[string]struct{}{}
+	for library := range libraries {
+		dep, ok := lookupSymbol(library)
+		if !ok {
+			unknownSymbols = append(unknownSymbols, library)
+		}
+		if dep == "" {
+			continue
+		}
+		if _, ok := addedDeps[dep]; ok {
+			continue
+		}
+		program.Dependencies = append(program.Dependencies, dep)
+		addedDeps[dep] = struct{}{}
+	}
+	return unknownSymbols, nil
+}
+
+var (
+	// Once you have installed the correct dep use `equery b <name>` to determine which package if you're unsure
+	symbolMap = map[string]string{
+		"libpthread.so.0": "sys-libs/glibc",
+		"libpthread.so":   "sys-libs/glibc",
+		"libc.so.6":       "sys-libs/glibc",
+		"libdl.so.2":      "sys-libs/glibc",
+		"libdl.so":        "sys-libs/glibc",
+		"libc.so":         "sys-libs/glibc",
+	}
+)
+
+func lookupSymbol(library string) (string, bool) {
+	r, ok := symbolMap[library]
+	return r, ok
 }
 
 func SearchArchiveForFiles(container *FileInfo) ([]*FileInfo, error) {

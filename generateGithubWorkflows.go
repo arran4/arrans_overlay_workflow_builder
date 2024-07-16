@@ -43,12 +43,20 @@ func (ggaitd *GenerateGithubAppImageTemplateData) WorkflowName() string {
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) KeywordList() []string {
-	// TODO this is obsolete as it needs to be specific per program, migrate it to program
 	keywords := make([]string, 0)
 	for programName := range ggaitd.Programs {
 		for key := range ggaitd.Programs[programName].ReleasesFilename {
 			keywords = append(keywords, key)
 		}
+	}
+	sort.Strings(keywords)
+	return keywords
+}
+
+func (ggaitd *GenerateGithubAppImageTemplateData) Dependencies() []string {
+	keywords := make([]string, 0)
+	for programName := range ggaitd.Programs {
+		keywords = append(keywords, ggaitd.Programs[programName].Dependencies...)
 	}
 	sort.Strings(keywords)
 	return keywords

@@ -22,6 +22,7 @@ type Program struct {
 	InstalledFilename string
 	DesktopFile       string
 	Icons             []string
+	Dependencies      []string
 	ReleasesFilename  map[string]string
 	ArchiveFilename   map[string]string
 }
@@ -52,6 +53,9 @@ func (p *Program) String() string {
 	if len(p.Icons) > 0 {
 		sb.WriteString(fmt.Sprintf("Icons %s\n", strings.Join(p.Icons, " ")))
 	}
+	if len(p.Dependencies) > 0 {
+		sb.WriteString(fmt.Sprintf("Dependencies %s\n", strings.Join(p.Dependencies, " ")))
+	}
 	if p.InstalledFilename != "" {
 		sb.WriteString(fmt.Sprintf("InstalledFilename %s\n", p.InstalledFilename))
 	}
@@ -78,6 +82,7 @@ func (p *Program) IsEmpty() bool {
 	return len(p.InstalledFilename) == 0 &&
 		len(p.DesktopFile) == 0 &&
 		len(p.Icons) == 0 &&
+		len(p.Dependencies) == 0 &&
 		len(p.ReleasesFilename) == 0 &&
 		len(p.ArchiveFilename) == 0
 }
@@ -203,6 +208,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"InstalledFilename": nil,
 				"DesktopFile":       nil,
 				"Icons":             nil,
+				"Dependencies":      nil,
 				"ReleasesFilename":  nil,
 				"Workaround":        nil,
 				"ArchiveFilename":   nil,
@@ -230,6 +236,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 							"ProgramName":       {value},
 							"InstalledFilename": nil,
 							"DesktopFile":       nil,
+							"Dependencies":      nil,
 							"Icons":             nil,
 							"ReleasesFilename":  nil,
 							"ArchiveFilename":   nil,
@@ -262,6 +269,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 							"InstalledFilename": nil,
 							"DesktopFile":       nil,
 							"Icons":             nil,
+							"Dependencies":      nil,
 							"ReleasesFilename":  nil,
 							"ArchiveFilename":   nil,
 						}
@@ -386,6 +394,10 @@ func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, pr
 	if err != nil {
 		return nil, fmt.Errorf("on Icons: %v: %w", programFields["Icons"], err)
 	}
+	program.Dependencies, err = emptyOrAppendStringArray(program.Dependencies, programFields["Dependencies"])
+	if err != nil {
+		return nil, fmt.Errorf("on Dependencies: %v: %w", programFields["Dependencies"], err)
+	}
 	program.ReleasesFilename, err = parseMapType1(programFields["ReleasesFilename"])
 	if err != nil {
 		return nil, fmt.Errorf("on ReleasesFilename: %v: %w", programFields["ReleasesFilename"], err)
@@ -460,6 +472,9 @@ func emptyOrOnlyOrFail(i []string) (string, error) {
 }
 
 func emptyOrAppendStringArray(o []string, i []string) ([]string, error) {
+	if o == nil {
+		o = []string{}
+	}
 	if len(i) > 0 {
 		for _, e := range i {
 			for _, s := range strings.Split(e, " ") {

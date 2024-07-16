@@ -19,6 +19,7 @@ Description Jan is an open source alternative to ChatGPT that runs 100% offline 
 Workaround Test Workaround
 Workaround Test Workaround with value => Values
 Homepage https://jan.ai/
+Dependencies dev-libs/libappindicator
 ReleasesFilename amd64=>jan-linux-x86_64-${VERSION}.AppImage
 ReleasesFilename arm64=>jan-linux-arm64-${VERSION}.AppImage
 
@@ -74,6 +75,8 @@ func TestParseConfigFile(t *testing.T) {
 					ProgramName:       "",
 					DesktopFile:       "jan.desktop",
 					InstalledFilename: "jan",
+					Icons:             []string{},
+					Dependencies:      []string{"dev-libs/libappindicator"},
 					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
 						"amd64": "jan-linux-x86_64-${VERSION}.AppImage",
@@ -95,6 +98,7 @@ func TestParseConfigFile(t *testing.T) {
 				"": {
 					ProgramName:       "",
 					Icons:             []string{"hicolor-apps", "root"},
+					Dependencies:      []string{},
 					InstalledFilename: "anotherapp",
 					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
@@ -116,6 +120,8 @@ func TestParseConfigFile(t *testing.T) {
 			Programs: map[string]*Program{
 				"": {
 					ProgramName:       "",
+					Icons:             []string{},
+					Dependencies:      []string{},
 					InstalledFilename: "appimagetool.AppImage",
 					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
@@ -125,6 +131,8 @@ func TestParseConfigFile(t *testing.T) {
 				"appimaged": {
 					ProgramName:       "appimaged",
 					ArchiveFilename:   map[string]string{},
+					Icons:             []string{},
+					Dependencies:      []string{},
 					InstalledFilename: "appimaged.AppImage",
 					ReleasesFilename: map[string]string{
 						"amd64": "appimaged-838-x86_64.AppImage",
@@ -133,6 +141,8 @@ func TestParseConfigFile(t *testing.T) {
 				"mkappimage": {
 					ProgramName:       "mkappimage",
 					InstalledFilename: "mkappimage.AppImage",
+					Icons:             []string{},
+					Dependencies:      []string{},
 					ArchiveFilename:   map[string]string{},
 					ReleasesFilename: map[string]string{
 						"amd64": "mkappimage-838-x86_64.AppImage",
@@ -170,6 +180,7 @@ func TestConfigString(t *testing.T) {
 				ProgramName:       "",
 				DesktopFile:       "jan.desktop",
 				ArchiveFilename:   map[string]string{},
+				Dependencies:      []string{"dev-libs/libappindicator"},
 				InstalledFilename: "jan",
 				ReleasesFilename: map[string]string{
 					"amd64": "anotherrepo-${VERSION}.AppImage",
@@ -189,6 +200,7 @@ Workaround Test Workaround
 Workaround Test Workaround with value => Values
 DesktopFile jan.desktop
 Icons hicolor-apps root
+Dependencies dev-libs/libappindicator
 InstalledFilename jan
 ReleasesFilename amd64=>anotherrepo-${VERSION}.AppImage
 `
