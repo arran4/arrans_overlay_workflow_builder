@@ -415,11 +415,19 @@ func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, pr
 	return program, nil
 }
 
-func (c *InputConfig) WorkaroundSemanticVersionWithout() bool {
+func (c *InputConfig) WorkaroundSemanticVersionWithoutV() bool {
 	if c.Workarounds == nil {
 		return false
 	}
 	_, ok := c.Workarounds["Semantic Version Without V"]
+	return ok
+}
+
+func (c *InputConfig) WorkaroundSemanticVersionPrereleaseHack1() bool {
+	if c.Workarounds == nil {
+		return false
+	}
+	_, ok := c.Workarounds["Semantic Version Prerelease Hack 1"]
 	return ok
 }
 
@@ -428,6 +436,7 @@ func (c *InputConfig) Validate() error {
 	for workaround := range c.Workarounds {
 		switch workaround {
 		case "Semantic Version Without V":
+		case "Semantic Version Prerelease Hack 1":
 		default:
 			return fmt.Errorf("unknown workaround: %s", workaround)
 		}

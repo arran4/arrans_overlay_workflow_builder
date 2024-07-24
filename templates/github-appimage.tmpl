@@ -69,7 +69,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p $ebuild_dir
           tags=$(curl -s  --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[].tag_name')
-[[- if .WorkaroundSemanticVersionWithout ]]
+[[- if .WorkaroundSemanticVersionWithoutV ]]
           for tag in $tags; do
             version="${tag}"
 [[- else ]]
@@ -80,7 +80,10 @@ jobs:
                 continue
             fi
 [[- end ]]
-            if ! echo "$version" | egrep '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+[[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
+            version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)[0-9]*\)$/\0/')"
+[[- end ]]
+            if ! echo "${version}" | egrep '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "tag / $version doesn't match regexp";
                 continue; 
             fi

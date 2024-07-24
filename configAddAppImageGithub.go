@@ -135,9 +135,29 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 	}
 	var releaseInfo *github.RepositoryRelease
 	if tagOverride == "" {
-		releaseInfo, _, err = client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
+		var releasesList []*github.RepositoryRelease
+		releasesList, _, err = client.Repositories.ListReleases(ctx, ownerName, repoName, &github.ListOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("github latest release fetch: %w", err)
+			return nil, fmt.Errorf("github list releases fetch: %w", err)
+		}
+		for _, release := range releasesList {
+			tag := release.GetTagName()
+			v, err := semver.NewVersion(tag)
+			if err != nil {
+				continue
+			}
+			if v.Prerelease() != "" {
+				ic.Workarounds["Semantic Version Prerelease Hack 1"] = ""
+			}
+			if releaseInfo == nil {
+				releaseInfo = release
+			}
+		}
+		if releaseInfo == nil {
+			releaseInfo, _, err = client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
+			if err != nil {
+				return nil, fmt.Errorf("github latest release fetch: %w", err)
+			}
 		}
 
 		tag := releaseInfo.GetTagName()
@@ -145,6 +165,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		if err != nil {
 			return nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
 		}
+		v.Prerelease()
 		versions = []string{v.String()}
 		if strings.HasPrefix(tag, "v") {
 			tags = []string{tag}
@@ -158,6 +179,14 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		}
 		if !strings.HasPrefix(tagOverride, "v") {
 			ic.Workarounds["Semantic Version Without V"] = ""
+		}
+		tag := releaseInfo.GetTagName()
+		v, err := semver.NewVersion(tag)
+		if err != nil {
+			return nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
+		}
+		if v.Prerelease() != "" {
+			ic.Workarounds["Semantic Version Prerelease Hack 1"] = ""
 		}
 	}
 
