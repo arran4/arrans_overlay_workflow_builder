@@ -218,9 +218,9 @@ jobs:
               # Manifest generation
 [[ range $releaseFilename, $externalResource := .ExternalResources ]] 
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${originalVersion}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
     [[- else ]]
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${originalVersion}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
     [[- end ]]
 
 [[- end ]]
