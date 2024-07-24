@@ -80,6 +80,7 @@ jobs:
                 continue
             fi
 [[- end ]]
+            originalVersion="${version}"
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)[0-9]*\)$/\1_\5\3/')"
 [[- end ]]
@@ -110,7 +111,11 @@ jobs:
                 echo ''
                 echo 'SRC_URI="'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
+    [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
+                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
+    [[- else ]]
                 echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
+    [[- end ]]
 [[- end ]]
                 echo '"'
                 echo ''
@@ -211,9 +216,14 @@ jobs:
               } > $ebuild_file
 
               # Manifest generation
-              [[ range $releaseFilename, $externalResource := .ExternalResources ]] 
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
-              [[- end ]]
+[[ range $releaseFilename, $externalResource := .ExternalResources ]] 
+    [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${originalVersion}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
+    [[- else ]]
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${originalVersion}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
+    [[- end ]]
+
+[[- end ]]
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi
             break

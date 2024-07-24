@@ -187,6 +187,24 @@ func GenerateGithubWorkflows(file string) error {
 					}
 				})
 			},
+			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
+				return os.Expand(s, func(s string) string {
+					switch s {
+					case "VERSION":
+						return "${originalVersion}"
+					case "TAG":
+						return "${tag}"
+					case "GITHUB_OWNER":
+						return "${{ env.github_owner }}"
+					case "GITHUB_REPO":
+						return "${{ env.github_repo }}"
+					case "KEYWORD":
+						return "\\${ARCH}"
+					default:
+						return fmt.Sprintf("${%s}", s)
+					}
+				})
+			},
 		}).
 		ParseFS(subFs, "*.tmpl")
 	if err != nil {
