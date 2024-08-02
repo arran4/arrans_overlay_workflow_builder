@@ -9,7 +9,7 @@ import (
 func TestDecodeFilename(t *testing.T) {
 	tests := []struct {
 		name           string
-		groupedWordMap map[string][]*KeyedMeaning[*FilenamePartMeaning]
+		groupedWordMap map[string][]*KeyedMeaning
 		filename       string
 		want           []*FilenamePartMeaning
 	}{

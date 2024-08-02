@@ -6,21 +6,17 @@ import (
 	"unicode"
 )
 
-type KeyedMeaning[Embedded any] struct {
-	Embedded Embedded
+type KeyedMeaning struct {
+	Embedded *FilenamePartMeaning
 	Key      string
 }
 
-type Embeddable interface {
-	IsCaseInsensitive() bool
-}
-
-func GroupAndSort(wordMap map[string]*FilenamePartMeaning) map[string][]*KeyedMeaning[*FilenamePartMeaning] {
-	keyGroups := make(map[string][]*KeyedMeaning[*FilenamePartMeaning])
+func GroupAndSort(wordMap map[string]*FilenamePartMeaning) map[string][]*KeyedMeaning {
+	keyGroups := make(map[string][]*KeyedMeaning)
 	for key := range wordMap {
 		meaning := wordMap[key]
 		firstChar := string(key[0])
-		keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning[*FilenamePartMeaning]{
+		keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning{
 			Embedded: wordMap[key],
 			Key:      key,
 		})
@@ -30,7 +26,7 @@ func GroupAndSort(wordMap map[string]*FilenamePartMeaning) map[string][]*KeyedMe
 			} else {
 				firstChar = string(unicode.ToUpper(rune(firstChar[0])))
 			}
-			keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning[*FilenamePartMeaning]{
+			keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning{
 				Embedded: wordMap[key],
 				Key:      key,
 			})
@@ -44,7 +40,7 @@ func GroupAndSort(wordMap map[string]*FilenamePartMeaning) map[string][]*KeyedMe
 	return keyGroups
 }
 
-func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning[*FilenamePartMeaning], filename string) []*FilenamePartMeaning {
+func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) []*FilenamePartMeaning {
 	var result []*FilenamePartMeaning
 	length := len(filename)
 	suffixOnly := false
