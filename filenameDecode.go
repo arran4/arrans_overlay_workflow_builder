@@ -15,22 +15,22 @@ type Embeddable interface {
 	IsCaseInsensitive() bool
 }
 
-func GroupAndSort[Embedded Embeddable](wordMap map[string]Embedded) map[string][]*KeyedMeaning[Embedded] {
-	keyGroups := make(map[string][]*KeyedMeaning[Embedded])
+func GroupAndSort(wordMap map[string]*FilenamePartMeaning) map[string][]*KeyedMeaning[*FilenamePartMeaning] {
+	keyGroups := make(map[string][]*KeyedMeaning[*FilenamePartMeaning])
 	for key := range wordMap {
 		meaning := wordMap[key]
 		firstChar := string(key[0])
-		keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning[Embedded]{
+		keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning[*FilenamePartMeaning]{
 			Embedded: wordMap[key],
 			Key:      key,
 		})
-		if meaning.IsCaseInsensitive() {
+		if meaning.CaseInsensitive {
 			if unicode.IsUpper(rune(firstChar[0])) {
 				firstChar = string(unicode.ToLower(rune(firstChar[0])))
 			} else {
 				firstChar = string(unicode.ToUpper(rune(firstChar[0])))
 			}
-			keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning[Embedded]{
+			keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning[*FilenamePartMeaning]{
 				Embedded: wordMap[key],
 				Key:      key,
 			})
@@ -56,7 +56,7 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning[*FilenamePartMeani
 		if meanings, found := groupedWordMap[firstChar]; found {
 			for _, meaning := range meanings {
 				keyLen := len(meaning.Key)
-				if i+keyLen <= length && (!meaning.Embedded.IsCaseInsensitive() && filename[i:i+keyLen] == meaning.Key || meaning.Embedded.IsCaseInsensitive() && strings.EqualFold(filename[i:i+keyLen], meaning.Key)) {
+				if i+keyLen <= length && (!meaning.Embedded.CaseInsensitive && filename[i:i+keyLen] == meaning.Key || meaning.Embedded.CaseInsensitive && strings.EqualFold(filename[i:i+keyLen], meaning.Key)) {
 					if unmatched != -1 {
 						if unmatched < i-2 {
 							result = append(result, &FilenamePartMeaning{
@@ -71,13 +71,13 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning[*FilenamePartMeani
 						}
 						unmatched = -1
 					}
-					if suffixOnly && !meaning.Embedded.IsSuffixOnly() {
+					if suffixOnly && !meaning.Embedded.SuffixOnly {
 						continue
 					}
 					var fi = *meaning.Embedded
 					fi.Captured = filename[i : i+keyLen]
 					result = append(result, &fi)
-					if meaning.Embedded.IsSuffixOnly() {
+					if meaning.Embedded.SuffixOnly {
 						suffixOnly = true
 					}
 					i += keyLen
@@ -151,14 +151,6 @@ type FilenamePartMeaning struct {
 	CaseInsensitive bool
 	// Required for the URL only atm:
 	Unmatched bool
-}
-
-func (a *FilenamePartMeaning) IsCaseInsensitive() bool {
-	return a.CaseInsensitive
-}
-
-func (a *FilenamePartMeaning) IsSuffixOnly() bool {
-	return a.SuffixOnly
 }
 
 func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[string]*FilenamePartMeaning {

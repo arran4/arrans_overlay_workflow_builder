@@ -186,7 +186,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 
 	log.Printf("Latest release %v", versions)
 
-	var wordMap = GroupAndSort[*FilenamePartMeaning](GenerateWordMeanings(repoName, versions, tags))
+	var wordMap = GroupAndSort(GenerateWordMeanings(repoName, versions, tags))
 
 	var files []*AppImageFileInfo
 	for _, asset := range releaseInfo.Assets {
