@@ -2,9 +2,12 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
+	"github.com/Masterminds/semver"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
+	"github.com/google/go-github/v62/github"
 	"io"
 	"log"
 	"os"
@@ -135,11 +138,7 @@ func (c *InputConfig) String() string {
 		if c.License != "" {
 			sb.WriteString(fmt.Sprintf("License %s\n", c.License))
 		}
-		var workarounds []string
-		for key := range c.Workarounds {
-			workarounds = append(workarounds, key)
-		}
-		sort.Strings(workarounds)
+		workarounds := c.WorkaroundString()
 		for _, workaround := range workarounds {
 			if len(c.Workarounds[workaround]) == 0 {
 				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
@@ -147,11 +146,38 @@ func (c *InputConfig) String() string {
 				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, c.Workarounds[workaround]))
 			}
 		}
-		var programs []string
-		for key := range c.Programs {
-			programs = append(programs, key)
+		programs := c.ProgramsString()
+		for _, programName := range programs {
+			sb.WriteString(c.Programs[programName].String())
 		}
-		sort.Strings(programs)
+	case "Github Binary Release":
+		if c.GithubProjectUrl != "" {
+			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", c.GithubProjectUrl))
+		}
+		if c.Category != "" {
+			sb.WriteString(fmt.Sprintf("Category %s\n", c.Category))
+		}
+		if c.EbuildName != "" {
+			sb.WriteString(fmt.Sprintf("EbuildName %s\n", c.EbuildName))
+		}
+		if c.Description != "" {
+			sb.WriteString(fmt.Sprintf("Description %s\n", c.Description))
+		}
+		if c.Homepage != "" {
+			sb.WriteString(fmt.Sprintf("Homepage %s\n", c.Homepage))
+		}
+		if c.License != "" {
+			sb.WriteString(fmt.Sprintf("License %s\n", c.License))
+		}
+		workarounds := c.WorkaroundString()
+		for _, workaround := range workarounds {
+			if len(c.Workarounds[workaround]) == 0 {
+				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
+			} else {
+				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, c.Workarounds[workaround]))
+			}
+		}
+		programs := c.ProgramsString()
 		for _, programName := range programs {
 			sb.WriteString(c.Programs[programName].String())
 		}
@@ -160,6 +186,24 @@ func (c *InputConfig) String() string {
 	}
 
 	return sb.String()
+}
+
+func (c *InputConfig) ProgramsString() []string {
+	var programs []string
+	for key := range c.Programs {
+		programs = append(programs, key)
+	}
+	sort.Strings(programs)
+	return programs
+}
+
+func (c *InputConfig) WorkaroundString() []string {
+	var workarounds []string
+	for key := range c.Workarounds {
+		workarounds = append(workarounds, key)
+	}
+	sort.Strings(workarounds)
+	return workarounds
 }
 
 // ParseInputConfigReader parses the given configuration file and returns a slice of InputConfig structures.
@@ -560,4 +604,122 @@ func ReadConfigurationFile(configFn string) ([]*InputConfig, error) {
 		config = make([]*InputConfig, 0)
 	}
 	return config, nil
+}
+
+func NewInputConfigurationFromRepo(gitRepo string, tagOverride string, prefix string) (string, *InputConfig, []string, []string, *github.RepositoryRelease, *InputConfig, error) {
+	client := github.NewClient(nil)
+	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
+		client = client.WithAuthToken(token)
+	}
+	ownerName, repoName, err := util.ExtractGithubOwnerRepo(gitRepo)
+	if err != nil {
+		return "", nil, nil, nil, nil, nil, fmt.Errorf("github url parse: %w", err)
+	}
+	log.Printf("Getting details for %s's %s", ownerName, repoName)
+	ctx := context.Background()
+	repo, _, err := client.Repositories.Get(ctx, ownerName, repoName)
+	if err != nil {
+		return "", nil, nil, nil, nil, nil, fmt.Errorf("github repo fetch: %w", err)
+	}
+	var licenseName *string
+	if repo.License != nil {
+		licenseName = repo.License.Name
+	}
+	ebuildNamePart := strings.ReplaceAll(repoName, ".", "-")
+	ic := &InputConfig{
+		Type:             "Github Binary Release",
+		GithubProjectUrl: gitRepo,
+		//Category:          "",
+		EbuildName:  fmt.Sprintf("%s-bin", ebuildNamePart),
+		Description: util.StringOrDefault(repo.Description, "TODO"),
+		Homepage:    util.StringOrDefault(repo.Homepage, ""),
+		GithubRepo:  repoName,
+		GithubOwner: ownerName,
+		Workarounds: map[string]string{},
+		Programs:    map[string]*Program{},
+		License:     util.StringOrDefault(licenseName, "unknown"),
+	}
+	var versions = []string{}
+	var tags = []string{}
+	if tagOverride != "" {
+		tags = append(tags, tagOverride)
+	}
+	var releaseInfo *github.RepositoryRelease
+	if tagOverride == "" {
+		var releasesList []*github.RepositoryRelease
+		releasesList, _, err = client.Repositories.ListReleases(ctx, ownerName, repoName, &github.ListOptions{})
+		if err != nil {
+			return "", nil, nil, nil, nil, nil, fmt.Errorf("github list releases fetch: %w", err)
+		}
+		for _, release := range releasesList {
+			tag := release.GetTagName()
+			if prefix != "" {
+				if !strings.HasPrefix(tag, prefix) {
+					continue
+				}
+				tag = strings.TrimPrefix(tag, prefix)
+			}
+			v, err := semver.NewVersion(tag)
+			if err != nil {
+				continue
+			}
+			if v.Prerelease() != "" {
+				ic.Workarounds["Semantic Version Prerelease Hack 1"] = ""
+			}
+			if releaseInfo == nil {
+				releaseInfo = release
+			}
+		}
+		if releaseInfo == nil {
+			releaseInfo, _, err = client.Repositories.GetLatestRelease(ctx, ownerName, repoName)
+			if err != nil {
+				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release fetch: %w", err)
+			}
+		}
+
+		tag := releaseInfo.GetTagName()
+		if prefix != "" {
+			if !strings.HasPrefix(tag, prefix) {
+				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, prefix)
+			}
+			tag = strings.TrimPrefix(tag, prefix)
+			ic.Workarounds["Tag Prefix"] = prefix
+		}
+		v, err := semver.NewVersion(tag)
+		if err != nil {
+			return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
+		}
+		if strings.HasPrefix(tag, "v") {
+			tags = []string{tag, v.String()}
+		} else {
+			tags = []string{tag}
+			ic.Workarounds["Semantic Version Without V"] = ""
+		}
+	} else {
+		releaseInfo, _, err = client.Repositories.GetReleaseByTag(ctx, ownerName, repoName, tagOverride)
+		if err != nil {
+			return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release fetch: %w", err)
+		}
+		if !strings.HasPrefix(tagOverride, "v") {
+			ic.Workarounds["Semantic Version Without V"] = ""
+		}
+		tag := releaseInfo.GetTagName()
+		if prefix != "" {
+			if !strings.HasSuffix(tag, prefix) {
+				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, prefix)
+			}
+			tag = strings.TrimPrefix(tag, prefix)
+			ic.Workarounds["Tag Prefix"] = prefix
+		}
+		v, err := semver.NewVersion(tag)
+		if err != nil {
+			return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
+		}
+		if v.Prerelease() != "" {
+			ic.Workarounds["Semantic Version Prerelease Hack 1"] = ""
+		}
+	}
+
+	log.Printf("Latest release %v", versions)
+	return repoName, ic, versions, tags, releaseInfo, nil, nil
 }

@@ -151,6 +151,10 @@ func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
 		if err := config.cmdConfigAddAppImageGithubReleases(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config add: %w", err)
 		}
+	case "github-release-binary":
+		if err := config.cmdConfigAddBinaryGithubReleases(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config add: %w", err)
+		}
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
@@ -195,6 +199,43 @@ func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []stri
 	return nil
 }
 
+type CmdConfigAddBinaryGithubReleasesArgConfig struct {
+	*CmdConfigAddArgConfig
+	GithubUrl          *string
+	ConfigFile         *string
+	SelectedVersionTag *string
+	TagPrefix          *string
+}
+
+func (mac *CmdConfigAddArgConfig) cmdConfigAddBinaryGithubReleases(args []string) error {
+	config := &CmdConfigAddBinaryGithubReleasesArgConfig{
+		CmdConfigAddArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.ConfigFile = fs.String("to", "input.config", "The input with config")
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to add")
+	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.ConfigFile == nil || *config.ConfigFile == "" {
+			return fmt.Errorf("config file to modify argument missing")
+		}
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to add is missing")
+		}
+		return arrans_overlay_workflow_builder.ConfigAddBinaryGithubReleases(*config.ConfigFile, *config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "github-binary", "Adds an configuration to a configuration file.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
 type CmdConfigViewArgConfig struct {
 	*CmdConfigArgConfig
 }
@@ -210,6 +251,10 @@ func (mac *CmdConfigArgConfig) cmdConfigView(args []string) error {
 	switch fs.Arg(0) {
 	case "github-release-appimage":
 		if err := config.cmdConfigViewAppImageGithubReleases(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config view: %w", err)
+		}
+	case "github-release-binary":
+		if err := config.cmdConfigViewBinaryGithubReleases(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config view: %w", err)
 		}
 	default:
@@ -251,6 +296,38 @@ func (mac *CmdConfigViewArgConfig) cmdConfigViewAppImageGithubReleases(args []st
 	return nil
 }
 
+type CmdConfigViewBinaryGithubReleasesArgConfig struct {
+	*CmdConfigViewArgConfig
+	GithubUrl          *string
+	SelectedVersionTag *string
+	TagPrefix          *string
+}
+
+func (mac *CmdConfigViewArgConfig) cmdConfigViewBinaryGithubReleases(args []string) error {
+	config := &CmdConfigViewBinaryGithubReleasesArgConfig{
+		CmdConfigViewArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
+	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to view is missing")
+		}
+		return arrans_overlay_workflow_builder.ConfigViewBinaryGithubReleases(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "github-binary", "Views an addition to a configuration file for a particular query.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
 type CmdOneshotArgConfig struct {
 	*MainArgConfig
 }
@@ -267,6 +344,10 @@ func (mac *MainArgConfig) cmdOneshot(args []string) error {
 	case "github-release-appimage":
 		if err := config.cmdOneshotGithubReleaseAppImage(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("github appimage: %w", err)
+		}
+	case "github-release-binary":
+		if err := config.cmdOneshotGithubReleaseBinary(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("github binary: %w", err)
 		}
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
@@ -300,6 +381,37 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) e
 			return fmt.Errorf("github URL to view is missing")
 		}
 		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdOneshotGithubReleaseBinaryArgConfig struct {
+	*CmdOneshotArgConfig
+	GithubUrl          *string
+	SelectedVersionTag *string
+	TagPrefix          *string
+}
+
+func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) error {
+	config := &CmdOneshotGithubReleaseBinaryArgConfig{
+		CmdOneshotArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
+	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to view is missing")
+		}
+		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
