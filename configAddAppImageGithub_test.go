@@ -10,15 +10,15 @@ import (
 func TestDecodeFilename(t *testing.T) {
 	tests := []struct {
 		name           string
-		groupedWordMap map[string][]*KeyedMeaning
+		groupedWordMap map[string][]*KeyedMeaning[*AppImageFileInfo]
 		filename       string
-		want           []*FileInfo
+		want           []*AppImageFileInfo
 	}{
 		{
 			name:           "jan-linux-x86_64-0.5.1.AppImage",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("jan", []string{"0.5.1"}, []string{"v0.5.1"})),
+			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("jan", []string{"0.5.1"}, []string{"v0.5.1"})),
 			filename:       "jan-linux-x86_64-0.5.1.AppImage",
-			want: []*FileInfo{
+			want: []*AppImageFileInfo{
 				{ProjectName: true, CaseInsensitive: true, Captured: "jan"},
 				{Separator: true, Captured: "-"},
 				{OS: "linux", Captured: "linux"},
@@ -32,9 +32,9 @@ func TestDecodeFilename(t *testing.T) {
 		},
 		{
 			name:           "appimaged-838-aarch64.AppImage",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("go-appimage", []string{"0"}, []string{"v0"})),
+			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("go-appimage", []string{"0"}, []string{"v0"})),
 			filename:       "appimaged-838-aarch64.AppImage",
-			want: []*FileInfo{
+			want: []*AppImageFileInfo{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Separator: true, Captured: "-"},
 				{Keyword: "~arm64", Captured: "aarch64"},
@@ -44,9 +44,9 @@ func TestDecodeFilename(t *testing.T) {
 		},
 		{
 			name:           "appimaged-838-aarch64.AppImage.zsync",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("go-appimage", []string{"0"}, []string{"v0"})),
+			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("go-appimage", []string{"0"}, []string{"v0"})),
 			filename:       "appimaged-838-aarch64.AppImage.zsync",
-			want: []*FileInfo{
+			want: []*AppImageFileInfo{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Separator: true, Captured: "-"},
 				{Keyword: "~arm64", Captured: "aarch64"},
@@ -58,9 +58,9 @@ func TestDecodeFilename(t *testing.T) {
 		},
 		{
 			name:           "LocalSend-1.14.0-linux-x86-64.AppImage",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("localsend", []string{"1.14.0"}, []string{"v1.14.0"})),
+			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("localsend", []string{"1.14.0"}, []string{"v1.14.0"})),
 			filename:       "LocalSend-1.14.0-linux-x86-64.AppImage",
-			want: []*FileInfo{
+			want: []*AppImageFileInfo{
 				{ProjectName: true, CaseInsensitive: true, Captured: "LocalSend"},
 				{Separator: true, Captured: "-"},
 				//{ProgramName: "LocalSend"},
@@ -75,9 +75,9 @@ func TestDecodeFilename(t *testing.T) {
 		},
 		{
 			name:           "StabilityMatrix-linux-x64.zip",
-			groupedWordMap: GroupAndSort(GenerateWordMeanings("StabilityMatrix", []string{"2.11.4"}, []string{"v2.11.4"})),
+			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("StabilityMatrix", []string{"2.11.4"}, []string{"v2.11.4"})),
 			filename:       "StabilityMatrix-linux-x64.zip",
-			want: []*FileInfo{
+			want: []*AppImageFileInfo{
 				{ProjectName: true, CaseInsensitive: true, Captured: "StabilityMatrix"},
 				{Separator: true, Captured: "-"},
 				//{ProgramName: "LocalSend"},
@@ -91,9 +91,9 @@ func TestDecodeFilename(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := DecodeFilename(tt.groupedWordMap, tt.filename)
-			if diff := cmp.Diff(got, tt.want, cmpopts.IgnoreUnexported(FileInfo{})); diff != "" {
-				t.Errorf("DecodeFilename() = \n%s", diff)
+			got := DecodeAppImageFilename(tt.groupedWordMap, tt.filename)
+			if diff := cmp.Diff(got, tt.want, cmpopts.IgnoreUnexported(AppImageFileInfo{})); diff != "" {
+				t.Errorf("DecodeAppImageFilename() = \n%s", diff)
 			}
 		})
 	}
@@ -102,15 +102,15 @@ func TestDecodeFilename(t *testing.T) {
 func TestCompileMeanings(t *testing.T) {
 	tests := []struct {
 		name         string
-		input        []*FileInfo
+		input        []*AppImageFileInfo
 		releaseAsset *github.ReleaseAsset
 		filename     string
-		want         *FileInfo
+		want         *AppImageFileInfo
 		ok           bool
 	}{
 		{
 			name: "jan-linux-x86_64-0.5.1.AppImage",
-			input: []*FileInfo{
+			input: []*AppImageFileInfo{
 				{ProjectName: true, CaseInsensitive: true, Captured: "jan"},
 				{Separator: true, Captured: "-"},
 				{OS: "linux", Captured: "linux"},
@@ -123,7 +123,7 @@ func TestCompileMeanings(t *testing.T) {
 			},
 			releaseAsset: nil,
 			filename:     "jan-linux-x86_64-0.5.1.AppImage",
-			want: &FileInfo{
+			want: &AppImageFileInfo{
 				Keyword:          "~amd64",
 				OS:               "linux",
 				Toolchain:        "",
@@ -142,7 +142,7 @@ func TestCompileMeanings(t *testing.T) {
 		},
 		{
 			name: "appimaged-838-aarch64.AppImage",
-			input: []*FileInfo{
+			input: []*AppImageFileInfo{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Separator: true, Captured: "-"},
 				{Keyword: "~arm64", Captured: "aarch64"},
@@ -151,7 +151,7 @@ func TestCompileMeanings(t *testing.T) {
 			},
 			releaseAsset: nil,
 			filename:     "appimaged-838-aarch64.AppImage",
-			want: &FileInfo{
+			want: &AppImageFileInfo{
 				Keyword:          "~arm64",
 				OS:               "linux",
 				Toolchain:        "",
@@ -169,7 +169,7 @@ func TestCompileMeanings(t *testing.T) {
 		},
 		{
 			name: "appimaged-838-aarch64.AppImage.zsync",
-			input: []*FileInfo{
+			input: []*AppImageFileInfo{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Keyword: "~arm64"},
 				{AppImage: true, SuffixOnly: true, OS: "linux"},
@@ -182,7 +182,7 @@ func TestCompileMeanings(t *testing.T) {
 		},
 		{
 			name: "appimaged-838-aarch64-asdf.AppImage",
-			input: []*FileInfo{
+			input: []*AppImageFileInfo{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Keyword: "~arm64"},
 				{Unmatched: true, Captured: "asdf"},
@@ -196,11 +196,11 @@ func TestCompileMeanings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, gotOk := CompileMeanings(tt.input, &FileInfo{
+			got, gotOk := CompileMeanings(tt.input, &AppImageFileInfo{
 				ReleaseAsset: tt.releaseAsset,
 				Filename:     tt.filename,
 			})
-			if diff := cmp.Diff(got, tt.want, cmpopts.IgnoreUnexported(FileInfo{})); diff != "" {
+			if diff := cmp.Diff(got, tt.want, cmpopts.IgnoreUnexported(AppImageFileInfo{})); diff != "" {
 				t.Errorf("CompileMeanings() = \n%s", diff)
 			}
 			if gotOk != tt.ok {

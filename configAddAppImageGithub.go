@@ -3,23 +3,20 @@ package arrans_overlay_workflow_builder
 import (
 	"archive/zip"
 	"context"
-	"debug/elf"
 	"fmt"
 	"github.com/Masterminds/semver"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-github/v62/github"
 	"github.com/probonopd/go-appimage/src/goappimage"
 	"github.com/stoewer/go-strcase"
-	"io"
 	"log"
 	"os"
 	"slices"
 	"sort"
 	"strings"
-	"unicode"
 )
 
-type FileInfo struct {
+type AppImageFileInfo struct {
 	// Core properties
 	// Gentoo keyword
 	Keyword string
@@ -57,6 +54,14 @@ type FileInfo struct {
 	// Transient information
 	tempFile         string
 	OriginalFilename string
+}
+
+func (a *AppImageFileInfo) IsCaseInsensitive() bool {
+	return a.CaseInsensitive
+}
+
+func (a *AppImageFileInfo) IsSuffixOnly() bool {
+	return a.SuffixOnly
 }
 
 func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
@@ -193,21 +198,21 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 
 	log.Printf("Latest release %v", versions)
 
-	var wordMap = GroupAndSort(GenerateWordMeanings(repoName, versions, tags))
+	var wordMap = GroupAndSort[*AppImageFileInfo](GenerateAppImageWordMeanings(repoName, versions, tags))
 
-	var files []*FileInfo
+	var files []*AppImageFileInfo
 	for _, asset := range releaseInfo.Assets {
-		files = append(files, &FileInfo{
+		files = append(files, &AppImageFileInfo{
 			Filename:     asset.GetName(),
 			ReleaseAsset: asset,
 		})
 	}
-	appImages, containers := ExtractAppsAndContainers(files, wordMap)
+	appImages, containers := ExtractAppImagesAndContainers[*AppImageFileInfo](files, wordMap)
 	if len(appImages) == 0 && len(containers) > 0 {
 		log.Printf("No app images found, but some archives / compressed files")
 		for _, container := range containers {
 			log.Printf("Searching: %s", container.Filename)
-			archivedFiles, err := SearchArchiveForFiles(container)
+			archivedFiles, err := SearchArchiveForAppImageFiles(container)
 			if err != nil {
 				if archivedFiles != nil {
 					for _, af := range archivedFiles {
@@ -219,7 +224,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 				}
 				return nil, err
 			}
-			nai, nc := ExtractAppsAndContainers(archivedFiles, wordMap)
+			nai, nc := ExtractAppImagesAndContainers(archivedFiles, wordMap)
 			for _, nce := range nc {
 				if len(nce.tempFile) == 0 {
 					continue
@@ -250,7 +255,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 	return ic, nil
 }
 
-func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputConfig) error {
+func GetInformationFromAppImage(appImage *AppImageFileInfo, repoName string, ic *InputConfig) error {
 	url := appImage.ReleaseAsset.GetBrowserDownloadURL()
 	var err error
 	if appImage.tempFile == "" {
@@ -338,119 +343,7 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 	return nil
 }
 
-func ReadDependencies(file string, program *Program) ([]string, error) {
-	unknownSymbols := []string{}
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, fmt.Errorf("opening file for symbols: %w", err)
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Printf("Error closing %s: %s", file, err)
-		}
-	}()
-	unknownSymbols, err = ReadDependenciesFromReader(program, f, unknownSymbols)
-	if err != nil {
-		return nil, fmt.Errorf("file %s: %w", file, err)
-	}
-	return unknownSymbols, err
-}
-
-func ReadDependenciesFromReader(program *Program, f io.ReaderAt, unknownSymbols []string) ([]string, error) {
-	e, err := elf.NewFile(f)
-	if err != nil {
-		return nil, fmt.Errorf("reading elf: %w", err)
-	}
-	defer func() {
-		if err := e.Close(); err != nil {
-			log.Printf("Error closing elf: %s", err)
-		}
-	}()
-	importedLibraries, err := e.ImportedLibraries()
-	if err != nil {
-		return nil, fmt.Errorf("reading imported libraries: %w", err)
-	}
-	libraries := make(map[string]struct{}, len(importedLibraries))
-	for _, symbol := range importedLibraries {
-		if symbol == "" {
-			continue
-		}
-		libraries[symbol] = struct{}{}
-	}
-	addedDeps := map[string]struct{}{}
-	for library := range libraries {
-		dep, ok := lookupSymbol(library)
-		if !ok {
-			unknownSymbols = append(unknownSymbols, library)
-		}
-		if dep == "" {
-			continue
-		}
-		if _, ok := addedDeps[dep]; ok {
-			continue
-		}
-		program.Dependencies = append(program.Dependencies, dep)
-		addedDeps[dep] = struct{}{}
-	}
-
-	return unknownSymbols, nil
-}
-
-var (
-	// Once you have installed the correct dep use `equery b <name>` to determine which package if you're unsure
-	symbolMap = map[string]string{
-		"libpthread.so.0":           "sys-libs/glibc",
-		"libpthread.so":             "sys-libs/glibc",
-		"libc.so.6":                 "sys-libs/glibc",
-		"libdl.so.2":                "sys-libs/glibc",
-		"libdl.so":                  "sys-libs/glibc",
-		"libc.so":                   "sys-libs/glibc",
-		"ld-linux-x86-64.so.1":      "sys-libs/glibc",
-		"ld-linux-x86-64.so.2":      "sys-libs/glibc",
-		"ld-linux-x86-64.so":        "sys-libs/glibc",
-		"ld-linux-aarch64.so":       "sys-libs/glibc",
-		"ld-linux-aarch64.so.1":     "sys-libs/glibc",
-		"ld-linux-aarch64.so.2":     "sys-libs/glibc",
-		"ld-linux-armv7.so":         "sys-libs/glibc",
-		"ld-linux-armv7.so.1":       "sys-libs/glibc",
-		"ld-linux-armv7.so.2":       "sys-libs/glibc",
-		"ld-linux-powerpc.so":       "sys-libs/glibc",
-		"ld-linux-powerpc.so.1":     "sys-libs/glibc",
-		"ld-linux-powerpc.so.2":     "sys-libs/glibc",
-		"ld-linux-powerpc64.so":     "sys-libs/glibc",
-		"ld-linux-powerpc64.so.1":   "sys-libs/glibc",
-		"ld-linux-powerpc64.so.2":   "sys-libs/glibc",
-		"ld-linux-powerpc64le.so":   "sys-libs/glibc",
-		"ld-linux-powerpc64le.so.1": "sys-libs/glibc",
-		"ld-linux-powerpc64le.so.2": "sys-libs/glibc",
-		"ld-linux-riscv64gc.so":     "sys-libs/glibc",
-		"ld-linux-riscv64gc.so.1":   "sys-libs/glibc",
-		"ld-linux-riscv64gc.so.2":   "sys-libs/glibc",
-		"ld-linux-s390x.so":         "sys-libs/glibc",
-		"ld-linux-s390x.so.1":       "sys-libs/glibc",
-		"ld-linux-s390x.so.2":       "sys-libs/glibc",
-		"ld-linux-x86_64.so":        "sys-libs/glibc",
-		"ld-linux-x86_64.so.1":      "sys-libs/glibc",
-		"ld-linux-x86_64.so.2":      "sys-libs/glibc",
-		"ld-linux-i686.so":          "sys-libs/glibc",
-		"ld-linux-i686.so.1":        "sys-libs/glibc",
-		"ld-linux-i686.so.2":        "sys-libs/glibc",
-		"ld-linux-armhf.so":         "sys-libs/glibc",
-		"ld-linux-armhf.so.1":       "sys-libs/glibc",
-		"ld-linux-armhf.so.2":       "sys-libs/glibc",
-		"libz.so.1":                 "sys-libs/zlib",
-		"libz.so":                   "sys-libs/zlib",
-		"libthai.so":                "dev-libs/libthai",
-		"libthai.so.0":              "dev-libs/libthai",
-	}
-)
-
-func lookupSymbol(library string) (string, bool) {
-	r, ok := symbolMap[library]
-	return r, ok
-}
-
-func SearchArchiveForFiles(container *FileInfo) ([]*FileInfo, error) {
+func SearchArchiveForAppImageFiles(container *AppImageFileInfo) ([]*AppImageFileInfo, error) {
 	url := container.ReleaseAsset.GetBrowserDownloadURL()
 	log.Printf("Downloading %s", url)
 	var err error
@@ -467,7 +360,7 @@ func SearchArchiveForFiles(container *FileInfo) ([]*FileInfo, error) {
 
 	log.Printf("Got %s => %s", url, container.tempFile)
 
-	var archivedFiles []*FileInfo
+	var archivedFiles []*AppImageFileInfo
 	// TODO support weirdly nested containers.
 	switch strings.Join(container.Containers, ".") {
 	case "zip":
@@ -491,7 +384,7 @@ func SearchArchiveForFiles(container *FileInfo) ([]*FileInfo, error) {
 					log.Printf("error closing zip file %s from %s: %s", f.Name, url, err)
 				}
 			}()
-			archivedFiles = append(archivedFiles, &FileInfo{
+			archivedFiles = append(archivedFiles, &AppImageFileInfo{
 				Container:    container.Filename,
 				Filename:     f.Name,
 				tempFile:     tmpFile,
@@ -502,12 +395,12 @@ func SearchArchiveForFiles(container *FileInfo) ([]*FileInfo, error) {
 	return archivedFiles, nil
 }
 
-func ExtractAppsAndContainers(base []*FileInfo, wordMap map[string][]*KeyedMeaning) ([]*FileInfo, []*FileInfo) {
-	var appImages []*FileInfo
-	var containers []*FileInfo
+func ExtractAppImagesAndContainers(base []*AppImageFileInfo, wordMap map[string][]*KeyedMeaning[*AppImageFileInfo]) ([]*AppImageFileInfo, []*AppImageFileInfo) {
+	var appImages []*AppImageFileInfo
+	var containers []*AppImageFileInfo
 	for _, base := range base {
 		log.Printf("Is %s an AppImage?", base.Filename)
-		results := DecodeFilename(wordMap, base.Filename)
+		results := DecodeAppImageFilename(wordMap, base.Filename)
 		if len(results) == 0 {
 			log.Printf("Can't decode %s", base.Filename)
 			continue
@@ -540,8 +433,8 @@ func ExtractAppsAndContainers(base []*FileInfo, wordMap map[string][]*KeyedMeani
 	return appImages, containers
 }
 
-func CompileMeanings(input []*FileInfo, base *FileInfo) (*FileInfo, bool) {
-	result := &FileInfo{
+func CompileMeanings(input []*AppImageFileInfo, base *AppImageFileInfo) (*AppImageFileInfo, bool) {
+	result := &AppImageFileInfo{
 		SuffixOnly: true,
 	}
 	if base != nil {
@@ -616,22 +509,22 @@ func CompileMeanings(input []*FileInfo, base *FileInfo) (*FileInfo, bool) {
 	return result, true
 }
 
-func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) []*FileInfo {
-	var result []*FileInfo
+func DecodeAppImageFilename(groupedWordMap map[string][]*KeyedMeaning[*AppImageFileInfo], filename string) []*AppImageFileInfo {
+	var result []*AppImageFileInfo
 	length := len(filename)
 	suffixOnly := false
 	unmatched := -1
-	var sep *FileInfo
+	var sep *AppImageFileInfo
 	for i := 0; i < length; {
 		matched := false
 		firstChar := string(filename[i])
 		if meanings, found := groupedWordMap[firstChar]; found {
 			for _, meaning := range meanings {
 				keyLen := len(meaning.Key)
-				if i+keyLen <= length && (!meaning.CaseInsensitive && filename[i:i+keyLen] == meaning.Key || meaning.CaseInsensitive && strings.EqualFold(filename[i:i+keyLen], meaning.Key)) {
+				if i+keyLen <= length && (!meaning.Embedded.IsCaseInsensitive() && filename[i:i+keyLen] == meaning.Key || meaning.Embedded.IsCaseInsensitive() && strings.EqualFold(filename[i:i+keyLen], meaning.Key)) {
 					if unmatched != -1 {
 						if unmatched < i-2 {
-							result = append(result, &FileInfo{
+							result = append(result, &AppImageFileInfo{
 								Unmatched:  true,
 								Captured:   filename[unmatched : i-1],
 								SuffixOnly: suffixOnly,
@@ -643,13 +536,13 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 						}
 						unmatched = -1
 					}
-					if suffixOnly && !meaning.SuffixOnly {
+					if suffixOnly && !meaning.Embedded.IsSuffixOnly() {
 						continue
 					}
-					var fi = *meaning.FileInfo
+					var fi = *meaning.Embedded
 					fi.Captured = filename[i : i+keyLen]
 					result = append(result, &fi)
-					if meaning.SuffixOnly {
+					if meaning.Embedded.IsSuffixOnly() {
 						suffixOnly = true
 					}
 					i += keyLen
@@ -670,7 +563,7 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 
 		// Skip separators
 		if i < length && (filename[i] == '-' || filename[i] == '_' || filename[i] == '.') {
-			sep = &FileInfo{
+			sep = &AppImageFileInfo{
 				Captured:  string(filename[i]),
 				Separator: true,
 			}
@@ -684,7 +577,7 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 
 	if unmatched != -1 {
 		if unmatched < length {
-			result = append(result, &FileInfo{
+			result = append(result, &AppImageFileInfo{
 				Unmatched:  true,
 				Captured:   filename[unmatched:],
 				SuffixOnly: suffixOnly,
@@ -696,42 +589,8 @@ func DecodeFilename(groupedWordMap map[string][]*KeyedMeaning, filename string) 
 	return result
 }
 
-type KeyedMeaning struct {
-	*FileInfo
-	Key string
-}
-
-func GroupAndSort(wordMap map[string]*FileInfo) map[string][]*KeyedMeaning {
-	keyGroups := make(map[string][]*KeyedMeaning)
-	for key := range wordMap {
-		meaning := wordMap[key]
-		firstChar := string(key[0])
-		keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning{
-			FileInfo: wordMap[key],
-			Key:      key,
-		})
-		if meaning.CaseInsensitive {
-			if unicode.IsUpper(rune(firstChar[0])) {
-				firstChar = string(unicode.ToLower(rune(firstChar[0])))
-			} else {
-				firstChar = string(unicode.ToUpper(rune(firstChar[0])))
-			}
-			keyGroups[firstChar] = append(keyGroups[firstChar], &KeyedMeaning{
-				FileInfo: wordMap[key],
-				Key:      key,
-			})
-		}
-	}
-	for letter := range keyGroups {
-		sort.Slice(keyGroups[letter], func(i, j int) bool {
-			return len(keyGroups[letter][i].Key) > len(keyGroups[letter][j].Key)
-		})
-	}
-	return keyGroups
-}
-
-func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[string]*FileInfo {
-	wordMap := map[string]*FileInfo{
+func GenerateAppImageWordMeanings(gitRepo string, versions []string, tags []string) map[string]*AppImageFileInfo {
+	wordMap := map[string]*AppImageFileInfo{
 		"x86-64": {Keyword: "~amd64"},
 		// Gentoo
 		"alpha":  {Keyword: "~alpha"},
@@ -822,20 +681,20 @@ func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[
 	if v, ok := wordMap[gitRepo]; ok {
 		v.ProjectName = true
 	} else {
-		wordMap[gitRepo] = &FileInfo{ProjectName: true, CaseInsensitive: true}
+		wordMap[gitRepo] = &AppImageFileInfo{ProjectName: true, CaseInsensitive: true}
 	}
 	for _, version := range versions {
 		if v, ok := wordMap[version]; ok {
 			v.Version = true
 		} else {
-			wordMap[version] = &FileInfo{Version: true}
+			wordMap[version] = &AppImageFileInfo{Version: true}
 		}
 	}
 	for _, tag := range tags {
 		if v, ok := wordMap[tag]; ok {
 			v.Tag = true
 		} else {
-			wordMap[tag] = &FileInfo{Tag: true}
+			wordMap[tag] = &AppImageFileInfo{Tag: true}
 		}
 	}
 
