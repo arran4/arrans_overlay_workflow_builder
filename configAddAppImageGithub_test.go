@@ -10,15 +10,15 @@ import (
 func TestDecodeFilename(t *testing.T) {
 	tests := []struct {
 		name           string
-		groupedWordMap map[string][]*KeyedMeaning[*AppImageFileInfo]
+		groupedWordMap map[string][]*KeyedMeaning[*FilenamePartMeaning]
 		filename       string
-		want           []*AppImageFileInfo
+		want           []*FilenamePartMeaning
 	}{
 		{
 			name:           "jan-linux-x86_64-0.5.1.AppImage",
 			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("jan", []string{"0.5.1"}, []string{"v0.5.1"})),
 			filename:       "jan-linux-x86_64-0.5.1.AppImage",
-			want: []*AppImageFileInfo{
+			want: []*FilenamePartMeaning{
 				{ProjectName: true, CaseInsensitive: true, Captured: "jan"},
 				{Separator: true, Captured: "-"},
 				{OS: "linux", Captured: "linux"},
@@ -34,7 +34,7 @@ func TestDecodeFilename(t *testing.T) {
 			name:           "appimaged-838-aarch64.AppImage",
 			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("go-appimage", []string{"0"}, []string{"v0"})),
 			filename:       "appimaged-838-aarch64.AppImage",
-			want: []*AppImageFileInfo{
+			want: []*FilenamePartMeaning{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Separator: true, Captured: "-"},
 				{Keyword: "~arm64", Captured: "aarch64"},
@@ -46,7 +46,7 @@ func TestDecodeFilename(t *testing.T) {
 			name:           "appimaged-838-aarch64.AppImage.zsync",
 			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("go-appimage", []string{"0"}, []string{"v0"})),
 			filename:       "appimaged-838-aarch64.AppImage.zsync",
-			want: []*AppImageFileInfo{
+			want: []*FilenamePartMeaning{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Separator: true, Captured: "-"},
 				{Keyword: "~arm64", Captured: "aarch64"},
@@ -60,7 +60,7 @@ func TestDecodeFilename(t *testing.T) {
 			name:           "LocalSend-1.14.0-linux-x86-64.AppImage",
 			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("localsend", []string{"1.14.0"}, []string{"v1.14.0"})),
 			filename:       "LocalSend-1.14.0-linux-x86-64.AppImage",
-			want: []*AppImageFileInfo{
+			want: []*FilenamePartMeaning{
 				{ProjectName: true, CaseInsensitive: true, Captured: "LocalSend"},
 				{Separator: true, Captured: "-"},
 				//{ProgramName: "LocalSend"},
@@ -77,7 +77,7 @@ func TestDecodeFilename(t *testing.T) {
 			name:           "StabilityMatrix-linux-x64.zip",
 			groupedWordMap: GroupAndSort(GenerateAppImageWordMeanings("StabilityMatrix", []string{"2.11.4"}, []string{"v2.11.4"})),
 			filename:       "StabilityMatrix-linux-x64.zip",
-			want: []*AppImageFileInfo{
+			want: []*FilenamePartMeaning{
 				{ProjectName: true, CaseInsensitive: true, Captured: "StabilityMatrix"},
 				{Separator: true, Captured: "-"},
 				//{ProgramName: "LocalSend"},
@@ -102,7 +102,7 @@ func TestDecodeFilename(t *testing.T) {
 func TestCompileMeanings(t *testing.T) {
 	tests := []struct {
 		name         string
-		input        []*AppImageFileInfo
+		input        []*FilenamePartMeaning
 		releaseAsset *github.ReleaseAsset
 		filename     string
 		want         *AppImageFileInfo
@@ -110,7 +110,7 @@ func TestCompileMeanings(t *testing.T) {
 	}{
 		{
 			name: "jan-linux-x86_64-0.5.1.AppImage",
-			input: []*AppImageFileInfo{
+			input: []*FilenamePartMeaning{
 				{ProjectName: true, CaseInsensitive: true, Captured: "jan"},
 				{Separator: true, Captured: "-"},
 				{OS: "linux", Captured: "linux"},
@@ -142,7 +142,7 @@ func TestCompileMeanings(t *testing.T) {
 		},
 		{
 			name: "appimaged-838-aarch64.AppImage",
-			input: []*AppImageFileInfo{
+			input: []*FilenamePartMeaning{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Separator: true, Captured: "-"},
 				{Keyword: "~arm64", Captured: "aarch64"},
@@ -169,7 +169,7 @@ func TestCompileMeanings(t *testing.T) {
 		},
 		{
 			name: "appimaged-838-aarch64.AppImage.zsync",
-			input: []*AppImageFileInfo{
+			input: []*FilenamePartMeaning{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Keyword: "~arm64"},
 				{AppImage: true, SuffixOnly: true, OS: "linux"},
@@ -182,7 +182,7 @@ func TestCompileMeanings(t *testing.T) {
 		},
 		{
 			name: "appimaged-838-aarch64-asdf.AppImage",
-			input: []*AppImageFileInfo{
+			input: []*FilenamePartMeaning{
 				{Unmatched: true, Captured: "appimaged-838"},
 				{Keyword: "~arm64"},
 				{Unmatched: true, Captured: "asdf"},

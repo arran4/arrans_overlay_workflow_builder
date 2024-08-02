@@ -27,9 +27,6 @@ type AppImageFileInfo struct {
 	// contained file
 	Container   string
 	ProgramName string
-	// The separator -_-
-	Separator bool
-	Captured  string
 
 	// Compiled only
 	Containers []string
@@ -49,7 +46,6 @@ type AppImageFileInfo struct {
 	CaseInsensitive bool
 	// Required for the URL only atm:
 	ReleaseAsset *github.ReleaseAsset
-	Unmatched    bool
 
 	// Transient information
 	tempFile         string
@@ -198,7 +194,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 
 	log.Printf("Latest release %v", versions)
 
-	var wordMap = GroupAndSort[*AppImageFileInfo](GenerateAppImageWordMeanings(repoName, versions, tags))
+	var wordMap = GroupAndSort[*FilenamePartMeaning](GenerateAppImageWordMeanings(repoName, versions, tags))
 
 	var files []*AppImageFileInfo
 	for _, asset := range releaseInfo.Assets {
@@ -207,7 +203,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 			ReleaseAsset: asset,
 		})
 	}
-	appImages, containers := ExtractAppImagesAndContainers[*AppImageFileInfo](files, wordMap)
+	appImages, containers := ExtractAppImagesAndContainers(files, wordMap)
 	if len(appImages) == 0 && len(containers) > 0 {
 		log.Printf("No app images found, but some archives / compressed files")
 		for _, container := range containers {
@@ -395,7 +391,7 @@ func SearchArchiveForAppImageFiles(container *AppImageFileInfo) ([]*AppImageFile
 	return archivedFiles, nil
 }
 
-func ExtractAppImagesAndContainers(base []*AppImageFileInfo, wordMap map[string][]*KeyedMeaning[*AppImageFileInfo]) ([]*AppImageFileInfo, []*AppImageFileInfo) {
+func ExtractAppImagesAndContainers(base []*AppImageFileInfo, wordMap map[string][]*KeyedMeaning[*FilenamePartMeaning]) ([]*AppImageFileInfo, []*AppImageFileInfo) {
 	var appImages []*AppImageFileInfo
 	var containers []*AppImageFileInfo
 	for _, base := range base {
@@ -433,7 +429,7 @@ func ExtractAppImagesAndContainers(base []*AppImageFileInfo, wordMap map[string]
 	return appImages, containers
 }
 
-func CompileMeanings(input []*AppImageFileInfo, base *AppImageFileInfo) (*AppImageFileInfo, bool) {
+func CompileMeanings(input []*FilenamePartMeaning, base *AppImageFileInfo) (*AppImageFileInfo, bool) {
 	result := &AppImageFileInfo{
 		SuffixOnly: true,
 	}
@@ -499,6 +495,7 @@ func CompileMeanings(input []*AppImageFileInfo, base *AppImageFileInfo) (*AppIma
 			result.AppImage = each.AppImage
 		}
 
+		// TODO remove if not active test.
 		if each.Unmatched {
 			if result.ProgramName != "" || each.SuffixOnly {
 				return nil, false
@@ -509,12 +506,12 @@ func CompileMeanings(input []*AppImageFileInfo, base *AppImageFileInfo) (*AppIma
 	return result, true
 }
 
-func DecodeAppImageFilename(groupedWordMap map[string][]*KeyedMeaning[*AppImageFileInfo], filename string) []*AppImageFileInfo {
-	var result []*AppImageFileInfo
+func DecodeAppImageFilename(groupedWordMap map[string][]*KeyedMeaning[*FilenamePartMeaning], filename string) []*FilenamePartMeaning {
+	var result []*FilenamePartMeaning
 	length := len(filename)
 	suffixOnly := false
 	unmatched := -1
-	var sep *AppImageFileInfo
+	var sep *FilenamePartMeaning
 	for i := 0; i < length; {
 		matched := false
 		firstChar := string(filename[i])
@@ -524,7 +521,7 @@ func DecodeAppImageFilename(groupedWordMap map[string][]*KeyedMeaning[*AppImageF
 				if i+keyLen <= length && (!meaning.Embedded.IsCaseInsensitive() && filename[i:i+keyLen] == meaning.Key || meaning.Embedded.IsCaseInsensitive() && strings.EqualFold(filename[i:i+keyLen], meaning.Key)) {
 					if unmatched != -1 {
 						if unmatched < i-2 {
-							result = append(result, &AppImageFileInfo{
+							result = append(result, &FilenamePartMeaning{
 								Unmatched:  true,
 								Captured:   filename[unmatched : i-1],
 								SuffixOnly: suffixOnly,
@@ -563,7 +560,7 @@ func DecodeAppImageFilename(groupedWordMap map[string][]*KeyedMeaning[*AppImageF
 
 		// Skip separators
 		if i < length && (filename[i] == '-' || filename[i] == '_' || filename[i] == '.') {
-			sep = &AppImageFileInfo{
+			sep = &FilenamePartMeaning{
 				Captured:  string(filename[i]),
 				Separator: true,
 			}
@@ -577,7 +574,7 @@ func DecodeAppImageFilename(groupedWordMap map[string][]*KeyedMeaning[*AppImageF
 
 	if unmatched != -1 {
 		if unmatched < length {
-			result = append(result, &AppImageFileInfo{
+			result = append(result, &FilenamePartMeaning{
 				Unmatched:  true,
 				Captured:   filename[unmatched:],
 				SuffixOnly: suffixOnly,
@@ -589,8 +586,45 @@ func DecodeAppImageFilename(groupedWordMap map[string][]*KeyedMeaning[*AppImageF
 	return result
 }
 
-func GenerateAppImageWordMeanings(gitRepo string, versions []string, tags []string) map[string]*AppImageFileInfo {
-	wordMap := map[string]*AppImageFileInfo{
+type FilenamePartMeaning struct {
+	// Core properties
+	// Gentoo keyword
+	Keyword string
+	OS      string
+	// Generally msvc, gnu, musl, etc
+	Toolchain string
+	// Like tar, or zip, also a bit of bz2, and gz but not proper "containers", later replaced by the container of the
+	// contained file
+	Container string
+	// The separator -_-
+	Separator bool
+	Captured  string
+
+	// Relevant restraint + identification
+	AppImage bool
+
+	// Identification
+	Version     bool
+	Tag         bool
+	ProjectName bool
+
+	// Match rules
+	SuffixOnly      bool
+	CaseInsensitive bool
+	// Required for the URL only atm:
+	Unmatched bool
+}
+
+func (a *FilenamePartMeaning) IsCaseInsensitive() bool {
+	return a.CaseInsensitive
+}
+
+func (a *FilenamePartMeaning) IsSuffixOnly() bool {
+	return a.SuffixOnly
+}
+
+func GenerateAppImageWordMeanings(gitRepo string, versions []string, tags []string) map[string]*FilenamePartMeaning {
+	wordMap := map[string]*FilenamePartMeaning{
 		"x86-64": {Keyword: "~amd64"},
 		// Gentoo
 		"alpha":  {Keyword: "~alpha"},
@@ -681,20 +715,20 @@ func GenerateAppImageWordMeanings(gitRepo string, versions []string, tags []stri
 	if v, ok := wordMap[gitRepo]; ok {
 		v.ProjectName = true
 	} else {
-		wordMap[gitRepo] = &AppImageFileInfo{ProjectName: true, CaseInsensitive: true}
+		wordMap[gitRepo] = &FilenamePartMeaning{ProjectName: true, CaseInsensitive: true}
 	}
 	for _, version := range versions {
 		if v, ok := wordMap[version]; ok {
 			v.Version = true
 		} else {
-			wordMap[version] = &AppImageFileInfo{Version: true}
+			wordMap[version] = &FilenamePartMeaning{Version: true}
 		}
 	}
 	for _, tag := range tags {
 		if v, ok := wordMap[tag]; ok {
 			v.Tag = true
 		} else {
-			wordMap[tag] = &AppImageFileInfo{Tag: true}
+			wordMap[tag] = &FilenamePartMeaning{Tag: true}
 		}
 	}
 
