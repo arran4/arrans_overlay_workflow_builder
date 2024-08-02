@@ -383,7 +383,7 @@ func SearchArchiveForAppImageFiles(container *AppImageFileInfo) ([]*AppImageFile
 	return archivedFiles, nil
 }
 
-func ExtractAppImagesAndContainers(base []*AppImageFileInfo, wordMap map[string][]*KeyedMeaning) ([]*AppImageFileInfo, []*AppImageFileInfo) {
+func ExtractAppImagesAndContainers(base []*AppImageFileInfo, wordMap map[string][]*GroupedFilenamePartMeaning) ([]*AppImageFileInfo, []*AppImageFileInfo) {
 	var appImages []*AppImageFileInfo
 	var containers []*AppImageFileInfo
 	for _, base := range base {
