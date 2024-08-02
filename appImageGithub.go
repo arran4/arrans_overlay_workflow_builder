@@ -216,7 +216,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, prefix strin
 			ReleaseAsset: asset,
 		})
 	}
-	appImages, containers := ExtractAppImagesAndContainers(files, wordMap)
+	appImages, containers := AppImageFiles(files).ExtractAppImagesAndContainers(wordMap)
 	if len(appImages) == 0 && len(containers) > 0 {
 		log.Printf("No app images found, but some archives / compressed files")
 		for _, container := range containers {
@@ -233,7 +233,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, prefix strin
 				}
 				return nil, err
 			}
-			nai, nc := ExtractAppImagesAndContainers(archivedFiles, wordMap)
+			nai, nc := AppImageFiles(archivedFiles).ExtractAppImagesAndContainers(wordMap)
 			for _, nce := range nc {
 				if len(nce.tempFile) == 0 {
 					continue
@@ -403,7 +403,9 @@ func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageF
 	return archivedFiles, nil
 }
 
-func ExtractAppImagesAndContainers(base []*AppImageFileInfo, wordMap map[string][]*GroupedFilenamePartMeaning) ([]*AppImageFileInfo, []*AppImageFileInfo) {
+type AppImageFiles []*AppImageFileInfo
+
+func (base AppImageFiles) ExtractAppImagesAndContainers(wordMap map[string][]*GroupedFilenamePartMeaning) ([]*AppImageFileInfo, []*AppImageFileInfo) {
 	var appImages []*AppImageFileInfo
 	var containers []*AppImageFileInfo
 	for _, base := range base {
