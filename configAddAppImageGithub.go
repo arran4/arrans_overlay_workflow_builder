@@ -236,8 +236,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		ic.Programs = map[string]*Program{}
 	}
 	for _, appImage := range appImages {
-		err := GetInformationFromAppImage(appImage, repoName, ic)
-		if err != nil {
+		if err := GetInformationFromAppImage(appImage, repoName, ic); err != nil {
 			return nil, err
 		}
 		// Desktop icon: ai.Desktop.Section("Desktop Entry").Key("Icon").Value()
