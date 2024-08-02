@@ -129,6 +129,10 @@ func GenerateGithubWorkflows(file string) error {
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", file, err)
 	}
+	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, err)
+}
+
+func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, err error) error {
 	missing := false
 	for _, inputConfig := range inputConfigs {
 		if inputConfig.Category == "" {
@@ -139,9 +143,25 @@ func GenerateGithubWorkflows(file string) error {
 	if missing {
 		return fmt.Errorf("missing required fields")
 	}
+	templates, err := ParseWorkflowTemplates()
+	if err != nil {
+		return err
+	}
+	outputDir := "./output"
+	now := time.Now()
+	_ = os.MkdirAll(outputDir, 0755)
+	for _, inputConfig := range inputConfigs {
+		if err := inputConfig.GenerateGithubWorkflow(file, now, templates, outputDir); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ParseWorkflowTemplates() (*template.Template, error) {
 	subFs, err := fs.Sub(templateFiles, "templates")
 	if err != nil {
-		return fmt.Errorf("searching templates subdirectory: %w", err)
+		return nil, fmt.Errorf("searching templates subdirectory: %w", err)
 	}
 	templates, err := template.New("").
 		Delims("[[", "]]").
@@ -208,36 +228,35 @@ func GenerateGithubWorkflows(file string) error {
 		}).
 		ParseFS(subFs, "*.tmpl")
 	if err != nil {
-		return fmt.Errorf("parsing templates: %w", err)
+		return nil, fmt.Errorf("parsing templates: %w", err)
 	}
-	outputDir := "./output"
-	now := time.Now()
-	_ = os.MkdirAll(outputDir, 0755)
-	for _, inputConfig := range inputConfigs {
-		if err := inputConfig.Validate(); err != nil {
-			return fmt.Errorf("for %s validating config: %w", inputConfig.EbuildName, err)
-		}
-		out := bytes.NewBuffer(nil)
-		var workflowName string
-		switch inputConfig.Type {
-		case "Github AppImage":
-			data := &GenerateGithubAppImageTemplateData{
-				Now:         now,
-				ConfigFile:  file,
-				InputConfig: inputConfig,
-			}
-			if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", data); err != nil {
-				return fmt.Errorf("for %s excuting template: %w", inputConfig.EbuildName, err)
-			}
-			workflowName = data.WorkflowFileName()
-		default:
-			return fmt.Errorf("unknown type %s: %w", inputConfig.Type, err)
-		}
-		n := filepath.Join(outputDir, workflowName)
-		if err := os.WriteFile(n, out.Bytes(), 0644); err != nil {
-			return fmt.Errorf("writing %s: %w", n, err)
-		}
-		fmt.Printf("Written: %s\n", n)
+	return templates, nil
+}
+
+func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir string) error {
+	if err := ic.Validate(); err != nil {
+		return fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
 	}
+	out := bytes.NewBuffer(nil)
+	var workflowName string
+	switch ic.Type {
+	case "Github AppImage":
+		data := &GenerateGithubAppImageTemplateData{
+			Now:         now,
+			ConfigFile:  file,
+			InputConfig: ic,
+		}
+		if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", data); err != nil {
+			return fmt.Errorf("for %s excuting template: %w", ic.EbuildName, err)
+		}
+		workflowName = data.WorkflowFileName()
+	default:
+		return fmt.Errorf("unknown type %s: %w", ic.Type)
+	}
+	n := filepath.Join(outputDir, workflowName)
+	if err := os.WriteFile(n, out.Bytes(), 0644); err != nil {
+		return fmt.Errorf("writing %s: %w", n, err)
+	}
+	fmt.Printf("Written: %s\n", n)
 	return nil
 }

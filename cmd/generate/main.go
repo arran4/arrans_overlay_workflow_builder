@@ -31,6 +31,12 @@ func main() {
 			os.Exit(-1)
 			return
 		}
+	case "oneshot":
+		if err := config.cmdOneshot(fs.Args()[2:]); err != nil {
+			log.Printf("oneshot error: %s", err)
+			os.Exit(-1)
+			return
+		}
 	case "config":
 		if err := config.cmdConfig(fs.Args()[2:]); err != nil {
 			log.Printf("config error: %s", err)
@@ -40,6 +46,7 @@ func main() {
 	default:
 		log.Printf("Unknown command %s", fs.Arg(1))
 		log.Printf("Try %s for %s", "generate", "commands to generate github action workflows output")
+		log.Printf("Try %s for %s", "oneshot", "does both the config and generate steps")
 		log.Printf("Try %s for %s", "config", "commands to view results and content")
 		os.Exit(-1)
 	}
@@ -239,6 +246,62 @@ func (mac *CmdConfigViewArgConfig) cmdConfigViewAppImageGithubReleases(args []st
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-appimage", "Views an addition to a configuration file for a particular query.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdOneshotArgConfig struct {
+	*MainArgConfig
+}
+
+func (mac *MainArgConfig) cmdOneshot(args []string) error {
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config := &CmdOneshotArgConfig{
+		MainArgConfig: mac,
+	}
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "github-release-appimage":
+		if err := config.cmdOneshotGithubReleaseAppImage(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("github appimage: %w", err)
+		}
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "workflows", "Oneshot workflows from a configfile.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdOneshotGithubReleaseAppImageArgConfig struct {
+	*CmdOneshotArgConfig
+	GithubUrl          *string
+	SelectedVersionTag *string
+	TagPrefix          *string
+}
+
+func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) error {
+	config := &CmdOneshotGithubReleaseAppImageArgConfig{
+		CmdOneshotArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
+	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to view is missing")
+		}
+		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
 	}
 	return nil
