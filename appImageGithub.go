@@ -221,7 +221,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, prefix strin
 		log.Printf("No app images found, but some archives / compressed files")
 		for _, container := range containers {
 			log.Printf("Searching: %s", container.Filename)
-			archivedFiles, err := SearchArchiveForAppImageFiles(container)
+			archivedFiles, err := container.SearchArchiveForAppImageFiles()
 			if err != nil {
 				if archivedFiles != nil {
 					for _, af := range archivedFiles {
@@ -255,7 +255,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, prefix strin
 		ic.Programs = map[string]*Program{}
 	}
 	for _, appImage := range appImages {
-		if err := GetInformationFromAppImage(appImage, repoName, ic); err != nil {
+		if err := appImage.GetInformationFromAppImage(repoName, ic); err != nil {
 			return nil, err
 		}
 		// Desktop icon: ai.Desktop.Section("Desktop Entry").Key("Icon").Value()
@@ -263,7 +263,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, prefix strin
 	return ic, nil
 }
 
-func GetInformationFromAppImage(appImage *AppImageFileInfo, repoName string, ic *InputConfig) error {
+func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic *InputConfig) error {
 	url := appImage.ReleaseAsset.GetBrowserDownloadURL()
 	var err error
 	if appImage.tempFile == "" {
@@ -351,7 +351,7 @@ func GetInformationFromAppImage(appImage *AppImageFileInfo, repoName string, ic 
 	return nil
 }
 
-func SearchArchiveForAppImageFiles(container *AppImageFileInfo) ([]*AppImageFileInfo, error) {
+func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageFileInfo, error) {
 	url := container.ReleaseAsset.GetBrowserDownloadURL()
 	log.Printf("Downloading %s", url)
 	var err error
