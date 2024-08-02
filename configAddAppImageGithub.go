@@ -46,6 +46,8 @@ type AppImageFileInfo struct {
 	CaseInsensitive bool
 	// Required for the URL only atm:
 	ReleaseAsset *github.ReleaseAsset
+	// Unmatched
+	Unmatched []string
 
 	// Transient information
 	tempFile         string
@@ -398,6 +400,10 @@ func ExtractAppImagesAndContainers(base []*AppImageFileInfo, wordMap map[string]
 			log.Printf("Can't simplify %s", base.Filename)
 			continue
 		}
+		if len(compiled.Unmatched) > 0 {
+			log.Printf("Unmatched tokens in name: %s: %#v", base.Filename, compiled.Unmatched)
+			continue
+		}
 		if compiled.OS != "" && compiled.OS != "linux" {
 			log.Printf("Not for linux %s", base.Filename)
 			continue
@@ -487,12 +493,12 @@ func (base *AppImageFileInfo) CompileMeanings(input []*FilenamePartMeaning) (*Ap
 			result.AppImage = each.AppImage
 		}
 
-		// TODO remove if not active test.
 		if each.Unmatched {
 			if result.ProgramName != "" || each.SuffixOnly {
-				return nil, false
+				result.Unmatched = append(result.Unmatched, each.Captured)
+			} else {
+				result.ProgramName = each.Captured
 			}
-			result.ProgramName = each.Captured
 		}
 	}
 	return result, true
