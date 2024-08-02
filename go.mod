@@ -7,6 +7,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v62 v62.0.0
 	github.com/probonopd/go-appimage v0.0.0-20240708195358-9d82c19270b4
+	github.com/stoewer/go-strcase v1.3.0
 )
 
 require (
@@ -29,7 +30,6 @@ require (
 	github.com/seaweedfs/fuse v1.2.2 // indirect
 	github.com/sergi/go-diff v1.0.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
-	github.com/stoewer/go-strcase v1.3.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
