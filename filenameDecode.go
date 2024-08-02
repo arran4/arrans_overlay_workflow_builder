@@ -12,7 +12,11 @@ type GroupedFilenamePartMeaning struct {
 }
 
 func (m *GroupedFilenamePartMeaning) Match(s string) bool {
-	return !m.FilenamePartMeaning.CaseInsensitive && s == m.Key || m.FilenamePartMeaning.CaseInsensitive && strings.EqualFold(s, m.Key)
+	if m.FilenamePartMeaning.CaseInsensitive {
+		return strings.EqualFold(s, m.Key)
+	} else {
+		return s == m.Key
+	}
 }
 
 func GroupAndSort(wordMap map[string]*FilenamePartMeaning) map[string][]*GroupedFilenamePartMeaning {

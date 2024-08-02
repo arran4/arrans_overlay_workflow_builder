@@ -161,11 +161,10 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		if err != nil {
 			return nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
 		}
-		v.Prerelease()
-		versions = []string{v.String()}
 		if strings.HasPrefix(tag, "v") {
-			tags = []string{tag}
+			tags = []string{tag, v.String()}
 		} else {
+			tags = []string{tag}
 			ic.Workarounds["Semantic Version Without V"] = ""
 		}
 	} else {
