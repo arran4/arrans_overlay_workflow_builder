@@ -11,6 +11,10 @@ type GroupedFilenamePartMeaning struct {
 	Key string
 }
 
+func (m *GroupedFilenamePartMeaning) Match(s string) bool {
+	return !m.FilenamePartMeaning.CaseInsensitive && s == m.Key || m.FilenamePartMeaning.CaseInsensitive && strings.EqualFold(s, m.Key)
+}
+
 func GroupAndSort(wordMap map[string]*FilenamePartMeaning) map[string][]*GroupedFilenamePartMeaning {
 	keyGroups := make(map[string][]*GroupedFilenamePartMeaning)
 	for key := range wordMap {
@@ -52,7 +56,7 @@ func DecodeFilename(groupedWordMap map[string][]*GroupedFilenamePartMeaning, fil
 		if meanings, found := groupedWordMap[firstChar]; found {
 			for _, meaning := range meanings {
 				keyLen := len(meaning.Key)
-				if i+keyLen <= length && (!meaning.FilenamePartMeaning.CaseInsensitive && filename[i:i+keyLen] == meaning.Key || meaning.FilenamePartMeaning.CaseInsensitive && strings.EqualFold(filename[i:i+keyLen], meaning.Key)) {
+				if i+keyLen <= length && meaning.Match(filename[i:i+keyLen]) {
 					if unmatched != -1 {
 						if unmatched < i-2 {
 							result = append(result, &FilenamePartMeaning{
