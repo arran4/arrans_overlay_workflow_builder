@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -321,6 +322,9 @@ func GetInformationFromAppImage(appImage *FileInfo, repoName string, ic *InputCo
 			break
 		}
 	}
+
+	sort.Strings(program.Icons)
+	program.Icons = slices.Compact(program.Icons)
 
 	unknownSymbols, err := ReadDependencies(appImage.tempFile, program)
 	if err != nil {
