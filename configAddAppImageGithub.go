@@ -54,8 +54,8 @@ type AppImageFileInfo struct {
 	OriginalFilename string
 }
 
-func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
-	ic, err := GenerateAppImageGithubReleaseConfigEntry(gitRepo, "")
+func ConfigAddAppImageGithubReleases(toConfig, gitRepo, tagOverride, tagPrefix string) error {
+	ic, err := GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix)
 	if err != nil {
 		return err
 	}
@@ -79,8 +79,8 @@ func ConfigAddAppImageGithubReleases(toConfig string, gitRepo string) error {
 	return nil
 }
 
-func ConfigViewAppImageGithubReleases(gitRepo, tagOverride string) error {
-	ic, err := GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride)
+func ConfigViewAppImageGithubReleases(gitRepo, tagOverride, tagPrefix string) error {
+	ic, err := GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func ConfigViewAppImageGithubReleases(gitRepo, tagOverride string) error {
 	return nil
 }
 
-func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*InputConfig, error) {
+func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string) (*InputConfig, error) {
 	client := github.NewClient(nil)
 	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
 		client = client.WithAuthToken(token)
@@ -138,6 +138,12 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		}
 		for _, release := range releasesList {
 			tag := release.GetTagName()
+			if prefix != "" {
+				if !strings.HasPrefix(tag, prefix) {
+					continue
+				}
+				tag = strings.TrimPrefix(tag, prefix)
+			}
 			v, err := semver.NewVersion(tag)
 			if err != nil {
 				continue
@@ -157,6 +163,13 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 		}
 
 		tag := releaseInfo.GetTagName()
+		if prefix != "" {
+			if !strings.HasPrefix(tag, prefix) {
+				return nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, prefix)
+			}
+			tag = strings.TrimPrefix(tag, prefix)
+			ic.Workarounds["Tag Prefix"] = prefix
+		}
 		v, err := semver.NewVersion(tag)
 		if err != nil {
 			return nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
@@ -176,6 +189,13 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride string) (*Inp
 			ic.Workarounds["Semantic Version Without V"] = ""
 		}
 		tag := releaseInfo.GetTagName()
+		if prefix != "" {
+			if !strings.HasSuffix(tag, prefix) {
+				return nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, prefix)
+			}
+			tag = strings.TrimPrefix(tag, prefix)
+			ic.Workarounds["Tag Prefix"] = prefix
+		}
 		v, err := semver.NewVersion(tag)
 		if err != nil {
 			return nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)

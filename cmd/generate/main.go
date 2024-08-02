@@ -153,8 +153,10 @@ func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
 
 type CmdConfigAddAppImageGithubReleasesArgConfig struct {
 	*CmdConfigAddArgConfig
-	GithubUrl  *string
-	ConfigFile *string
+	GithubUrl          *string
+	ConfigFile         *string
+	SelectedVersionTag *string
+	TagPrefix          *string
 }
 
 func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []string) error {
@@ -164,6 +166,8 @@ func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []stri
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	config.ConfigFile = fs.String("to", "input.config", "The input with config")
 	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to add")
+	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
@@ -175,7 +179,7 @@ func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []stri
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to add is missing")
 		}
-		return arrans_overlay_workflow_builder.ConfigAddAppImageGithubReleases(*config.ConfigFile, *config.GithubUrl)
+		return arrans_overlay_workflow_builder.ConfigAddAppImageGithubReleases(*config.ConfigFile, *config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-appimage", "Adds an configuration to a configuration file.")
@@ -212,6 +216,7 @@ type CmdConfigViewAppImageGithubReleasesArgConfig struct {
 	*CmdConfigViewArgConfig
 	GithubUrl          *string
 	SelectedVersionTag *string
+	TagPrefix          *string
 }
 
 func (mac *CmdConfigViewArgConfig) cmdConfigViewAppImageGithubReleases(args []string) error {
@@ -221,6 +226,7 @@ func (mac *CmdConfigViewArgConfig) cmdConfigViewAppImageGithubReleases(args []st
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
 	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
@@ -229,7 +235,7 @@ func (mac *CmdConfigViewArgConfig) cmdConfigViewAppImageGithubReleases(args []st
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.ConfigViewAppImageGithubReleases(*config.GithubUrl, *config.SelectedVersionTag)
+		return arrans_overlay_workflow_builder.ConfigViewAppImageGithubReleases(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-appimage", "Views an addition to a configuration file for a particular query.")

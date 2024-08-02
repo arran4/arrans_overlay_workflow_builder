@@ -431,12 +431,21 @@ func (c *InputConfig) WorkaroundSemanticVersionPrereleaseHack1() bool {
 	return ok
 }
 
+func (c *InputConfig) WorkaroundTagPrefix() string {
+	if c.Workarounds == nil {
+		return ""
+	}
+	s, _ := c.Workarounds["Tag Prefix"]
+	return s
+}
+
 func (c *InputConfig) Validate() error {
 	// TODO more validation
 	for workaround := range c.Workarounds {
 		switch workaround {
 		case "Semantic Version Without V":
 		case "Semantic Version Prerelease Hack 1":
+		case "Tag Prefix":
 		default:
 			return fmt.Errorf("unknown workaround: %s", workaround)
 		}
