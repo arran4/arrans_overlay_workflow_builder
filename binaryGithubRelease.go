@@ -180,6 +180,11 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 }
 
 func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFileInfo, error) {
+	switch strings.ToLower(strings.Join(brfi.Containers, ".")) {
+	case "deb", "rpm":
+		// Skip repo archives for the moment.
+		return nil, nil
+	}
 	url, closeFn, err := brfi.FetchContent()
 	if closeFn != nil {
 		defer closeFn()
@@ -443,6 +448,7 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 		result.ReleaseAsset = brfi.ReleaseAsset
 		result.OriginalFilename = brfi.Filename
 		result.ArchivePathname = brfi.ArchivePathname
+		// So we can get `extended` and the like through
 		result.OS = brfi.OS
 		result.Keyword = brfi.Keyword
 		result.Toolchain = brfi.Toolchain
@@ -450,6 +456,10 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 		result.ExecutableBit = brfi.ExecutableBit
 		result.Binary = brfi.ExecutableBit
 		if brfi.Container != nil {
+			if brfi.Container.ProjectName {
+				result.Unmatched = append([]string{}, brfi.Container.Unmatched...)
+				result.ProgramName = brfi.Container.ProgramName
+			}
 			result.Container = brfi.Container
 			if result.OS == "" {
 				result.OS = brfi.Container.OS
@@ -520,7 +530,7 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 		}
 
 		if each.Unmatched {
-			if result.ProgramName != "" || each.SuffixOnly {
+			if (result.ProgramName != "" || each.SuffixOnly) && each.Captured != result.ProgramName {
 				result.Unmatched = append(result.Unmatched, each.Captured)
 			} else {
 				result.ProgramName = each.Captured

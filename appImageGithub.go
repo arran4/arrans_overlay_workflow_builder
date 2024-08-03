@@ -240,6 +240,11 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 }
 
 func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageFileInfo, error) {
+	switch strings.ToLower(strings.Join(container.Containers, ".")) {
+	case "deb", "rpm":
+		// Skip repo archives for the moment.
+		return nil, nil
+	}
 	url := container.ReleaseAsset.GetBrowserDownloadURL()
 	log.Printf("Downloading %s", url)
 	var err error
