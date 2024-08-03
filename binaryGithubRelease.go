@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"compress/bzip2"
 	"compress/gzip"
+	"debug/elf"
 	"errors"
 	"fmt"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
@@ -54,6 +55,7 @@ type BinaryReleaseFileInfo struct {
 	ArchivePathname  string
 	ExecutableBit    bool
 	Container        *BinaryReleaseFileInfo
+	tempFileUsage    int
 }
 
 func ConfigAddBinaryGithubReleases(toConfig, gitRepo, tagOverride, tagPrefix string) error {
@@ -138,6 +140,12 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 			rootFiles.CompressedArchiveContent[container.Filename] = containerFiles
 		}
 	}
+	if rootFiles.CountBinaries() == 0 && rootFiles.CountMaybeBinaries() >= 0 {
+		log.Printf("No binaries found however some suspected binaries downloading to check them")
+		if err := rootFiles.CheckMaybes(); err != nil {
+			return nil, fmt.Errorf("checking maybes: %w", err)
+		}
+	}
 	if rootFiles.CountBinaries() == 0 && rootFiles.CountCompressedArchives() == 0 {
 		return nil, fmt.Errorf("no binaries or archives/compressed files found")
 	}
@@ -169,39 +177,31 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 	return ic, nil
 }
 
-func (container *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFileInfo, error) {
-	url := container.ReleaseAsset.GetBrowserDownloadURL()
-	log.Printf("Downloading %s", url)
-	var err error
-	container.tempFile, err = util.DownloadUrlToTempFile(url)
-	if err != nil {
-		return nil, fmt.Errorf("downloading release: %w", err)
+func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFileInfo, error) {
+	url, closeFn, err := brfi.FetchContent()
+	if closeFn != nil {
+		defer closeFn()
 	}
-	defer func() {
-		if err := os.Remove(container.tempFile); err != nil {
-			log.Printf("Error removing temp file: %s", err)
-		}
-		container.tempFile = ""
-	}()
-
-	log.Printf("Got %s => %s", url, container.tempFile)
+	if err != nil {
+		return nil, err
+	}
 
 	var archivedFiles []*BinaryReleaseFileInfo
 	// TODO support weirdly nested containers.
-	switch strings.ToLower(strings.Join(container.Containers, ".")) {
+	switch strings.ToLower(strings.Join(brfi.Containers, ".")) {
 	case "tar.gz", "tar.bz2", "tar":
 		var cr io.Reader
-		f, err := os.Open(container.tempFile)
+		f, err := os.Open(brfi.tempFile)
 		if err != nil {
 			return archivedFiles, fmt.Errorf("opening file: %s: %w", url, err)
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
-				log.Printf("Error closing file: %s: %s", container.tempFile, err)
+				log.Printf("Error closing file: %s: %s", brfi.tempFile, err)
 			}
 		}()
-		if len(container.Containers) >= 2 {
-			t := container.Containers[1]
+		if len(brfi.Containers) >= 2 {
+			t := brfi.Containers[1]
 			switch strings.ToLower(t) {
 			case "gz":
 				cr, err = gzip.NewReader(f)
@@ -235,22 +235,22 @@ func (container *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleas
 			}
 			_, fn := path.Split(zfh.Name)
 			archivedFiles = append(archivedFiles, &BinaryReleaseFileInfo{
-				Container:       container,
+				Container:       brfi,
 				ArchivePathname: zfh.Name,
 				Filename:        fn,
 				tempFile:        tmpFile,
-				ReleaseAsset:    container.ReleaseAsset,
+				ReleaseAsset:    brfi.ReleaseAsset,
 				ExecutableBit:   (zfh.Mode & 0o0500) == 0o0500,
 			})
 		}
 	case "zip":
-		zf, err := zip.OpenReader(container.tempFile)
+		zf, err := zip.OpenReader(brfi.tempFile)
 		if err != nil {
 			return archivedFiles, fmt.Errorf("opening zip file: %s: %w", url, err)
 		}
 		defer func() {
 			if err := zf.Close(); err != nil {
-				log.Printf("Error closing file: %s: %s", container.tempFile, err)
+				log.Printf("Error closing file: %s: %s", brfi.tempFile, err)
 			}
 		}()
 		for _, f := range zf.File {
@@ -269,16 +269,50 @@ func (container *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleas
 			}()
 			_, fn := path.Split(f.Name)
 			archivedFiles = append(archivedFiles, &BinaryReleaseFileInfo{
-				Container:       container,
+				Container:       brfi,
 				ArchivePathname: f.Name,
 				Filename:        fn,
 				tempFile:        tmpFile,
-				ReleaseAsset:    container.ReleaseAsset,
+				ReleaseAsset:    brfi.ReleaseAsset,
 				ExecutableBit:   (f.Mode().Perm() & 0o500) == 0o500,
 			})
 		}
 	}
 	return archivedFiles, nil
+}
+
+func (brfi *BinaryReleaseFileInfo) close() {
+	// TODO use lock - no threading atm so no need
+	if brfi.tempFileUsage < 0 {
+		brfi.tempFileUsage = 0
+		return
+	}
+	brfi.tempFileUsage--
+	if brfi.tempFileUsage != 0 || brfi.tempFile == "" {
+		return
+	}
+	if err := os.Remove(brfi.tempFile); err != nil {
+		log.Printf("Error removing temp file: %s", err)
+	}
+	brfi.tempFile = ""
+}
+
+func (brfi *BinaryReleaseFileInfo) FetchContent() (string, func(), error) {
+	if brfi.tempFile != "" {
+		brfi.tempFileUsage++
+		return brfi.tempFile, brfi.close, nil
+	}
+	brfi.tempFileUsage++
+	url := brfi.ReleaseAsset.GetBrowserDownloadURL()
+	log.Printf("Downloading %s", url)
+	var err error
+	brfi.tempFile, err = util.DownloadUrlToTempFile(url)
+	if err != nil {
+		return "", nil, fmt.Errorf("downloading release: %w", err)
+	}
+	log.Printf("Got %s => %s", url, brfi.tempFile)
+	// TODO change the way this works so it doesn't clean up this way, this is horrible.
+	return url, brfi.close, nil
 }
 
 type BinaryReleaseFiles []*BinaryReleaseFileInfo
@@ -290,12 +324,21 @@ type FileTypes struct {
 	ManualPages              []*BinaryReleaseFileInfo
 	ShellCompletion          []*BinaryReleaseFileInfo
 	Root                     *FileTypes
+	MaybeBinaries            []*BinaryReleaseFileInfo
 }
 
 func (t *FileTypes) CountBinaries() int {
 	result := len(t.Binaries)
 	for _, each := range t.CompressedArchiveContent {
 		result += len(each.Binaries)
+	}
+	return result
+}
+
+func (t *FileTypes) CountMaybeBinaries() int {
+	result := len(t.MaybeBinaries)
+	for _, each := range t.CompressedArchiveContent {
+		result += len(each.MaybeBinaries)
 	}
 	return result
 }
@@ -316,10 +359,27 @@ func (t *FileTypes) AllBinaries() (result []*BinaryReleaseFileInfo) {
 	return result
 }
 
+func (t *FileTypes) CheckMaybes() error {
+	for _, each := range t.MaybeBinaries {
+		if ok, err := each.CheckMaybe(); err != nil {
+			return fmt.Errorf("check maybes of %s: %w", each.Filename, err)
+		} else if ok {
+			t.Binaries = append(t.Binaries, each)
+		}
+	}
+	for filename, archive := range t.CompressedArchiveContent {
+		if err := archive.CheckMaybes(); err != nil {
+			return fmt.Errorf("check maybes of container %s: %w", filename, err)
+		}
+	}
+	return nil
+}
+
 func (base BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenamePartMeaning, root *FileTypes) *FileTypes {
 	result := &FileTypes{
 		CompressedArchives:       []*BinaryReleaseFileInfo{},
 		Binaries:                 []*BinaryReleaseFileInfo{},
+		MaybeBinaries:            []*BinaryReleaseFileInfo{},
 		ManualPages:              []*BinaryReleaseFileInfo{},
 		ShellCompletion:          []*BinaryReleaseFileInfo{},
 		CompressedArchiveContent: map[string]*FileTypes{},
@@ -357,37 +417,38 @@ func (base BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenamePa
 			result.Binaries = append(result.Binaries, compiled)
 			log.Printf("Is %s an Binary? - Yes", base.Filename)
 		default:
-			log.Printf("Doesn't have Binary, or a archived Binary in it %s", base.Filename)
+			result.MaybeBinaries = append(result.MaybeBinaries, compiled)
+			log.Printf("Is %s an Binary? - Unknown - Suspected", base.Filename)
 			continue
 		}
 	}
 	return result
 }
 
-func (base *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning) (*BinaryReleaseFileInfo, bool) {
+func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning) (*BinaryReleaseFileInfo, bool) {
 	result := &BinaryReleaseFileInfo{
 		SuffixOnly: true,
 	}
-	if base != nil {
-		result.ReleaseAsset = base.ReleaseAsset
-		result.OriginalFilename = base.Filename
-		result.ArchivePathname = base.ArchivePathname
-		result.OS = base.OS
-		result.Keyword = base.Keyword
-		result.Toolchain = base.Toolchain
-		result.tempFile = base.tempFile
-		result.ExecutableBit = base.ExecutableBit
-		result.Binary = base.ExecutableBit
-		if base.Container != nil {
-			result.Container = base.Container
+	if brfi != nil {
+		result.ReleaseAsset = brfi.ReleaseAsset
+		result.OriginalFilename = brfi.Filename
+		result.ArchivePathname = brfi.ArchivePathname
+		result.OS = brfi.OS
+		result.Keyword = brfi.Keyword
+		result.Toolchain = brfi.Toolchain
+		result.tempFile = brfi.tempFile
+		result.ExecutableBit = brfi.ExecutableBit
+		result.Binary = brfi.ExecutableBit
+		if brfi.Container != nil {
+			result.Container = brfi.Container
 			if result.OS == "" {
-				result.OS = base.Container.OS
+				result.OS = brfi.Container.OS
 			}
 			if result.Keyword == "" {
-				result.Keyword = base.Container.Keyword
+				result.Keyword = brfi.Container.Keyword
 			}
 			if result.Toolchain == "" {
-				result.Toolchain = base.Container.Toolchain
+				result.Toolchain = brfi.Container.Toolchain
 			}
 		}
 	}
@@ -453,4 +514,26 @@ func (base *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 		}
 	}
 	return result, true
+}
+
+func (brfi *BinaryReleaseFileInfo) CheckMaybe() (bool, error) {
+	url, closeFn, err := brfi.FetchContent()
+	if closeFn != nil {
+		defer closeFn()
+	}
+	if err != nil {
+		return false, fmt.Errorf("check maybe of %s: %w", url, err)
+	}
+	e, err := elf.Open(brfi.tempFile)
+	if err != nil {
+		log.Printf("%s is probably not a binary", brfi.Filename)
+		return false, nil
+	}
+	defer func() {
+		if err := e.Close(); err != nil {
+			log.Printf("Error closing elf: %s", err)
+		}
+	}()
+	log.Printf("%s has elf so probably is a binary", brfi.Filename)
+	return true, nil
 }
