@@ -251,7 +251,7 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		}
 		workflowName = data.WorkflowFileName()
 	default:
-		return fmt.Errorf("unknown type %s: %w", ic.Type)
+		return fmt.Errorf("unknown type %s", ic.Type)
 	}
 	n := filepath.Join(outputDir, workflowName)
 	if err := os.WriteFile(n, out.Bytes(), 0644); err != nil {

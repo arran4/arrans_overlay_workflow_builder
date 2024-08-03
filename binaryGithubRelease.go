@@ -195,9 +195,11 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 			archBinaryProgram[key] = p
 		}
 	}
-	sort.Strings(alternativeUses)
-	alternativeUses = slices.Compact(alternativeUses)
-	ic.Workarounds["Programs as Alternatives"] = strings.Join(alternativeUses, " ")
+	if len(alternativeUses) > 0 {
+		sort.Strings(alternativeUses)
+		alternativeUses = slices.Compact(alternativeUses)
+		ic.Workarounds["Programs as Alternatives"] = strings.Join(alternativeUses, " ")
+	}
 	return ic, nil
 }
 
@@ -501,7 +503,7 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 			result.Filename += "${VERSION}"
 		case each.Tag:
 			result.Filename += "${TAG}"
-		case each.ProjectName, each.Unmatched:
+		case each.ProjectName, each.Unmatched, each.Separator:
 			result.Filename += each.Captured
 		default:
 			simple = false
