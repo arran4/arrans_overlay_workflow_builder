@@ -161,6 +161,7 @@ type FilenamePartMeaning struct {
 func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[string]*FilenamePartMeaning {
 	wordMap := map[string]*FilenamePartMeaning{
 		"x86-64": {Keyword: "~amd64"},
+		"64bit":  {Keyword: "~amd64"},
 		// Gentoo
 		"alpha":  {Keyword: "~alpha"},
 		"~alpha": {Keyword: "~alpha"},
