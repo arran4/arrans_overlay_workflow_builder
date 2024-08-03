@@ -14,6 +14,8 @@ import (
 	"log"
 	"os"
 	"path"
+	"slices"
+	"sort"
 	"strings"
 )
 
@@ -26,7 +28,14 @@ type BinaryReleaseFileInfo struct {
 	Toolchain string
 	// Like tar, or zip, also a bit of bz2, and gz but not proper "containers", later replaced by the container of the
 	// contained file
-	ProgramName string
+	ProgramName      string
+	OriginalFilename string
+	ArchivePathname  string
+	InstalledName    string
+	ExecutableBit    bool
+	Installer        bool
+	AppImage         bool
+	Container        *BinaryReleaseFileInfo
 
 	// Compiled only
 	Containers []string
@@ -50,14 +59,8 @@ type BinaryReleaseFileInfo struct {
 	Unmatched []string
 
 	// Transient information
-	tempFile         string
-	OriginalFilename string
-	ArchivePathname  string
-	ExecutableBit    bool
-	Container        *BinaryReleaseFileInfo
-	tempFileUsage    int
-	Installer        bool
-	AppImage         bool
+	tempFile      string
+	tempFileUsage int
 }
 
 func ConfigAddBinaryGithubReleases(toConfig, gitRepo, tagOverride, tagPrefix string) error {
@@ -155,27 +158,46 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		ic.Programs = map[string]*Program{}
 	}
 	binaries := rootFiles.AllBinaries()
+	alternativeUses := []string{}
+	archBinaryProgram := map[string]*Program{}
 	for _, binary := range binaries {
 		p, ok := ic.Programs[binary.ProgramName]
 		if !ok {
 			p = &Program{
 				ProgramName:       binary.ProgramName,
-				InstalledFilename: fmt.Sprintf("%s", binary.ProgramName),
-				DesktopFile:       "",
-				Icons:             []string{},
+				InstalledFilename: binary.InstalledName,
 				Dependencies:      []string{},
 				ReleasesFilename:  map[string]string{},
 				ArchiveFilename:   map[string]string{},
 			}
 			ic.Programs[binary.ProgramName] = p
 		}
+		keyword := strings.TrimPrefix(binary.Keyword, "~")
 		if binary.Container != nil {
-			p.ReleasesFilename[strings.TrimPrefix(binary.Keyword, "~")] = binary.Container.Filename
-			p.ArchiveFilename[strings.TrimPrefix(binary.Keyword, "~")] = binary.ArchivePathname
+			p.ReleasesFilename[keyword] = binary.Container.Filename
+			p.ArchiveFilename[keyword] = binary.ArchivePathname
 		} else {
-			p.ReleasesFilename[strings.TrimPrefix(binary.Keyword, "~")] = binary.Filename
+			p.ReleasesFilename[keyword] = binary.Filename
+		}
+		// This is to detect use flag for alternative binary apps, like extended.
+		key := strings.Join([]string{keyword, p.InstalledFilename}, "-")
+		otherProject, ok := archBinaryProgram[key]
+		if ok {
+			useFlag := p.ProgramName
+			if useFlag == ic.GithubRepo || useFlag == "" {
+				useFlag = otherProject.ProgramName
+				archBinaryProgram[key] = p
+			}
+			if useFlag != "" && useFlag != ic.GithubRepo {
+				alternativeUses = append(alternativeUses, keyword+":"+useFlag)
+			}
+		} else {
+			archBinaryProgram[key] = p
 		}
 	}
+	sort.Strings(alternativeUses)
+	alternativeUses = slices.Compact(alternativeUses)
+	ic.Workarounds["Programs as Alternatives"] = strings.Join(alternativeUses, " ")
 	return ic, nil
 }
 
@@ -472,13 +494,17 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 			}
 		}
 	}
+	simple := true
 	for _, each := range input {
 		switch {
 		case each.Version:
 			result.Filename += "${VERSION}"
 		case each.Tag:
 			result.Filename += "${TAG}"
+		case each.ProjectName, each.Unmatched:
+			result.Filename += each.Captured
 		default:
+			simple = false
 			result.Filename += each.Captured
 		}
 		if each.Keyword != "" {
@@ -536,6 +562,11 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 				result.ProgramName = each.Captured
 			}
 		}
+	}
+	if simple {
+		result.InstalledName = result.Filename
+	} else {
+		result.InstalledName = result.ProgramName
 	}
 	return result, true
 }
