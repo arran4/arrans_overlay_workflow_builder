@@ -143,7 +143,8 @@ type FilenamePartMeaning struct {
 	Captured  string
 
 	// Relevant restraint + identification
-	AppImage bool
+	AppImage  bool
+	Installer bool
 
 	// Identification
 	Version     bool
@@ -235,16 +236,19 @@ func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[
 		"armhf":                         {Keyword: "~arm"},
 		"aarch64":                       {Keyword: "~arm64"},
 		// AppImage
-		"AppImage": {AppImage: true, OS: "linux", SuffixOnly: true},
-		"deb":      {Container: "deb", OS: "linux", SuffixOnly: true},
-		"rpm":      {Container: "deb", OS: "linux", SuffixOnly: true},
-		"exe":      {OS: "windows", SuffixOnly: true},
-		"dmg":      {OS: "macosx", SuffixOnly: true},
-		"pkg":      {OS: "macosx", SuffixOnly: true},
-		"gz":       {Container: "gz", SuffixOnly: true},
-		"bz2":      {Container: "bz2", SuffixOnly: true},
-		"tar":      {Container: "tar", SuffixOnly: true},
-		"zip":      {Container: "zip", SuffixOnly: true},
+		"setup":     {Installer: true},
+		"installer": {Installer: true},
+		"install":   {Installer: true},
+		"AppImage":  {AppImage: true, OS: "linux", SuffixOnly: true},
+		"deb":       {Container: "deb", OS: "linux", SuffixOnly: true},
+		"rpm":       {Container: "deb", OS: "linux", SuffixOnly: true},
+		"exe":       {OS: "windows", SuffixOnly: true},
+		"dmg":       {OS: "macosx", SuffixOnly: true},
+		"pkg":       {OS: "macosx", SuffixOnly: true},
+		"gz":        {Container: "gz", SuffixOnly: true},
+		"bz2":       {Container: "bz2", SuffixOnly: true},
+		"tar":       {Container: "tar", SuffixOnly: true},
+		"zip":       {Container: "zip", SuffixOnly: true},
 	}
 	if v, ok := wordMap[gitRepo]; ok {
 		v.ProjectName = true

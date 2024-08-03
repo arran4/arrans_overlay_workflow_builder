@@ -56,6 +56,8 @@ type BinaryReleaseFileInfo struct {
 	ExecutableBit    bool
 	Container        *BinaryReleaseFileInfo
 	tempFileUsage    int
+	Installer        bool
+	AppImage         bool
 }
 
 func ConfigAddBinaryGithubReleases(toConfig, gitRepo, tagOverride, tagPrefix string) error {
@@ -401,6 +403,14 @@ func (base BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenamePa
 			log.Printf("Unmatched tokens in name: %s: %#v", base.Filename, compiled.Unmatched)
 			continue
 		}
+		if compiled.Installer {
+			log.Printf("Installer, not a binary sorry: %s", base.Filename)
+			continue
+		}
+		if compiled.AppImage {
+			log.Printf("AppImage, please use the app image version: %s", base.Filename)
+			continue
+		}
 		if compiled.OS != "" && compiled.OS != "linux" {
 			log.Printf("Not for linux %s", base.Filename)
 			continue
@@ -501,8 +511,12 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 			result.ProjectName = each.ProjectName
 		}
 
+		if each.Installer {
+			result.Installer = each.Installer
+		}
+
 		if each.AppImage {
-			return nil, false
+			result.AppImage = each.AppImage
 		}
 
 		if each.Unmatched {

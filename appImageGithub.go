@@ -49,6 +49,7 @@ type AppImageFileInfo struct {
 	// Transient information
 	tempFile         string
 	OriginalFilename string
+	Installer        bool
 }
 
 func ConfigAddAppImageGithubReleases(toConfig, gitRepo, tagOverride, tagPrefix string) error {
@@ -311,6 +312,10 @@ func (base AppImageFiles) ExtractAppImagesAndContainers(wordMap map[string][]*Gr
 			log.Printf("Unmatched tokens in name: %s: %#v", base.Filename, compiled.Unmatched)
 			continue
 		}
+		if compiled.Installer {
+			log.Printf("Binary is an installer: %s: skpping", base.Filename)
+			continue
+		}
 		if compiled.OS != "" && compiled.OS != "linux" {
 			log.Printf("Not for linux %s", base.Filename)
 			continue
@@ -394,6 +399,10 @@ func (base *AppImageFileInfo) CompileMeanings(input []*FilenamePartMeaning) (*Ap
 
 		if each.ProjectName {
 			result.ProjectName = each.ProjectName
+		}
+
+		if each.Installer {
+			result.Installer = each.Installer
 		}
 
 		if each.AppImage {
