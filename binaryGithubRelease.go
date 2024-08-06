@@ -116,6 +116,7 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		})
 	}
 	rootFiles := BinaryReleaseFiles(files).FindFiles(wordMap, nil)
+	defer rootFiles.Free()
 	if len(rootFiles.Binaries) == 0 && len(rootFiles.CompressedArchives) > 0 {
 		log.Printf("No binaries found, but some archives / compressed files")
 		for _, container := range rootFiles.CompressedArchives {
@@ -209,7 +210,6 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		alternativeUses = slices.Compact(alternativeUses)
 		ic.Workarounds["Programs as Alternatives"] = strings.Join(alternativeUses, " ")
 	}
-	rootFiles.Free()
 	return ic, nil
 }
 
