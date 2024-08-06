@@ -194,12 +194,22 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		} else {
 			archBinaryProgram[key] = p
 		}
+		unknownSymbols, err := ReadDependencies(binary.tempFile, p)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s dependencies: %w", p.ProgramName, err)
+		}
+
+		if len(unknownSymbols) > 0 {
+			return nil, fmt.Errorf("unknown %s dependencies: %s", p.ProgramName, strings.Join(unknownSymbols, ", "))
+		}
+
 	}
 	if len(alternativeUses) > 0 {
 		sort.Strings(alternativeUses)
 		alternativeUses = slices.Compact(alternativeUses)
 		ic.Workarounds["Programs as Alternatives"] = strings.Join(alternativeUses, " ")
 	}
+	rootFiles.Free()
 	return ic, nil
 }
 
@@ -209,10 +219,7 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 		// Skip repo archives for the moment.
 		return nil, nil
 	}
-	url, closeFn, err := brfi.FetchContent()
-	if closeFn != nil {
-		defer closeFn()
-	}
+	url, err := brfi.FetchContent()
 	if err != nil {
 		return nil, err
 	}
@@ -328,10 +335,10 @@ func (brfi *BinaryReleaseFileInfo) close() {
 	brfi.tempFile = ""
 }
 
-func (brfi *BinaryReleaseFileInfo) FetchContent() (string, func(), error) {
+func (brfi *BinaryReleaseFileInfo) FetchContent() (string, error) {
 	if brfi.tempFile != "" {
 		brfi.tempFileUsage++
-		return brfi.tempFile, brfi.close, nil
+		return brfi.tempFile, nil
 	}
 	brfi.tempFileUsage++
 	url := brfi.ReleaseAsset.GetBrowserDownloadURL()
@@ -339,11 +346,11 @@ func (brfi *BinaryReleaseFileInfo) FetchContent() (string, func(), error) {
 	var err error
 	brfi.tempFile, err = util.DownloadUrlToTempFile(url)
 	if err != nil {
-		return "", nil, fmt.Errorf("downloading release: %w", err)
+		return "", fmt.Errorf("downloading release: %w", err)
 	}
 	log.Printf("Got %s => %s", url, brfi.tempFile)
 	// TODO change the way this works so it doesn't clean up this way, this is horrible.
-	return url, brfi.close, nil
+	return url, nil
 }
 
 type BinaryReleaseFiles []*BinaryReleaseFileInfo
@@ -404,6 +411,27 @@ func (t *FileTypes) CheckMaybes() error {
 		}
 	}
 	return nil
+}
+
+func (t *FileTypes) Free() {
+	for _, each := range t.CompressedArchiveContent {
+		each.Free()
+	}
+	for _, each := range t.CompressedArchives {
+		each.Free()
+	}
+	for _, each := range t.Binaries {
+		each.Free()
+	}
+	for _, each := range t.ManualPages {
+		each.Free()
+	}
+	for _, each := range t.ShellCompletion {
+		each.Free()
+	}
+	for _, each := range t.MaybeBinaries {
+		each.Free()
+	}
 }
 
 func (base BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenamePartMeaning, root *FileTypes) *FileTypes {
@@ -574,10 +602,7 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 }
 
 func (brfi *BinaryReleaseFileInfo) CheckMaybe() (bool, error) {
-	url, closeFn, err := brfi.FetchContent()
-	if closeFn != nil {
-		defer closeFn()
-	}
+	url, err := brfi.FetchContent()
 	if err != nil {
 		return false, fmt.Errorf("check maybe of %s: %w", url, err)
 	}
@@ -593,4 +618,8 @@ func (brfi *BinaryReleaseFileInfo) CheckMaybe() (bool, error) {
 	}()
 	log.Printf("%s has elf so probably is a binary", brfi.Filename)
 	return true, nil
+}
+
+func (brfi *BinaryReleaseFileInfo) Free() {
+	brfi.close()
 }
