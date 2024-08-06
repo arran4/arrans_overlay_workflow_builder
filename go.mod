@@ -7,7 +7,6 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v62 v62.0.0
 	github.com/probonopd/go-appimage v0.0.0-20240708195358-9d82c19270b4
-	github.com/stretchr/testify v1.8.1
 )
 
 require (
@@ -15,7 +14,6 @@ require (
 	github.com/CalebQ42/squashfs v0.7.8 // indirect
 	github.com/adrg/xdg v0.4.0 // indirect
 	github.com/alokmenghrajani/gpgeez v0.0.0-20161206084504-1a06f1c582f9 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eclipse/paho.mqtt.golang v1.4.1 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/google/go-github v17.0.0+incompatible // indirect
@@ -27,11 +25,11 @@ require (
 	github.com/klauspost/compress v1.15.12 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e // indirect
 	github.com/seaweedfs/fuse v1.2.2 // indirect
 	github.com/sergi/go-diff v1.0.0 // indirect
 	github.com/src-d/gcfg v1.4.0 // indirect
+	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
@@ -43,5 +41,4 @@ require (
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
