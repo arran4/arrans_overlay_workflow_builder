@@ -39,8 +39,9 @@ type AppImageFileInfo struct {
 	ProjectName bool
 
 	// Match rules
-	SuffixOnly      bool
-	CaseInsensitive bool
+	SuffixOnly       bool
+	CaseInsensitive  bool
+	KeywordDefaulted bool
 	// Required for the URL only atm:
 	ReleaseAsset *github.ReleaseAsset
 	// Unmatched
@@ -153,8 +154,8 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, prefix strin
 
 func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic *InputConfig) error {
 	url := appImage.ReleaseAsset.GetBrowserDownloadURL()
-	var err error
 	if appImage.tempFile == "" {
+		var err error
 		log.Printf("Downloading %s", url)
 		appImage.tempFile, err = util.DownloadUrlToTempFile(url)
 		if err != nil {
@@ -183,9 +184,10 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 			Dependencies: []string{},
 			Binary:       map[string][]string{},
 		}
-		ic.Programs[appImage.ProgramName] = program
+		ic.Programs[programName] = program
 	}
 	keyword := strings.TrimPrefix(appImage.Keyword, "~")
+	program.Binary[keyword] = []string{}
 	if appImage.Container != "" {
 		program.Binary[keyword] = append(program.Binary[keyword], appImage.Container)
 	}
@@ -326,6 +328,7 @@ func (base AppImageFiles) ExtractAppImagesAndContainers(wordMap map[string][]*Gr
 		if compiled.Keyword == "" {
 			// Default to amd64 because that's just a thing you do.
 			compiled.Keyword = "~amd64"
+			compiled.KeywordDefaulted = true
 		}
 		switch {
 		case len(compiled.Containers) > 0:
@@ -352,6 +355,7 @@ func (base *AppImageFileInfo) CompileMeanings(input []*FilenamePartMeaning) (*Ap
 		result.OriginalFilename = base.Filename
 		result.OS = base.OS
 		result.Keyword = base.Keyword
+		result.KeywordDefaulted = base.KeywordDefaulted
 		result.Toolchain = base.Toolchain
 		result.tempFile = base.tempFile
 	}
@@ -365,11 +369,12 @@ func (base *AppImageFileInfo) CompileMeanings(input []*FilenamePartMeaning) (*Ap
 			result.Filename += each.Captured
 		}
 		if each.Keyword != "" {
-			if result.Keyword != "" && result.Keyword != each.Keyword {
+			if result.Keyword != "" && !result.KeywordDefaulted && result.Keyword != each.Keyword {
 				return nil, false
 			}
-			if result.Keyword == "" {
+			if result.Keyword == "" || result.KeywordDefaulted {
 				result.Keyword = each.Keyword
+				result.KeywordDefaulted = false
 			}
 		}
 		if each.OS != "" {
