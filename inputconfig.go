@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-github/v62/github"
+	"github.com/stoewer/go-strcase"
 	"io"
 	"log"
 	"os"
@@ -109,7 +110,7 @@ func (ic *InputConfig) String() string {
 		sb.WriteString(fmt.Sprintf("Type %s\n", ic.Type))
 	}
 	switch ic.Type {
-	case "Github AppImage":
+	case "Github AppImage Release":
 		if ic.GithubProjectUrl != "" {
 			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", ic.GithubProjectUrl))
 		}
@@ -231,22 +232,20 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 
 		if parseFields == nil {
 			parseFields = map[string][]string{
-				"Type":              nil,
-				"GithubProjectUrl":  nil,
-				"Category":          {DefaultCategory},
-				"EbuildName":        nil,
-				"Description":       nil,
-				"Homepage":          nil,
-				"License":           {DefaultLicense},
-				"ProgramName":       nil,
-				"InstalledFilename": nil,
-				"DesktopFile":       nil,
-				"Icons":             nil,
-				"Docs":              nil,
-				"Dependencies":      nil,
-				"ReleasesFilename":  nil,
-				"Workaround":        nil,
-				"ArchiveFilename":   nil,
+				"Type":             nil,
+				"GithubProjectUrl": nil,
+				"Category":         {DefaultCategory},
+				"EbuildName":       nil,
+				"Description":      nil,
+				"Homepage":         nil,
+				"License":          {DefaultLicense},
+				"ProgramName":      nil,
+				"DesktopFile":      nil,
+				"Icons":            nil,
+				"Docs":             nil,
+				"Dependencies":     nil,
+				"Workaround":       nil,
+				"Binary":           nil,
 			}
 			parseProgramFields = map[string]map[string][]string{}
 			lastProgramName = ""
@@ -268,14 +267,12 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 					if prefix == "ProgramName" {
 						lastProgramName = value
 						parseProgramFields[lastProgramName] = map[string][]string{
-							"ProgramName":       {value},
-							"InstalledFilename": nil,
-							"DesktopFile":       nil,
-							"Dependencies":      nil,
-							"Icons":             nil,
-							"Docs":              nil,
-							"ReleasesFilename":  nil,
-							"ArchiveFilename":   nil,
+							"ProgramName":  {value},
+							"DesktopFile":  nil,
+							"Dependencies": nil,
+							"Icons":        nil,
+							"Docs":         nil,
+							"Binary":       nil,
 						}
 					}
 					parseProgramFields[lastProgramName][prefix] = append(parseProgramFields[lastProgramName][prefix], value)
@@ -301,14 +298,12 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 					if prefix == "ProgramName" {
 						lastProgramName = value
 						parseProgramFields[lastProgramName] = map[string][]string{
-							"ProgramName":       {value},
-							"InstalledFilename": nil,
-							"DesktopFile":       nil,
-							"Icons":             nil,
-							"Docs":              nil,
-							"Dependencies":      nil,
-							"ReleasesFilename":  nil,
-							"ArchiveFilename":   nil,
+							"ProgramName":  {value},
+							"DesktopFile":  nil,
+							"Icons":        nil,
+							"Docs":         nil,
+							"Dependencies": nil,
+							"Binary":       nil,
 						}
 					}
 					parseFields[prefix] = append(parseFields[prefix], value)
@@ -347,7 +342,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 		return nil, fmt.Errorf("on Type: %v: %w", parsedFields["Type"], err)
 	}
 	switch currentConfig.Type {
-	case "Github AppImage":
+	case "Github AppImage Release":
 		currentConfig.GithubProjectUrl, err = onlyOrFail(parsedFields["GithubProjectUrl"])
 		if err != nil {
 			return nil, fmt.Errorf("on GithubProjectUrl: %v: %w", parsedFields["GithubProjectUrl"], err)
@@ -609,7 +604,7 @@ func ReadConfigurationFile(configFn string) ([]*InputConfig, error) {
 	return config, nil
 }
 
-func NewInputConfigurationFromRepo(gitRepo string, tagOverride string, prefix string) (string, *InputConfig, []string, []string, *github.RepositoryRelease, *InputConfig, error) {
+func NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, ebuildSuffix, sourceType string) (string, *InputConfig, []string, []string, *github.RepositoryRelease, *InputConfig, error) {
 	client := github.NewClient(nil)
 	if token, ok := os.LookupEnv("GITHUB_TOKEN"); ok {
 		client = client.WithAuthToken(token)
@@ -630,10 +625,10 @@ func NewInputConfigurationFromRepo(gitRepo string, tagOverride string, prefix st
 	}
 	ebuildNamePart := strings.ReplaceAll(repoName, ".", "-")
 	ic := &InputConfig{
-		Type:             "Github Binary Release",
+		Type:             sourceType,
 		GithubProjectUrl: gitRepo,
 		//Category:          "",
-		EbuildName:  fmt.Sprintf("%s-bin", ebuildNamePart),
+		EbuildName:  strcase.KebabCase(fmt.Sprintf("%s%s", ebuildNamePart, ebuildSuffix)),
 		Description: util.StringOrDefault(repo.Description, "TODO"),
 		Homepage:    util.StringOrDefault(repo.Homepage, ""),
 		GithubRepo:  repoName,
@@ -656,11 +651,11 @@ func NewInputConfigurationFromRepo(gitRepo string, tagOverride string, prefix st
 		}
 		for _, release := range releasesList {
 			tag := release.GetTagName()
-			if prefix != "" {
-				if !strings.HasPrefix(tag, prefix) {
+			if tagPrefix != "" {
+				if !strings.HasPrefix(tag, tagPrefix) {
 					continue
 				}
-				tag = strings.TrimPrefix(tag, prefix)
+				tag = strings.TrimPrefix(tag, tagPrefix)
 			}
 			v, err := semver.NewVersion(tag)
 			if err != nil {
@@ -681,12 +676,12 @@ func NewInputConfigurationFromRepo(gitRepo string, tagOverride string, prefix st
 		}
 
 		tag := releaseInfo.GetTagName()
-		if prefix != "" {
-			if !strings.HasPrefix(tag, prefix) {
-				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, prefix)
+		if tagPrefix != "" {
+			if !strings.HasPrefix(tag, tagPrefix) {
+				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, tagPrefix)
 			}
-			tag = strings.TrimPrefix(tag, prefix)
-			ic.Workarounds["Tag Prefix"] = prefix
+			tag = strings.TrimPrefix(tag, tagPrefix)
+			ic.Workarounds["Tag Prefix"] = tagPrefix
 		}
 		v, err := semver.NewVersion(tag)
 		if err != nil {
@@ -708,12 +703,12 @@ func NewInputConfigurationFromRepo(gitRepo string, tagOverride string, prefix st
 			ic.Workarounds["Semantic Version Without V"] = ""
 		}
 		tag := releaseInfo.GetTagName()
-		if prefix != "" {
-			if !strings.HasSuffix(tag, prefix) {
-				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, prefix)
+		if tagPrefix != "" {
+			if !strings.HasSuffix(tag, tagPrefix) {
+				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, tagPrefix)
 			}
-			tag = strings.TrimPrefix(tag, prefix)
-			ic.Workarounds["Tag Prefix"] = prefix
+			tag = strings.TrimPrefix(tag, tagPrefix)
+			ic.Workarounds["Tag Prefix"] = tagPrefix
 		}
 		v, err := semver.NewVersion(tag)
 		if err != nil {

@@ -106,7 +106,7 @@ func ConfigViewBinaryGithubReleases(gitRepo, tagOverride, tagPrefix string) erro
 }
 
 func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string) (*InputConfig, error) {
-	repoName, ic, versions, tags, releaseInfo, config, err := NewInputConfigurationFromRepo(gitRepo, tagOverride, prefix)
+	repoName, ic, versions, tags, releaseInfo, config, err := NewInputConfigurationFromRepo(gitRepo, tagOverride, prefix, "-bin", "Github Binary Release")
 	if err != nil {
 		return config, err
 	}
