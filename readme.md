@@ -44,7 +44,7 @@ go build ./cmd/generate/
 Using [testdata/testinputconfig.config](testdata/testinputconfig.config) as an example:
 ```
 # Example config
-Type Github AppImage
+Type Github AppImage Release
 GithubProjectUrl https://github.com/janhq/jan/
 DesktopFile jan
 InstalledFilename jan
