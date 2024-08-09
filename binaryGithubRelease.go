@@ -34,6 +34,7 @@ type BinaryReleaseFileInfo struct {
 	InstalledName    string
 	ExecutableBit    bool
 	Installer        bool
+	Document         bool
 	AppImage         bool
 	Container        *BinaryReleaseFileInfo
 
@@ -43,16 +44,20 @@ type BinaryReleaseFileInfo struct {
 	Filename string
 
 	// Relevant restraint + identification
-	Binary bool
+	Binary              bool
+	ShellCompletionFile bool
+	ShellScript         string
 
 	// Identification
 	Version     bool
 	Tag         bool
 	ProjectName bool
+	ManualPage  int
 
 	// Match rules
-	SuffixOnly      bool
-	CaseInsensitive bool
+	SuffixOnly       bool
+	CaseInsensitive  bool
+	KeywordDefaulted bool
 	// Required for the URL only atm:
 	ReleaseAsset *github.ReleaseAsset
 	// Unmatched
@@ -123,14 +128,6 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 			log.Printf("Searching: %s", container.Filename)
 			archivedFiles, err := container.SearchArchiveForFiles()
 			if err != nil {
-				if archivedFiles != nil {
-					for _, af := range archivedFiles {
-						if err := os.Remove(af.tempFile); err != nil {
-							log.Printf("Error removing temp file: %s", err)
-						}
-						af.tempFile = ""
-					}
-				}
 				return nil, err
 			}
 			containerFiles := BinaryReleaseFiles(archivedFiles).FindFiles(wordMap, rootFiles)
@@ -362,7 +359,8 @@ type FileTypes struct {
 	ManualPages              []*BinaryReleaseFileInfo
 	ShellCompletion          []*BinaryReleaseFileInfo
 	Root                     *FileTypes
-	MaybeBinaries            []*BinaryReleaseFileInfo
+	MightBeBinaries          []*BinaryReleaseFileInfo
+	Documents                []*BinaryReleaseFileInfo
 }
 
 func (t *FileTypes) CountBinaries() int {
@@ -374,9 +372,9 @@ func (t *FileTypes) CountBinaries() int {
 }
 
 func (t *FileTypes) CountMaybeBinaries() int {
-	result := len(t.MaybeBinaries)
+	result := len(t.MightBeBinaries)
 	for _, each := range t.CompressedArchiveContent {
-		result += len(each.MaybeBinaries)
+		result += len(each.MightBeBinaries)
 	}
 	return result
 }
@@ -398,7 +396,7 @@ func (t *FileTypes) AllBinaries() (result []*BinaryReleaseFileInfo) {
 }
 
 func (t *FileTypes) CheckMaybes() error {
-	for _, each := range t.MaybeBinaries {
+	for _, each := range t.MightBeBinaries {
 		if ok, err := each.CheckMaybe(); err != nil {
 			return fmt.Errorf("check maybes of %s: %w", each.Filename, err)
 		} else if ok {
@@ -423,28 +421,31 @@ func (t *FileTypes) Free() {
 	for _, each := range t.Binaries {
 		each.Free()
 	}
+	for _, each := range t.Documents {
+		each.Free()
+	}
 	for _, each := range t.ManualPages {
 		each.Free()
 	}
 	for _, each := range t.ShellCompletion {
 		each.Free()
 	}
-	for _, each := range t.MaybeBinaries {
+	for _, each := range t.MightBeBinaries {
 		each.Free()
 	}
 }
 
-func (base BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenamePartMeaning, root *FileTypes) *FileTypes {
+func (bases BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenamePartMeaning, root *FileTypes) *FileTypes {
 	result := &FileTypes{
 		CompressedArchives:       []*BinaryReleaseFileInfo{},
 		Binaries:                 []*BinaryReleaseFileInfo{},
-		MaybeBinaries:            []*BinaryReleaseFileInfo{},
+		MightBeBinaries:          []*BinaryReleaseFileInfo{},
 		ManualPages:              []*BinaryReleaseFileInfo{},
 		ShellCompletion:          []*BinaryReleaseFileInfo{},
 		CompressedArchiveContent: map[string]*FileTypes{},
 		Root:                     root,
 	}
-	for _, base := range base {
+	for _, base := range bases {
 		log.Printf("Is %s a binary?", base.Filename)
 		results := DecodeFilename(wordMap, base.Filename)
 		if len(results) == 0 {
@@ -475,16 +476,30 @@ func (base BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenamePa
 		if compiled.Keyword == "" {
 			// Default to amd64 because that's just a thing you do.
 			compiled.Keyword = "~amd64"
+			compiled.KeywordDefaulted = true
 		}
 		switch {
 		case len(compiled.Containers) > 0:
+			if compiled.OS == "" && compiled.ProjectName && (compiled.Version || compiled.Tag) && (compiled.Keyword == "" || compiled.KeywordDefaulted) && len(compiled.Unmatched) == 0 && len(bases) > 2 {
+				log.Printf("Is %s an Binary? - name is noncommital, treating as a source archive.", base.Filename)
+				continue
+			}
 			result.CompressedArchives = append(result.CompressedArchives, compiled)
 			log.Printf("Is %s an Binary? - Maybe archived", base.Filename)
 		case compiled.Binary && len(compiled.Containers) == 0:
 			result.Binaries = append(result.Binaries, compiled)
 			log.Printf("Is %s an Binary? - Yes", base.Filename)
+		case compiled.Document:
+			result.Documents = append(result.Documents, compiled)
+		case compiled.ShellScript != "" && compiled.ShellCompletionFile:
+			result.ShellCompletion = append(result.ShellCompletion, compiled)
+		case compiled.ShellScript != "":
+			// Ignored for now. Most things which have shell scripts that need to be installed or run are a bit too
+			// complicated for the scope of this application.
+		case compiled.ManualPage != 0:
+			result.ManualPages = append(result.ManualPages, compiled)
 		default:
-			result.MaybeBinaries = append(result.MaybeBinaries, compiled)
+			result.MightBeBinaries = append(result.MightBeBinaries, compiled)
 			log.Printf("Is %s an Binary? - Unknown - Suspected", base.Filename)
 			continue
 		}
@@ -503,6 +518,7 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 		// So we can get `extended` and the like through
 		result.OS = brfi.OS
 		result.Keyword = brfi.Keyword
+		result.KeywordDefaulted = brfi.KeywordDefaulted
 		result.Toolchain = brfi.Toolchain
 		result.tempFile = brfi.tempFile
 		result.ExecutableBit = brfi.ExecutableBit
@@ -541,8 +557,9 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 			if result.Keyword != "" && result.Keyword != each.Keyword {
 				return nil, false
 			}
-			if result.Keyword == "" {
+			if result.Keyword == "" || result.KeywordDefaulted {
 				result.Keyword = each.Keyword
+				result.KeywordDefaulted = false
 			}
 		}
 		if each.OS != "" {
@@ -579,6 +596,22 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 
 		if each.Installer {
 			result.Installer = each.Installer
+		}
+
+		if each.Document {
+			result.Document = each.Document
+		}
+
+		if each.ShellCompletionFile {
+			result.ShellCompletionFile = each.ShellCompletionFile
+		}
+
+		if each.ShellScript != "" {
+			result.ShellScript = each.ShellScript
+		}
+
+		if each.ManualPage != 0 {
+			result.ManualPage = each.ManualPage
 		}
 
 		if each.AppImage {

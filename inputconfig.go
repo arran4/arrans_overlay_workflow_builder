@@ -25,6 +25,7 @@ type Program struct {
 	InstalledFilename string
 	DesktopFile       string
 	Icons             []string
+	Docs              []string
 	Dependencies      []string
 	ReleasesFilename  map[string]string
 	ArchiveFilename   map[string]string
@@ -56,6 +57,9 @@ func (p *Program) String() string {
 	if len(p.Icons) > 0 {
 		sb.WriteString(fmt.Sprintf("Icons %s\n", strings.Join(p.Icons, " ")))
 	}
+	if len(p.Docs) > 0 {
+		sb.WriteString(fmt.Sprintf("Docs %s\n", strings.Join(p.Docs, " ")))
+	}
 	if len(p.Dependencies) > 0 {
 		sb.WriteString(fmt.Sprintf("Dependencies %s\n", strings.Join(p.Dependencies, " ")))
 	}
@@ -85,6 +89,7 @@ func (p *Program) IsEmpty() bool {
 	return len(p.InstalledFilename) == 0 &&
 		len(p.DesktopFile) == 0 &&
 		len(p.Icons) == 0 &&
+		len(p.Docs) == 0 &&
 		len(p.Dependencies) == 0 &&
 		len(p.ReleasesFilename) == 0 &&
 		len(p.ArchiveFilename) == 0
@@ -112,74 +117,74 @@ const (
 )
 
 // String serializes the InputConfig struct back into the configuration file format.
-func (c *InputConfig) String() string {
+func (ic *InputConfig) String() string {
 	var sb strings.Builder
 
-	if c.Type != "" {
-		sb.WriteString(fmt.Sprintf("Type %s\n", c.Type))
+	if ic.Type != "" {
+		sb.WriteString(fmt.Sprintf("Type %s\n", ic.Type))
 	}
-	switch c.Type {
+	switch ic.Type {
 	case "Github AppImage":
-		if c.GithubProjectUrl != "" {
-			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", c.GithubProjectUrl))
+		if ic.GithubProjectUrl != "" {
+			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", ic.GithubProjectUrl))
 		}
-		if c.Category != "" {
-			sb.WriteString(fmt.Sprintf("Category %s\n", c.Category))
+		if ic.Category != "" {
+			sb.WriteString(fmt.Sprintf("Category %s\n", ic.Category))
 		}
-		if c.EbuildName != "" {
-			sb.WriteString(fmt.Sprintf("EbuildName %s\n", c.EbuildName))
+		if ic.EbuildName != "" {
+			sb.WriteString(fmt.Sprintf("EbuildName %s\n", ic.EbuildName))
 		}
-		if c.Description != "" {
-			sb.WriteString(fmt.Sprintf("Description %s\n", c.Description))
+		if ic.Description != "" {
+			sb.WriteString(fmt.Sprintf("Description %s\n", ic.Description))
 		}
-		if c.Homepage != "" {
-			sb.WriteString(fmt.Sprintf("Homepage %s\n", c.Homepage))
+		if ic.Homepage != "" {
+			sb.WriteString(fmt.Sprintf("Homepage %s\n", ic.Homepage))
 		}
-		if c.License != "" {
-			sb.WriteString(fmt.Sprintf("License %s\n", c.License))
+		if ic.License != "" {
+			sb.WriteString(fmt.Sprintf("License %s\n", ic.License))
 		}
-		workarounds := c.WorkaroundString()
+		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
-			if len(c.Workarounds[workaround]) == 0 {
+			if len(ic.Workarounds[workaround]) == 0 {
 				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
 			} else {
-				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, c.Workarounds[workaround]))
+				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, ic.Workarounds[workaround]))
 			}
 		}
-		programs := c.ProgramsString()
+		programs := ic.ProgramsString()
 		for _, programName := range programs {
-			sb.WriteString(c.Programs[programName].String())
+			sb.WriteString(ic.Programs[programName].String())
 		}
 	case "Github Binary Release":
-		if c.GithubProjectUrl != "" {
-			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", c.GithubProjectUrl))
+		if ic.GithubProjectUrl != "" {
+			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", ic.GithubProjectUrl))
 		}
-		if c.Category != "" {
-			sb.WriteString(fmt.Sprintf("Category %s\n", c.Category))
+		if ic.Category != "" {
+			sb.WriteString(fmt.Sprintf("Category %s\n", ic.Category))
 		}
-		if c.EbuildName != "" {
-			sb.WriteString(fmt.Sprintf("EbuildName %s\n", c.EbuildName))
+		if ic.EbuildName != "" {
+			sb.WriteString(fmt.Sprintf("EbuildName %s\n", ic.EbuildName))
 		}
-		if c.Description != "" {
-			sb.WriteString(fmt.Sprintf("Description %s\n", c.Description))
+		if ic.Description != "" {
+			sb.WriteString(fmt.Sprintf("Description %s\n", ic.Description))
 		}
-		if c.Homepage != "" {
-			sb.WriteString(fmt.Sprintf("Homepage %s\n", c.Homepage))
+		if ic.Homepage != "" {
+			sb.WriteString(fmt.Sprintf("Homepage %s\n", ic.Homepage))
 		}
-		if c.License != "" {
-			sb.WriteString(fmt.Sprintf("License %s\n", c.License))
+		if ic.License != "" {
+			sb.WriteString(fmt.Sprintf("License %s\n", ic.License))
 		}
-		workarounds := c.WorkaroundString()
+		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
-			if len(c.Workarounds[workaround]) == 0 {
+			if len(ic.Workarounds[workaround]) == 0 {
 				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
 			} else {
-				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, c.Workarounds[workaround]))
+				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, ic.Workarounds[workaround]))
 			}
 		}
-		programs := c.ProgramsString()
+		programs := ic.ProgramsString()
 		for _, programName := range programs {
-			sb.WriteString(c.Programs[programName].String())
+			sb.WriteString(ic.Programs[programName].String())
 		}
 	default:
 		sb.WriteString(fmt.Sprintf("# Unknown type\n"))
@@ -188,18 +193,18 @@ func (c *InputConfig) String() string {
 	return sb.String()
 }
 
-func (c *InputConfig) ProgramsString() []string {
+func (ic *InputConfig) ProgramsString() []string {
 	var programs []string
-	for key := range c.Programs {
+	for key := range ic.Programs {
 		programs = append(programs, key)
 	}
 	sort.Strings(programs)
 	return programs
 }
 
-func (c *InputConfig) WorkaroundString() []string {
+func (ic *InputConfig) WorkaroundString() []string {
 	var workarounds []string
-	for key := range c.Workarounds {
+	for key := range ic.Workarounds {
 		workarounds = append(workarounds, key)
 	}
 	sort.Strings(workarounds)
@@ -252,6 +257,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"InstalledFilename": nil,
 				"DesktopFile":       nil,
 				"Icons":             nil,
+				"Docs":              nil,
 				"Dependencies":      nil,
 				"ReleasesFilename":  nil,
 				"Workaround":        nil,
@@ -282,6 +288,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 							"DesktopFile":       nil,
 							"Dependencies":      nil,
 							"Icons":             nil,
+							"Docs":              nil,
 							"ReleasesFilename":  nil,
 							"ArchiveFilename":   nil,
 						}
@@ -313,6 +320,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 							"InstalledFilename": nil,
 							"DesktopFile":       nil,
 							"Icons":             nil,
+							"Docs":              nil,
 							"Dependencies":      nil,
 							"ReleasesFilename":  nil,
 							"ArchiveFilename":   nil,
@@ -418,7 +426,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	return configs, nil
 }
 
-func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, programFields map[string][]string) (*Program, error) {
+func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, programFields map[string][]string) (*Program, error) {
 	if programFields == nil {
 		return nil, fmt.Errorf("lacking program fields")
 	}
@@ -438,6 +446,10 @@ func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, pr
 	if err != nil {
 		return nil, fmt.Errorf("on Icons: %v: %w", programFields["Icons"], err)
 	}
+	program.Docs, err = emptyOrAppendStringArray(program.Docs, programFields["Docs"])
+	if err != nil {
+		return nil, fmt.Errorf("on Docs: %v: %w", programFields["Docs"], err)
+	}
 	program.Dependencies, err = emptyOrAppendStringArray(program.Dependencies, programFields["Dependencies"])
 	if err != nil {
 		return nil, fmt.Errorf("on Dependencies: %v: %w", programFields["Dependencies"], err)
@@ -451,7 +463,7 @@ func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, pr
 		return nil, fmt.Errorf("on ArchiveFilename: %v: %w", programFields["ArchiveFilename"], err)
 	}
 	if DefaultDesktopFileEnabled && program.DesktopFile == "" {
-		program.DesktopFile = c.GithubRepo
+		program.DesktopFile = ic.GithubRepo
 	}
 	if program.DesktopFile != "" {
 		program.DesktopFile = util.TrimSuffixes(program.DesktopFile, ".desktop") + ".desktop"
@@ -459,33 +471,33 @@ func (c *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, pr
 	return program, nil
 }
 
-func (c *InputConfig) WorkaroundSemanticVersionWithoutV() bool {
-	if c.Workarounds == nil {
+func (ic *InputConfig) WorkaroundSemanticVersionWithoutV() bool {
+	if ic.Workarounds == nil {
 		return false
 	}
-	_, ok := c.Workarounds["Semantic Version Without V"]
+	_, ok := ic.Workarounds["Semantic Version Without V"]
 	return ok
 }
 
-func (c *InputConfig) WorkaroundSemanticVersionPrereleaseHack1() bool {
-	if c.Workarounds == nil {
+func (ic *InputConfig) WorkaroundSemanticVersionPrereleaseHack1() bool {
+	if ic.Workarounds == nil {
 		return false
 	}
-	_, ok := c.Workarounds["Semantic Version Prerelease Hack 1"]
+	_, ok := ic.Workarounds["Semantic Version Prerelease Hack 1"]
 	return ok
 }
 
-func (c *InputConfig) WorkaroundTagPrefix() string {
-	if c.Workarounds == nil {
+func (ic *InputConfig) WorkaroundTagPrefix() string {
+	if ic.Workarounds == nil {
 		return ""
 	}
-	s, _ := c.Workarounds["Tag Prefix"]
+	s, _ := ic.Workarounds["Tag Prefix"]
 	return s
 }
 
-func (c *InputConfig) Validate() error {
+func (ic *InputConfig) Validate() error {
 	// TODO more validation
-	for workaround := range c.Workarounds {
+	for workaround := range ic.Workarounds {
 		switch workaround {
 		case "Semantic Version Without V":
 		case "Semantic Version Prerelease Hack 1":
@@ -690,7 +702,8 @@ func NewInputConfigurationFromRepo(gitRepo string, tagOverride string, prefix st
 			return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
 		}
 		if strings.HasPrefix(tag, "v") {
-			tags = []string{tag, v.String()}
+			tags = []string{tag}
+			versions = []string{v.String()}
 		} else {
 			tags = []string{tag}
 			ic.Workarounds["Semantic Version Without V"] = ""

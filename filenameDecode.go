@@ -143,8 +143,12 @@ type FilenamePartMeaning struct {
 	Captured  string
 
 	// Relevant restraint + identification
-	AppImage  bool
-	Installer bool
+	AppImage            bool
+	Installer           bool
+	Document            bool
+	ShellCompletionFile bool
+	ShellScript         string
+	ManualPage          int
 
 	// Identification
 	Version     bool
@@ -243,19 +247,35 @@ func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[
 		"armhf":                         {Keyword: "~arm"},
 		"aarch64":                       {Keyword: "~arm64"},
 		// AppImage
-		"setup":     {Installer: true},
-		"installer": {Installer: true},
-		"install":   {Installer: true},
-		"AppImage":  {AppImage: true, OS: "linux", SuffixOnly: true},
-		"deb":       {Container: "deb", OS: "linux", SuffixOnly: true},
-		"rpm":       {Container: "deb", OS: "linux", SuffixOnly: true},
-		"exe":       {OS: "windows", SuffixOnly: true},
-		"dmg":       {OS: "macosx", SuffixOnly: true},
-		"pkg":       {OS: "macosx", SuffixOnly: true},
-		"gz":        {Container: "gz", SuffixOnly: true},
-		"bz2":       {Container: "bz2", SuffixOnly: true},
-		"tar":       {Container: "tar", SuffixOnly: true},
-		"zip":       {Container: "zip", SuffixOnly: true},
+		"setup":       {Installer: true},
+		"installer":   {Installer: true},
+		"install":     {Installer: true},
+		"LICENSE":     {Document: true},
+		"AppImage":    {AppImage: true, OS: "linux", SuffixOnly: true},
+		"deb":         {Container: "deb", OS: "linux", SuffixOnly: true},
+		"rpm":         {Container: "deb", OS: "linux", SuffixOnly: true},
+		"exe":         {OS: "windows", SuffixOnly: true},
+		"dmg":         {OS: "macosx", SuffixOnly: true},
+		"pkg":         {OS: "macosx", SuffixOnly: true},
+		"gz":          {Container: "gz", SuffixOnly: true},
+		"bz2":         {Container: "bz2", SuffixOnly: true},
+		"tar":         {Container: "tar", SuffixOnly: true},
+		"zip":         {Container: "zip", SuffixOnly: true},
+		"md":          {Document: true, SuffixOnly: true, CaseInsensitive: true},
+		"completion":  {ShellCompletionFile: true},
+		"completions": {ShellCompletionFile: true},
+		"bash":        {ShellScript: "bash", SuffixOnly: true},
+		"fish":        {ShellScript: "fish", SuffixOnly: true},
+		"ps1":         {ShellScript: "powershell", SuffixOnly: true},
+		"zsh":         {ShellScript: "zsh", SuffixOnly: true},
+		"sh":          {ShellScript: "shell", SuffixOnly: true},
+		"1":           {ManualPage: 1, SuffixOnly: true},
+		"2":           {ManualPage: 2, SuffixOnly: true},
+		"3":           {ManualPage: 3, SuffixOnly: true},
+		"4":           {ManualPage: 4, SuffixOnly: true},
+		"5":           {ManualPage: 5, SuffixOnly: true},
+		"6":           {ManualPage: 6, SuffixOnly: true},
+		"7":           {ManualPage: 7, SuffixOnly: true},
 	}
 	if v, ok := wordMap[gitRepo]; ok {
 		v.ProjectName = true

@@ -112,6 +112,7 @@ var (
 		"libz.so":                   "sys-libs/zlib",
 		"libthai.so":                "dev-libs/libthai",
 		"libthai.so.0":              "dev-libs/libthai",
+		"libresolv.so.2":            "sys-libs/glibc",
 	}
 )
 
