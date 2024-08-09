@@ -162,23 +162,23 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		p, ok := ic.Programs[binary.ProgramName]
 		if !ok {
 			p = &Program{
-				ProgramName:       binary.ProgramName,
-				InstalledFilename: binary.InstalledName,
-				Dependencies:      []string{},
-				ReleasesFilename:  map[string]string{},
-				ArchiveFilename:   map[string]string{},
+				ProgramName:  binary.ProgramName,
+				Dependencies: []string{},
+				Binary:       map[string][]string{},
 			}
 			ic.Programs[binary.ProgramName] = p
 		}
 		keyword := strings.TrimPrefix(binary.Keyword, "~")
+		p.Binary[keyword] = []string{}
 		if binary.Container != nil {
-			p.ReleasesFilename[keyword] = binary.Container.Filename
-			p.ArchiveFilename[keyword] = binary.ArchivePathname
+			p.Binary[keyword] = append(p.Binary[keyword], binary.Container.Filename)
+			p.Binary[keyword] = append(p.Binary[keyword], binary.ArchivePathname)
 		} else {
-			p.ReleasesFilename[keyword] = binary.Filename
+			p.Binary[keyword] = append(p.Binary[keyword], binary.Filename)
 		}
+		p.Binary[keyword] = append(p.Binary[keyword], binary.InstalledName)
 		// This is to detect use flag for alternative binary apps, like extended.
-		key := strings.Join([]string{keyword, p.InstalledFilename}, "-")
+		key := strings.Join([]string{keyword, binary.InstalledName}, "-")
 		otherProject, ok := archBinaryProgram[key]
 		if ok {
 			useFlag := p.ProgramName

@@ -21,14 +21,12 @@ var (
 )
 
 type Program struct {
-	ProgramName       string
-	InstalledFilename string
-	DesktopFile       string
-	Icons             []string
-	Docs              []string
-	Dependencies      []string
-	ReleasesFilename  map[string]string
-	ArchiveFilename   map[string]string
+	ProgramName  string
+	Binary       map[string][]string
+	DesktopFile  string
+	Icons        []string
+	Docs         []string
+	Dependencies []string
 }
 
 func (p *Program) HasDesktopFile() bool {
@@ -42,8 +40,8 @@ func (p *Program) FirstIcons() string {
 	return p.Icons[0]
 }
 
-func (p *Program) IsArchived() bool {
-	return len(p.ArchiveFilename) > 0
+func (p *Program) IsArchived(arch string) bool {
+	return len(p.Binary[arch]) > 2
 }
 
 func (p *Program) String() string {
@@ -63,36 +61,23 @@ func (p *Program) String() string {
 	if len(p.Dependencies) > 0 {
 		sb.WriteString(fmt.Sprintf("Dependencies %s\n", strings.Join(p.Dependencies, " ")))
 	}
-	if p.InstalledFilename != "" {
-		sb.WriteString(fmt.Sprintf("InstalledFilename %s\n", p.InstalledFilename))
-	}
-	keywords := make([]string, 0, len(p.ReleasesFilename))
-	for key := range p.ReleasesFilename {
+	keywords := make([]string, 0, len(p.Binary))
+	for key := range p.Binary {
 		keywords = append(keywords, key)
 	}
 	sort.Strings(keywords)
 	for _, kw := range keywords {
-		sb.WriteString(fmt.Sprintf("ReleasesFilename %s=>%s\n", kw, p.ReleasesFilename[kw]))
-	}
-	keywords = make([]string, 0, len(p.ArchiveFilename))
-	for key := range p.ArchiveFilename {
-		keywords = append(keywords, key)
-	}
-	sort.Strings(keywords)
-	for _, kw := range keywords {
-		sb.WriteString(fmt.Sprintf("ArchiveFilename %s=>%s\n", kw, p.ArchiveFilename[kw]))
+		sb.WriteString(fmt.Sprintf("Binary %s=>%s\n", kw, strings.Join(p.Binary[kw], " > ")))
 	}
 	return sb.String()
 }
 
 func (p *Program) IsEmpty() bool {
-	return len(p.InstalledFilename) == 0 &&
+	return len(p.Binary) == 0 &&
 		len(p.DesktopFile) == 0 &&
 		len(p.Icons) == 0 &&
 		len(p.Docs) == 0 &&
-		len(p.Dependencies) == 0 &&
-		len(p.ReleasesFilename) == 0 &&
-		len(p.ArchiveFilename) == 0
+		len(p.Dependencies) == 0
 }
 
 // InputConfig represents a single configuration entry.
@@ -434,10 +419,6 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 		ProgramName: programName,
 	}
 	var err error
-	program.InstalledFilename, err = emptyOrOnlyOrFail(programFields["InstalledFilename"])
-	if err != nil {
-		return nil, fmt.Errorf("on InstalledFilename: %v: %w", programFields["InstalledFilename"], err)
-	}
 	program.DesktopFile, err = emptyOrOnlyOrFail(programFields["DesktopFile"])
 	if err != nil {
 		return nil, fmt.Errorf("on DesktopFile: %v: %w", programFields["DesktopFile"], err)
@@ -454,13 +435,9 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 	if err != nil {
 		return nil, fmt.Errorf("on Dependencies: %v: %w", programFields["Dependencies"], err)
 	}
-	program.ReleasesFilename, err = parseMapType1(programFields["ReleasesFilename"])
+	program.Binary, err = parseMapStringListType1(programFields["Binary"])
 	if err != nil {
-		return nil, fmt.Errorf("on ReleasesFilename: %v: %w", programFields["ReleasesFilename"], err)
-	}
-	program.ArchiveFilename, err = parseMapType1(programFields["ArchiveFilename"])
-	if err != nil {
-		return nil, fmt.Errorf("on ArchiveFilename: %v: %w", programFields["ArchiveFilename"], err)
+		return nil, fmt.Errorf("on Binary: %v: %w", programFields["Binary"], err)
 	}
 	if DefaultDesktopFileEnabled && program.DesktopFile == "" {
 		program.DesktopFile = ic.GithubRepo
@@ -517,6 +494,20 @@ func parseMapType1(a []string) (map[string]string, error) {
 			return nil, fmt.Errorf("entry %d, can't split %#v", i, v)
 		}
 		result[strings.TrimSpace(s[0])] = strings.TrimSpace(s[1])
+	}
+	return result, nil
+}
+
+func parseMapStringListType1(a []string) (map[string][]string, error) {
+	result := make(map[string][]string, len(a))
+	for i, v := range a {
+		s := strings.SplitN(v, "=>", 2)
+		if len(s) != 2 {
+			return nil, fmt.Errorf("entry %d, can't split %#v", i, v)
+		}
+		for _, e := range strings.Split(strings.TrimSpace(s[1]), ">") {
+			result[strings.TrimSpace(s[0])] = append(result[strings.TrimSpace(s[0])], strings.TrimSpace(e))
+		}
 	}
 	return result, nil
 }

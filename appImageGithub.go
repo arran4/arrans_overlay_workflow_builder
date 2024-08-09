@@ -177,22 +177,20 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 	program, ok := ic.Programs[programName]
 	if !ok {
 		program = &Program{
-			ProgramName:       programName,
-			InstalledFilename: fmt.Sprintf("%s.AppImage", programName),
-			DesktopFile:       "",
-			Icons:             []string{},
-			Dependencies:      []string{},
-			ReleasesFilename:  map[string]string{},
-			ArchiveFilename:   map[string]string{},
+			ProgramName:  programName,
+			DesktopFile:  "",
+			Icons:        []string{},
+			Dependencies: []string{},
+			Binary:       map[string][]string{},
 		}
 		ic.Programs[appImage.ProgramName] = program
 	}
+	keyword := strings.TrimPrefix(appImage.Keyword, "~")
 	if appImage.Container != "" {
-		program.ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Container
-		program.ArchiveFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
-	} else {
-		program.ReleasesFilename[strings.TrimPrefix(appImage.Keyword, "~")] = appImage.Filename
+		program.Binary[keyword] = append(program.Binary[keyword], appImage.Container)
 	}
+	program.Binary[keyword] = append(program.Binary[keyword], appImage.Filename)
+	program.Binary[keyword] = append(program.Binary[keyword], fmt.Sprintf("%s.AppImage", programName))
 	ai, err := goappimage.NewAppImage(appImage.tempFile)
 	if err != nil {
 		return fmt.Errorf("reading AppImage %s %s: %w", appImage.Filename, url, err)
