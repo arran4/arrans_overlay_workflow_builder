@@ -108,11 +108,20 @@ var (
 		"ld-linux-armhf.so":         "sys-libs/glibc",
 		"ld-linux-armhf.so.1":       "sys-libs/glibc",
 		"ld-linux-armhf.so.2":       "sys-libs/glibc",
+		"libm.so.6":                 "sys-libs/glibc",
+		"libm.so":                   "sys-libs/glibc",
 		"libz.so.1":                 "sys-libs/zlib",
 		"libz.so":                   "sys-libs/zlib",
 		"libthai.so":                "dev-libs/libthai",
 		"libthai.so.0":              "dev-libs/libthai",
 		"libresolv.so.2":            "sys-libs/glibc",
+		"libresolv.so":              "sys-libs/glibc",
+		"libstdc++.so.6.0.32":       "sys-devel/gcc",
+		"libstdc++.so.6.0":          "sys-devel/gcc",
+		"libstdc++.so.6":            "sys-devel/gcc",
+		"libstdc++.so":              "sys-devel/gcc",
+		"libgcc_s.so.1":             "sys-devel/gcc",
+		"libgcc_s.so":               "sys-devel/gcc",
 	}
 )
 
