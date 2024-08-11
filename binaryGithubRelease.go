@@ -194,11 +194,11 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		}
 		unknownSymbols, err := ReadDependencies(binary.tempFile, p)
 		if err != nil {
-			return nil, fmt.Errorf("reading %s dependencies: %w", p.ProgramName, err)
+			return nil, fmt.Errorf("reading %s dependencies: %w", binary.Filename, err)
 		}
 
 		if len(unknownSymbols) > 0 {
-			return nil, fmt.Errorf("unknown %s dependencies: %s", p.ProgramName, strings.Join(unknownSymbols, ", "))
+			return nil, fmt.Errorf("unknown %s dependencies: %s", binary.Filename, strings.Join(unknownSymbols, ", "))
 		}
 
 	}
@@ -446,7 +446,7 @@ func (bases BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenameP
 		Root:                     root,
 	}
 	for _, base := range bases {
-		log.Printf("Is %s a binary?", base.Filename)
+		log.Printf("What is %s?", base.Filename)
 		results := DecodeFilename(wordMap, base.Filename)
 		if len(results) == 0 {
 			log.Printf("Can't decode %s", base.Filename)
@@ -490,13 +490,17 @@ func (bases BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenameP
 			result.Binaries = append(result.Binaries, compiled)
 			log.Printf("Is %s an Binary? - Yes", base.Filename)
 		case compiled.Document:
+			log.Printf("%s is a document", base.Filename)
 			result.Documents = append(result.Documents, compiled)
 		case compiled.ShellScript != "" && compiled.ShellCompletionFile:
+			log.Printf("%s is a shell compltion file", base.Filename)
 			result.ShellCompletion = append(result.ShellCompletion, compiled)
 		case compiled.ShellScript != "":
+			log.Printf("%s is a shell script - ignoring", base.Filename)
 			// Ignored for now. Most things which have shell scripts that need to be installed or run are a bit too
 			// complicated for the scope of this application.
 		case compiled.ManualPage != 0:
+			log.Printf("%s is a manual page", base.Filename)
 			result.ManualPages = append(result.ManualPages, compiled)
 		default:
 			result.MightBeBinaries = append(result.MightBeBinaries, compiled)
@@ -540,6 +544,7 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 			}
 		}
 	}
+	var capturedProjectName string
 	simple := true
 	for _, each := range input {
 		switch {
@@ -547,8 +552,11 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 			result.Filename += "${VERSION}"
 		case each.Tag:
 			result.Filename += "${TAG}"
-		case each.ProjectName, each.Unmatched, each.Separator:
+		case each.Unmatched, each.Separator:
 			result.Filename += each.Captured
+		case each.ProjectName:
+			result.Filename += each.Captured
+			capturedProjectName = each.Captured
 		default:
 			simple = false
 			result.Filename += each.Captured
@@ -626,7 +634,10 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 			}
 		}
 	}
-	if simple {
+	if result.ProgramName == "" {
+		result.ProgramName = capturedProjectName
+	}
+	if simple || result.ProgramName == "" {
 		result.InstalledName = result.Filename
 	} else {
 		result.InstalledName = result.ProgramName
@@ -641,7 +652,7 @@ func (brfi *BinaryReleaseFileInfo) CheckMaybe() (bool, error) {
 	}
 	e, err := elf.Open(brfi.tempFile)
 	if err != nil {
-		log.Printf("%s is probably not a binary", brfi.Filename)
+		log.Printf("elf open of %s failed; it is probably not a binary", brfi.Filename)
 		return false, nil
 	}
 	defer func() {

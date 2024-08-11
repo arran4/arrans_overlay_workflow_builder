@@ -166,6 +166,7 @@ func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[
 	wordMap := map[string]*FilenamePartMeaning{
 		"x86-64": {Keyword: "~amd64"},
 		"64bit":  {Keyword: "~amd64"},
+		"i386":   {Keyword: "~x86"},
 		// Gentoo
 		"alpha":  {Keyword: "~alpha"},
 		"~alpha": {Keyword: "~alpha"},
@@ -237,6 +238,7 @@ func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[
 		"gnueabihf":                     {Toolchain: "gnueabihf"},
 		"msvc":                          {Toolchain: "msvc"},
 		"armv7":                         {Keyword: "~arm"},
+		"armv6":                         {Keyword: "~arm"},
 		"powerpc":                       {Keyword: "~ppc"},
 		"powerpc64":                     {Keyword: "~ppc64"},
 		"powerpc64le":                   {Keyword: "~ppc64"},
@@ -262,6 +264,8 @@ func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[
 		"tar":         {Container: "tar", SuffixOnly: true},
 		"zip":         {Container: "zip", SuffixOnly: true},
 		"md":          {Document: true, SuffixOnly: true, CaseInsensitive: true},
+		"txt":         {Document: true, SuffixOnly: true, CaseInsensitive: true},
+		"pdf":         {Document: true, SuffixOnly: true, CaseInsensitive: true},
 		"completion":  {ShellCompletionFile: true},
 		"completions": {ShellCompletionFile: true},
 		"bash":        {ShellScript: "bash", SuffixOnly: true},

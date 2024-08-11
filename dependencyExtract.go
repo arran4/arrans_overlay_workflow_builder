@@ -122,6 +122,8 @@ var (
 		"libstdc++.so":              "sys-devel/gcc",
 		"libgcc_s.so.1":             "sys-devel/gcc",
 		"libgcc_s.so":               "sys-devel/gcc",
+		"librt.so.1":                "sys-libs/glibc",
+		"librt.so":                  "sys-libs/glibc",
 	}
 )
 
