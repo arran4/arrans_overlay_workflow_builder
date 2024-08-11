@@ -41,6 +41,15 @@ func (p *Program) FirstIcons() string {
 	return p.Icons[0]
 }
 
+func (p *Program) InstalledFilename() string {
+	for _, b := range p.Binary {
+		if len(b) > 0 {
+			return b[len(b)-1]
+		}
+	}
+	return ""
+}
+
 func (p *Program) IsArchived(arch string) bool {
 	return len(p.Binary[arch]) > 2
 }

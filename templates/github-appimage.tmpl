@@ -31,13 +31,11 @@ env:
   [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: '[[ $prog.DesktopFile ]]'
   [[- end ]]
   [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
-  [[- if $prog.IsArchived ]]
-  [[- range $keyword, $archive := $prog.ArchiveFilename ]]
-  [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ $archive ]]'
+  [[- range $keyword, $binary := $prog.Binary ]]
+  [[- if gt (len $binary) 2 ]]
+  [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
   [[- end ]]
-  [[- end ]]
-  [[- range $keyword, $release := $prog.ReleasesFilename ]]
-  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ $release  | ebuildvardoublequoted ]]'
+  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | ebuildvardoublequoted ]]'
   [[- end ]]
   [[- end ]]
 
@@ -76,7 +74,7 @@ jobs:
           for tag in $tags; do
             version="${tag#[[- .WorkaroundTagPrefix ]]v}"
             if [ "${version}" = "${tag}" ]; then
-                echo "$version == $tag so there is no [[- .WorkaroundTagPrefix ]]v removed skipping"
+                echo "$version == $tag so there is no [[- .WorkaroundTagPrefix ]] v removed skipping"
                 continue
             fi
 [[- end ]]
@@ -128,16 +126,12 @@ jobs:
   [[- end ]]
 [[- end ]]
 [[- range $pname, $prog := .Programs ]]
-[[- if .IsArchived ]]
-  [[- range $keyword, $archive := $prog.ArchiveFilename ]]
-    [[- if ne $archive $prog.InstalledFilename ]]
+[[- range $keyword, $binary := $prog.Binary ]]
+  [[- if gt (len $binary) 2 ]]
                 echo '  if use [[ $keyword ]]; then'
                 echo "    mv \"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't move archived file\""
                 echo '  fi'
-    [[- end ]]
-  [[- end ]]
 [[- else ]]
-  [[- range $keyword, $release := $prog.ReleasesFilename ]]
                 echo '  if use [[ $keyword ]]; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
@@ -145,17 +139,17 @@ jobs:
 [[- end ]]
                 echo '  chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
 [[- if $prog.HasDesktopFile ]]
-                echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
+                echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
 [[- end ]]
 [[- range $i, $icon := $prog.Icons ]]
   [[- if eq $icon "hicolor-apps" ]]
-                echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
+                echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
   [[- end ]]
   [[- if eq $icon "pixmaps" ]]
-                echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "usr/share/pixmaps" || die "Failed to extract pixmaps icons from app image"'
+                echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "usr/share/pixmaps" || die "Failed to extract pixmaps icons from app image"'
   [[- end ]]
   [[- if eq $icon "root" ]]
-                echo '  ./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }} --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
+                echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
   [[- end ]]
 [[- end ]]
 [[- end ]]
@@ -236,4 +230,4 @@ jobs:
           git commit -m "Add ebuilds for new ${{ env.epn }} releases" &&
           git pull --rebase &&
           git push || true
-        if: steps.process_releases.outputs.generated_tag != 0
+        if: steps.process_releases.outputs.generated_tag

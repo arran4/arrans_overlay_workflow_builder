@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -21,103 +20,10 @@ var (
 	templateFiles embed.FS
 )
 
-type GenerateGithubAppImageTemplateData struct {
-	*InputConfig
-	Now        time.Time
-	ConfigFile string
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) Cron() string {
-	i := uint64(0)
-	for _, r := range ggaitd.GithubRepo {
-		i += uint64(r)
-	}
-	minute := i % 60
-	i /= 60
-	hour := i % 24
-	return fmt.Sprintf("%d %d * * *", minute, hour)
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) WorkflowName() string {
-	return fmt.Sprintf("%s/%s update", ggaitd.Category, ggaitd.PackageName())
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) KeywordList() []string {
-	keywords := make([]string, 0)
-	for programName := range ggaitd.Programs {
-		for key := range ggaitd.Programs[programName].ReleasesFilename {
-			keywords = append(keywords, key)
-		}
-	}
-	sort.Strings(keywords)
-	return keywords
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) Dependencies() []string {
-	keywords := make([]string, 0)
-	for programName := range ggaitd.Programs {
-		keywords = append(keywords, ggaitd.Programs[programName].Dependencies...)
-	}
-	sort.Strings(keywords)
-	return keywords
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) Keywords() string {
-	return strings.Join(ggaitd.KeywordList(), " ")
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) MaskedKeywords() string {
-	list := ggaitd.KeywordList()
-	for i := range list {
-		list[i] = "~" + strings.TrimPrefix(list[i], "~")
-	}
-	return strings.Join(list, " ")
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) WorkflowFileName() string {
-	return fmt.Sprintf("%s-%s-update.yaml", ggaitd.Category, ggaitd.PackageName())
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) PackageName() string {
-	return strings.TrimSuffix(ggaitd.EbuildName, ".ebuild")
-}
-
 type ExternalResource struct {
 	Keyword         string
 	ReleaseFilename string
 	Archived        bool
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) HasDesktopFile() bool {
-	for _, p := range ggaitd.Programs {
-		if p.HasDesktopFile() {
-			return true
-		}
-	}
-	return false
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) IsArchived() bool {
-	for _, p := range ggaitd.Programs {
-		if p.IsArchived() {
-			return true
-		}
-	}
-	return false
-}
-
-func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() map[string]*ExternalResource {
-	result := make(map[string]*ExternalResource)
-	for programName, program := range ggaitd.Programs {
-		for kw, rfn := range ggaitd.Programs[programName].ReleasesFilename {
-			result[rfn] = &ExternalResource{
-				Keyword:         kw,
-				ReleaseFilename: rfn,
-				Archived:        len(program.ArchiveFilename) > 0,
-			}
-		}
-	}
-	return result
 }
 
 func GenerateGithubWorkflows(file string) error {
@@ -239,24 +145,45 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 	}
 	out := bytes.NewBuffer(nil)
 	var workflowName string
+	var data interface {
+		WorkflowFileName() string
+		TemplateFileName() string
+	}
 	switch ic.Type {
-	case "Github AppImage":
-		data := &GenerateGithubAppImageTemplateData{
+	case "Github AppImage Release":
+		data = &GenerateGithubAppImageTemplateData{
 			Now:         now,
 			ConfigFile:  file,
 			InputConfig: ic,
 		}
-		if err := templates.ExecuteTemplate(out, "github-appimage.tmpl", data); err != nil {
-			return fmt.Errorf("for %s excuting template: %w", ic.EbuildName, err)
+	case "Github Binary Release":
+		data = &GenerateGithubBinaryTemplateData{
+			Now:         now,
+			ConfigFile:  file,
+			InputConfig: ic,
 		}
-		workflowName = data.WorkflowFileName()
 	default:
 		return fmt.Errorf("unknown type %s", ic.Type)
 	}
+	if err := templates.ExecuteTemplate(out, data.TemplateFileName(), data); err != nil {
+		return fmt.Errorf("for %s excuting template: %w", ic.EbuildName, err)
+	}
+	workflowName = data.WorkflowFileName()
 	n := filepath.Join(outputDir, workflowName)
 	if err := os.WriteFile(n, out.Bytes(), 0644); err != nil {
 		return fmt.Errorf("writing %s: %w", n, err)
 	}
 	fmt.Printf("Written: %s\n", n)
 	return nil
+}
+
+func (ic *InputConfig) Cron() string {
+	i := uint64(0)
+	for _, r := range ic.GithubRepo {
+		i += uint64(r)
+	}
+	minute := i % 60
+	i /= 60
+	hour := i % 24
+	return fmt.Sprintf("%d %d * * *", minute, hour)
 }
