@@ -75,7 +75,7 @@ jobs:
           for tag in $tags; do
             version="${tag#[[- .WorkaroundTagPrefix ]]v}"
             if [ "${version}" = "${tag}" ]; then
-                echo "$version == $tag so there is no [[- .WorkaroundTagPrefix ]]v removed skipping"
+                echo "$version == $tag so there is no [[ .WorkaroundTagPrefix ]]v removed skipping"
                 continue
             fi
 [[- end ]]
