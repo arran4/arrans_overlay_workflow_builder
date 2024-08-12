@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -37,6 +38,7 @@ type BinaryReleaseFileInfo struct {
 	Document         bool
 	AppImage         bool
 	Container        *BinaryReleaseFileInfo
+	DirectoryName    string
 
 	// Compiled only
 	Containers []string
@@ -200,7 +202,6 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		if len(unknownSymbols) > 0 {
 			return nil, fmt.Errorf("unknown %s dependencies: %s", binary.Filename, strings.Join(unknownSymbols, ", "))
 		}
-
 	}
 	if len(alternativeUses) > 0 {
 		sort.Strings(alternativeUses)
@@ -268,10 +269,11 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 			if err != nil {
 				return archivedFiles, fmt.Errorf("extracting file %s from %s: %w", zfh.Name, url, err)
 			}
-			_, fn := path.Split(zfh.Name)
+			dir, fn := path.Split(zfh.Name)
 			archivedFiles = append(archivedFiles, &BinaryReleaseFileInfo{
 				Container:       brfi,
 				ArchivePathname: zfh.Name,
+				DirectoryName:   dir,
 				Filename:        fn,
 				tempFile:        tmpFile,
 				ReleaseAsset:    brfi.ReleaseAsset,
@@ -302,11 +304,12 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 					log.Printf("error closing zip file %s from %s: %s", f.Name, url, err)
 				}
 			}()
-			_, fn := path.Split(f.Name)
+			dir, fn := path.Split(f.Name)
 			archivedFiles = append(archivedFiles, &BinaryReleaseFileInfo{
 				Container:       brfi,
 				ArchivePathname: f.Name,
 				Filename:        fn,
+				DirectoryName:   dir,
 				tempFile:        tmpFile,
 				ReleaseAsset:    brfi.ReleaseAsset,
 				ExecutableBit:   (f.Mode().Perm() & 0o500) == 0o500,
@@ -446,13 +449,22 @@ func (bases BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenameP
 		Root:                     root,
 	}
 	for _, base := range bases {
-		log.Printf("What is %s?", base.Filename)
+		log.Printf("What is %s%s?", base.DirectoryName, base.Filename)
+		var directoryParts []*FilenamePartMeaning
+		for _, dirName := range filepath.SplitList(base.DirectoryName) {
+			switch dirName {
+			case "/", "", "./":
+				continue
+			}
+			dirName = strings.TrimSuffix(dirName, "/")
+			directoryParts = append(directoryParts, DecodeFilename(wordMap, dirName)...)
+		}
 		results := DecodeFilename(wordMap, base.Filename)
 		if len(results) == 0 {
 			log.Printf("Can't decode %s", base.Filename)
 			continue
 		}
-		compiled, ok := base.CompileMeanings(results)
+		compiled, ok := base.CompileMeanings(append(directoryParts, results...))
 		if !ok {
 			log.Printf("Can't simplify %s", base.Filename)
 			continue
@@ -525,6 +537,7 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning)
 		result.KeywordDefaulted = brfi.KeywordDefaulted
 		result.Toolchain = brfi.Toolchain
 		result.tempFile = brfi.tempFile
+		result.ShellCompletionFile = brfi.ShellCompletionFile
 		result.ExecutableBit = brfi.ExecutableBit
 		result.Binary = brfi.ExecutableBit
 		if brfi.Container != nil {
