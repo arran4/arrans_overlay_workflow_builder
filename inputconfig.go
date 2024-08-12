@@ -350,40 +350,40 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	if err != nil {
 		return nil, fmt.Errorf("on Type: %v: %w", parsedFields["Type"], err)
 	}
+	currentConfig.GithubProjectUrl, err = onlyOrFail(parsedFields["GithubProjectUrl"])
+	if err != nil {
+		return nil, fmt.Errorf("on GithubProjectUrl: %v: %w", parsedFields["GithubProjectUrl"], err)
+	}
+	currentConfig.Category, err = emptyOrLast(parsedFields["Category"])
+	if err != nil {
+		return nil, fmt.Errorf("on Category: %v: %w", parsedFields["Category"], err)
+	}
+	currentConfig.EbuildName, err = emptyOrOnlyOrFail(parsedFields["EbuildName"])
+	if err != nil {
+		return nil, fmt.Errorf("on EbuildName: %v: %w", parsedFields["EbuildName"], err)
+	}
+	currentConfig.Description, err = emptyOrOnlyOrFail(parsedFields["Description"])
+	if err != nil {
+		return nil, fmt.Errorf("on Description: %v: %w", parsedFields["Description"], err)
+	}
+	currentConfig.Homepage, err = emptyOrOnlyOrFail(parsedFields["Homepage"])
+	if err != nil {
+		return nil, fmt.Errorf("on Homepage: %v: %w", parsedFields["Homepage"], err)
+	}
+	currentConfig.License, err = emptyOrLast(parsedFields["License"])
+	if err != nil {
+		return nil, fmt.Errorf("on License: %v: %w", parsedFields["License"], err)
+	}
+	currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
+	if err != nil {
+		return nil, fmt.Errorf("github url parser: %w", err)
+	}
+	currentConfig.Workarounds, err = parseOptionalMapType1(parsedFields["Workaround"])
+	if err != nil {
+		return nil, fmt.Errorf("on Workarounds: %v: %w", parsedFields["Workaround"], err)
+	}
 	switch currentConfig.Type {
 	case "Github AppImage Release":
-		currentConfig.GithubProjectUrl, err = onlyOrFail(parsedFields["GithubProjectUrl"])
-		if err != nil {
-			return nil, fmt.Errorf("on GithubProjectUrl: %v: %w", parsedFields["GithubProjectUrl"], err)
-		}
-		currentConfig.Category, err = emptyOrLast(parsedFields["Category"])
-		if err != nil {
-			return nil, fmt.Errorf("on Category: %v: %w", parsedFields["Category"], err)
-		}
-		currentConfig.EbuildName, err = emptyOrOnlyOrFail(parsedFields["EbuildName"])
-		if err != nil {
-			return nil, fmt.Errorf("on EbuildName: %v: %w", parsedFields["EbuildName"], err)
-		}
-		currentConfig.Description, err = emptyOrOnlyOrFail(parsedFields["Description"])
-		if err != nil {
-			return nil, fmt.Errorf("on Description: %v: %w", parsedFields["Description"], err)
-		}
-		currentConfig.Homepage, err = emptyOrOnlyOrFail(parsedFields["Homepage"])
-		if err != nil {
-			return nil, fmt.Errorf("on Homepage: %v: %w", parsedFields["Homepage"], err)
-		}
-		currentConfig.License, err = emptyOrLast(parsedFields["License"])
-		if err != nil {
-			return nil, fmt.Errorf("on License: %v: %w", parsedFields["License"], err)
-		}
-		currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
-		if err != nil {
-			return nil, fmt.Errorf("github url parser: %w", err)
-		}
-		currentConfig.Workarounds, err = parseOptionalMapType1(parsedFields["Workaround"])
-		if err != nil {
-			return nil, fmt.Errorf("on Workarounds: %v: %w", parsedFields["Workaround"], err)
-		}
 		if currentConfig.EbuildName == "" {
 			currentConfig.EbuildName = currentConfig.GithubRepo
 		}
@@ -391,25 +391,33 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 		if currentConfig.Programs == nil {
 			currentConfig.Programs = map[string]*Program{}
 		}
-		program, err := currentConfig.CreateAndSanitizeInputConfigProgram("", parsedFields)
+	case "Github Binary Release":
+		if currentConfig.EbuildName == "" {
+			currentConfig.EbuildName = currentConfig.GithubRepo
+		}
+		currentConfig.EbuildName = util.TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-bin") + "-bin.ebuild"
+		if currentConfig.Programs == nil {
+			currentConfig.Programs = map[string]*Program{}
+		}
+	default:
+		return nil, fmt.Errorf("uknown type: %s", currentConfig.Type)
+	}
+	program, err := currentConfig.CreateAndSanitizeInputConfigProgram("", parsedFields)
+	if err != nil {
+		return nil, err
+	}
+	if program != nil && !program.IsEmpty() {
+		currentConfig.Programs[""] = program
+	}
+
+	for programName, programFields := range parsedProgramFields {
+		program, err := currentConfig.CreateAndSanitizeInputConfigProgram(programName, programFields)
 		if err != nil {
 			return nil, err
 		}
 		if program != nil && !program.IsEmpty() {
-			currentConfig.Programs[""] = program
+			currentConfig.Programs[program.ProgramName] = program
 		}
-
-		for programName, programFields := range parsedProgramFields {
-			program, err := currentConfig.CreateAndSanitizeInputConfigProgram(programName, programFields)
-			if err != nil {
-				return nil, err
-			}
-			if program != nil && !program.IsEmpty() {
-				currentConfig.Programs[program.ProgramName] = program
-			}
-		}
-	default:
-		return nil, fmt.Errorf("uknown type: %s", currentConfig.Type)
 	}
 	configs = append(configs, currentConfig)
 	return configs, nil
@@ -423,18 +431,6 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 		ProgramName: programName,
 	}
 	var err error
-	program.DesktopFile, err = emptyOrOnlyOrFail(programFields["DesktopFile"])
-	if err != nil {
-		return nil, fmt.Errorf("on DesktopFile: %v: %w", programFields["DesktopFile"], err)
-	}
-	program.Icons, err = emptyOrAppendStringArray(program.Icons, programFields["Icons"])
-	if err != nil {
-		return nil, fmt.Errorf("on Icons: %v: %w", programFields["Icons"], err)
-	}
-	program.Docs, err = emptyOrAppendStringArray(program.Docs, programFields["Docs"])
-	if err != nil {
-		return nil, fmt.Errorf("on Docs: %v: %w", programFields["Docs"], err)
-	}
 	program.Dependencies, err = emptyOrAppendStringArray(program.Dependencies, programFields["Dependencies"])
 	if err != nil {
 		return nil, fmt.Errorf("on Dependencies: %v: %w", programFields["Dependencies"], err)
@@ -443,11 +439,29 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 	if err != nil {
 		return nil, fmt.Errorf("on Binary: %v: %w", programFields["Binary"], err)
 	}
-	if DefaultDesktopFileEnabled && program.DesktopFile == "" {
-		program.DesktopFile = ic.GithubRepo
-	}
-	if program.DesktopFile != "" {
-		program.DesktopFile = util.TrimSuffixes(program.DesktopFile, ".desktop") + ".desktop"
+	switch ic.Type {
+	case "Github AppImage Release":
+		program.DesktopFile, err = emptyOrOnlyOrFail(programFields["DesktopFile"])
+		if err != nil {
+			return nil, fmt.Errorf("on DesktopFile: %v: %w", programFields["DesktopFile"], err)
+		}
+		program.Icons, err = emptyOrAppendStringArray(program.Icons, programFields["Icons"])
+		if err != nil {
+			return nil, fmt.Errorf("on Icons: %v: %w", programFields["Icons"], err)
+		}
+		if DefaultDesktopFileEnabled && program.DesktopFile == "" {
+			program.DesktopFile = ic.GithubRepo
+		}
+		if program.DesktopFile != "" {
+			program.DesktopFile = util.TrimSuffixes(program.DesktopFile, ".desktop") + ".desktop"
+		}
+	case "Github Binary Release":
+		program.Docs, err = emptyOrAppendStringArray(program.Docs, programFields["Docs"])
+		if err != nil {
+			return nil, fmt.Errorf("on Docs: %v: %w", programFields["Docs"], err)
+		}
+	default:
+		return nil, fmt.Errorf("uknown type: %s", ic.Type)
 	}
 	return program, nil
 }
@@ -483,6 +497,7 @@ func (ic *InputConfig) Validate() error {
 		case "Semantic Version Without V":
 		case "Semantic Version Prerelease Hack 1":
 		case "Tag Prefix":
+		case "Programs as Alternatives":
 		default:
 			return fmt.Errorf("unknown workaround: %s", workaround)
 		}
@@ -659,7 +674,8 @@ func NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, ebuildSuffix
 			return "", nil, nil, nil, nil, nil, fmt.Errorf("github list releases fetch: %w", err)
 		}
 		for _, release := range releasesList {
-			tag := release.GetTagName()
+			originalTag := release.GetTagName()
+			tag := originalTag
 			if tagPrefix != "" {
 				if !strings.HasPrefix(tag, tagPrefix) {
 					continue
@@ -684,7 +700,8 @@ func NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, ebuildSuffix
 			}
 		}
 
-		tag := releaseInfo.GetTagName()
+		originalTag := releaseInfo.GetTagName()
+		tag := originalTag
 		if tagPrefix != "" {
 			if !strings.HasPrefix(tag, tagPrefix) {
 				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, tagPrefix)
@@ -697,10 +714,10 @@ func NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, ebuildSuffix
 			return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag parse %s: %w", tag, err)
 		}
 		if strings.HasPrefix(tag, "v") {
-			tags = []string{tag}
+			tags = []string{originalTag}
 			versions = []string{v.String()}
 		} else {
-			tags = []string{tag}
+			tags = []string{originalTag}
 			ic.Workarounds["Semantic Version Without V"] = ""
 		}
 	} else {
