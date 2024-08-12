@@ -70,7 +70,7 @@ func TestParseConfigFile(t *testing.T) {
 					ProgramName:  "",
 					DesktopFile:  "jan.desktop",
 					Icons:        []string{},
-					Docs:         []string{},
+					Docs:         nil,
 					Dependencies: []string{"dev-libs/libappindicator"},
 					Binary: map[string][]string{
 						"amd64": {"jan-linux-x86_64-${VERSION}.AppImage", "jan"},
@@ -92,7 +92,7 @@ func TestParseConfigFile(t *testing.T) {
 				"": {
 					ProgramName:  "",
 					Icons:        []string{"hicolor-apps", "root"},
-					Docs:         []string{},
+					Docs:         nil,
 					Dependencies: []string{},
 					Binary: map[string][]string{
 						"amd64": {"anotherrepo-${VERSION}.AppImage", "anotherapp"},
@@ -115,7 +115,7 @@ func TestParseConfigFile(t *testing.T) {
 					ProgramName:  "",
 					Icons:        []string{},
 					Dependencies: []string{},
-					Docs:         []string{},
+					Docs:         nil,
 					Binary: map[string][]string{
 						"amd64": {"appimagetool-838-x86_64.AppImage", "appimagetool.AppImage"},
 					},
@@ -124,7 +124,7 @@ func TestParseConfigFile(t *testing.T) {
 					ProgramName:  "appimaged",
 					Icons:        []string{},
 					Docs:         []string{},
-					Dependencies: []string{},
+					Dependencies: nil,
 					Binary: map[string][]string{
 						"amd64": {"appimaged-838-x86_64.AppImage", "appimaged.AppImage"},
 					},
@@ -132,7 +132,7 @@ func TestParseConfigFile(t *testing.T) {
 				"mkappimage": {
 					ProgramName:  "mkappimage",
 					Icons:        []string{},
-					Docs:         []string{},
+					Docs:         nil,
 					Dependencies: []string{},
 					Binary: map[string][]string{
 						"amd64": {"mkappimage-838-x86_64.AppImage", "mkappimage.AppImage"},
