@@ -90,8 +90,8 @@ func ConfigViewAppImageGithubReleases(gitRepo, tagOverride, tagPrefix string) er
 	return nil
 }
 
-func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string) (*InputConfig, error) {
-	repoName, ic, versions, tags, releaseInfo, config, err := NewInputConfigurationFromRepo(gitRepo, tagOverride, prefix, "-appimage", "Github AppImage Release")
+func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix string) (*InputConfig, error) {
+	repoName, ic, versions, tags, releaseInfo, config, err := NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, "-appimage", "Github AppImage Release")
 	if err != nil {
 		return config, err
 	}
