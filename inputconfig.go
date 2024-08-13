@@ -22,12 +22,14 @@ var (
 )
 
 type Program struct {
-	ProgramName  string
-	Binary       map[string][]string
-	DesktopFile  string
-	Icons        []string
-	Docs         []string
-	Dependencies []string
+	ProgramName            string
+	Binary                 map[string][]string
+	DesktopFile            string
+	Icons                  []string
+	Documents              map[string][]string
+	ManualPage             map[string][]string
+	ShellCompletionScripts map[string]map[string][]string
+	Dependencies           []string
 }
 
 func (p *Program) HasDesktopFile() bool {
@@ -65,28 +67,52 @@ func (p *Program) String() string {
 	if len(p.Icons) > 0 {
 		sb.WriteString(fmt.Sprintf("Icons %s\n", strings.Join(p.Icons, " ")))
 	}
-	if len(p.Docs) > 0 {
-		sb.WriteString(fmt.Sprintf("Docs %s\n", strings.Join(p.Docs, " ")))
-	}
 	if len(p.Dependencies) > 0 {
 		sb.WriteString(fmt.Sprintf("Dependencies %s\n", strings.Join(p.Dependencies, " ")))
 	}
-	keywords := make([]string, 0, len(p.Binary))
-	for key := range p.Binary {
+	MapStringer(&sb, "Document", p.Documents)
+	MapStringer(&sb, "ManualPage", p.ManualPage)
+	DoubleMapStringer(&sb, "ShellCompletionScript", p.ShellCompletionScripts)
+	MapStringer(&sb, "Binary", p.Binary)
+	return sb.String()
+}
+
+func MapStringer(sb *strings.Builder, key string, valueMap map[string][]string) {
+	keywords := make([]string, 0, len(valueMap))
+	for key := range valueMap {
 		keywords = append(keywords, key)
 	}
 	sort.Strings(keywords)
 	for _, kw := range keywords {
-		sb.WriteString(fmt.Sprintf("Binary %s=>%s\n", kw, strings.Join(p.Binary[kw], " > ")))
+		sb.WriteString(fmt.Sprintf("%s %s=>%s\n", key, kw, strings.Join(valueMap[kw], " > ")))
 	}
-	return sb.String()
+}
+
+func DoubleMapStringer(sb *strings.Builder, key string, valueMap map[string]map[string][]string) {
+	keywords := make([]string, 0, len(valueMap))
+	for key := range valueMap {
+		keywords = append(keywords, key)
+	}
+	sort.Strings(keywords)
+	for _, kw := range keywords {
+		subKeywords := make([]string, 0, len(valueMap[kw]))
+		for subKey := range valueMap[kw] {
+			subKeywords = append(subKeywords, subKey)
+		}
+		sort.Strings(subKeywords)
+		for _, skw := range subKeywords {
+			sb.WriteString(fmt.Sprintf("%s %s:%s=>%s\n", key, kw, skw, strings.Join(valueMap[kw][skw], " > ")))
+		}
+	}
 }
 
 func (p *Program) IsEmpty() bool {
 	return len(p.Binary) == 0 &&
 		len(p.DesktopFile) == 0 &&
 		len(p.Icons) == 0 &&
-		len(p.Docs) == 0 &&
+		len(p.Documents) == 0 &&
+		len(p.ManualPage) == 0 &&
+		len(p.ShellCompletionScripts) == 0 &&
 		len(p.Dependencies) == 0
 }
 
@@ -241,20 +267,22 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 
 		if parseFields == nil {
 			parseFields = map[string][]string{
-				"Type":             nil,
-				"GithubProjectUrl": nil,
-				"Category":         {DefaultCategory},
-				"EbuildName":       nil,
-				"Description":      nil,
-				"Homepage":         nil,
-				"License":          {DefaultLicense},
-				"ProgramName":      nil,
-				"DesktopFile":      nil,
-				"Icons":            nil,
-				"Docs":             nil,
-				"Dependencies":     nil,
-				"Workaround":       nil,
-				"Binary":           nil,
+				"Type":                  nil,
+				"GithubProjectUrl":      nil,
+				"Category":              {DefaultCategory},
+				"EbuildName":            nil,
+				"Description":           nil,
+				"Homepage":              nil,
+				"License":               {DefaultLicense},
+				"ProgramName":           nil,
+				"DesktopFile":           nil,
+				"Icons":                 nil,
+				"ManualPage":            nil,
+				"Document":              nil,
+				"ShellCompletionScript": nil,
+				"Dependencies":          nil,
+				"Workaround":            nil,
+				"Binary":                nil,
 			}
 			parseProgramFields = map[string]map[string][]string{}
 			lastProgramName = ""
@@ -276,12 +304,14 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 					if prefix == "ProgramName" {
 						lastProgramName = value
 						parseProgramFields[lastProgramName] = map[string][]string{
-							"ProgramName":  {value},
-							"DesktopFile":  nil,
-							"Dependencies": nil,
-							"Icons":        nil,
-							"Docs":         nil,
-							"Binary":       nil,
+							"ProgramName":           {value},
+							"DesktopFile":           nil,
+							"Dependencies":          nil,
+							"Icons":                 nil,
+							"ManualPage":            nil,
+							"Document":              nil,
+							"ShellCompletionScript": nil,
+							"Binary":                nil,
 						}
 					}
 					parseProgramFields[lastProgramName][prefix] = append(parseProgramFields[lastProgramName][prefix], value)
@@ -307,12 +337,14 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 					if prefix == "ProgramName" {
 						lastProgramName = value
 						parseProgramFields[lastProgramName] = map[string][]string{
-							"ProgramName":  {value},
-							"DesktopFile":  nil,
-							"Icons":        nil,
-							"Docs":         nil,
-							"Dependencies": nil,
-							"Binary":       nil,
+							"ProgramName":           {value},
+							"DesktopFile":           nil,
+							"Icons":                 nil,
+							"ManualPage":            nil,
+							"Document":              nil,
+							"ShellCompletionScript": nil,
+							"Dependencies":          nil,
+							"Binary":                nil,
 						}
 					}
 					parseFields[prefix] = append(parseFields[prefix], value)
@@ -456,9 +488,17 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 			program.DesktopFile = util.TrimSuffixes(program.DesktopFile, ".desktop") + ".desktop"
 		}
 	case "Github Binary Release":
-		program.Docs, err = emptyOrAppendStringArray(program.Docs, programFields["Docs"])
+		program.Documents, err = parseMapStringListType1(programFields["Document"])
 		if err != nil {
-			return nil, fmt.Errorf("on Docs: %v: %w", programFields["Docs"], err)
+			return nil, fmt.Errorf("on Document: %v: %w", programFields["Document"], err)
+		}
+		program.ManualPage, err = parseMapStringListType1(programFields["ManualPage"])
+		if err != nil {
+			return nil, fmt.Errorf("on ManualPage: %v: %w", programFields["ManualPage"], err)
+		}
+		program.ShellCompletionScripts, err = parseDoubleMapStringListType1(programFields["ShellCompletionScript"])
+		if err != nil {
+			return nil, fmt.Errorf("on ShellCompletionScript: %v: %w", programFields["ShellCompletionScript"], err)
 		}
 	default:
 		return nil, fmt.Errorf("uknown type: %s", ic.Type)
@@ -526,6 +566,29 @@ func parseMapStringListType1(a []string) (map[string][]string, error) {
 		}
 		for _, e := range strings.Split(strings.TrimSpace(s[1]), ">") {
 			result[strings.TrimSpace(s[0])] = append(result[strings.TrimSpace(s[0])], strings.TrimSpace(e))
+		}
+	}
+	return result, nil
+}
+
+func parseDoubleMapStringListType1(a []string) (map[string]map[string][]string, error) {
+	result := make(map[string]map[string][]string, len(a))
+	for i, line := range a {
+		kvSplit := strings.SplitN(line, "=>", 2)
+		if len(kvSplit) != 2 {
+			return nil, fmt.Errorf("entry %d, can't split %#v", i, line)
+		}
+		keySplit := strings.Split(kvSplit[0], ":")
+		if len(kvSplit) != 2 {
+			return nil, fmt.Errorf("entry %d, can't split key %#v", i, kvSplit[0])
+		}
+		for _, eps := range strings.Split(strings.TrimSpace(kvSplit[1]), ">") {
+			keySplit1 := strings.TrimSpace(keySplit[0])
+			keySplit2 := strings.TrimSpace(keySplit[1])
+			if _, ok := result[keySplit1]; !ok {
+				result[keySplit1] = make(map[string][]string)
+			}
+			result[keySplit1][keySplit2] = append(result[keySplit1][keySplit2], strings.TrimSpace(eps))
 		}
 	}
 	return result, nil

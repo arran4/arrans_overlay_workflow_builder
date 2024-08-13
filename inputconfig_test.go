@@ -37,6 +37,24 @@ ProgramName appimaged
 Binary amd64=> appimaged-838-x86_64.AppImage > appimaged.AppImage 
 ProgramName mkappimage
 Binary amd64=>mkappimage-838-x86_64.AppImage > mkappimage.AppImage
+
+Type Github Binary Release
+GithubProjectUrl https://github.com/goreleaser/goreleaser
+Category dev-go
+EbuildName goreleaser-bin
+Description Deliver Go binaries as fast and easily as possible
+Homepage https://goreleaser.com
+License MIT License
+ShellCompletionScript amd64:bash=>goreleaser_Linux_x86_64.tar.gz > completion/goreleaser.bash > goreleaser.bash
+ShellCompletionScript amd64:fish=>goreleaser_Linux_x86_64.tar.gz > completion/goreleaser.fish > goreleaser.fish
+ShellCompletionScript arm:bash=>goreleaser_Linux_armv7.tar.gz > completion/goreleaser.bash > goreleaser.bash
+ShellCompletionScript arm:fish=>goreleaser_Linux_armv7.tar.gz > completion/goreleaser.fish > goreleaser.fish
+Binary amd64=>goreleaser_Linux_x86_64.tar.gz > goreleaser > goreleaser
+Binary arm=>goreleaser_Linux_armv7.tar.gz > goreleaser > goreleaser
+Binary arm64=>goreleaser_Linux_arm64.tar.gz > goreleaser > goreleaser
+Binary ppc64=>goreleaser_Linux_ppc64.tar.gz > goreleaser > goreleaser
+Binary x86=>goreleaser_Linux_i386.tar.gz > goreleaser > goreleaser
+
 `
 
 func TestParseConfigFile(t *testing.T) {
@@ -44,7 +62,7 @@ func TestParseConfigFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error parsing config file: %v", err)
 	}
-	entryCount := 3
+	entryCount := 4
 	if len(configs) != entryCount {
 		t.Fatalf("expected %d config entries, got %d", entryCount, len(configs))
 	}
@@ -70,7 +88,6 @@ func TestParseConfigFile(t *testing.T) {
 					ProgramName:  "",
 					DesktopFile:  "jan.desktop",
 					Icons:        []string{},
-					Docs:         nil,
 					Dependencies: []string{"dev-libs/libappindicator"},
 					Binary: map[string][]string{
 						"amd64": {"jan-linux-x86_64-${VERSION}.AppImage", "jan"},
@@ -92,7 +109,6 @@ func TestParseConfigFile(t *testing.T) {
 				"": {
 					ProgramName:  "",
 					Icons:        []string{"hicolor-apps", "root"},
-					Docs:         nil,
 					Dependencies: []string{},
 					Binary: map[string][]string{
 						"amd64": {"anotherrepo-${VERSION}.AppImage", "anotherapp"},
@@ -115,7 +131,6 @@ func TestParseConfigFile(t *testing.T) {
 					ProgramName:  "",
 					Icons:        []string{},
 					Dependencies: []string{},
-					Docs:         nil,
 					Binary: map[string][]string{
 						"amd64": {"appimagetool-838-x86_64.AppImage", "appimagetool.AppImage"},
 					},
@@ -123,7 +138,6 @@ func TestParseConfigFile(t *testing.T) {
 				"appimaged": {
 					ProgramName:  "appimaged",
 					Icons:        []string{},
-					Docs:         nil,
 					Dependencies: []string{},
 					Binary: map[string][]string{
 						"amd64": {"appimaged-838-x86_64.AppImage", "appimaged.AppImage"},
@@ -132,11 +146,47 @@ func TestParseConfigFile(t *testing.T) {
 				"mkappimage": {
 					ProgramName:  "mkappimage",
 					Icons:        []string{},
-					Docs:         nil,
 					Dependencies: []string{},
 					Binary: map[string][]string{
 						"amd64": {"mkappimage-838-x86_64.AppImage", "mkappimage.AppImage"},
 					},
+				},
+			},
+		},
+		&InputConfig{
+			EntryNumber:      0,
+			Type:             "Github Binary Release",
+			GithubProjectUrl: "https://github.com/goreleaser/goreleaser",
+			Category:         "dev-go",
+			EbuildName:       "goreleaser-bin.ebuild",
+			Description:      "Deliver Go binaries as fast and easily as possible",
+			Homepage:         "https://goreleaser.com",
+			GithubRepo:       "goreleaser",
+			GithubOwner:      "goreleaser",
+			License:          "MIT License",
+			Workarounds:      map[string]string{},
+			Programs: map[string]*Program{
+				"": {
+					Binary: map[string][]string{
+						"amd64": {"goreleaser_Linux_x86_64.tar.gz", "goreleaser", "goreleaser"},
+						"arm":   {"goreleaser_Linux_armv7.tar.gz", "goreleaser", "goreleaser"},
+						"arm64": {"goreleaser_Linux_arm64.tar.gz", "goreleaser", "goreleaser"},
+						"ppc64": {"goreleaser_Linux_ppc64.tar.gz", "goreleaser", "goreleaser"},
+						"x86":   {"goreleaser_Linux_i386.tar.gz", "goreleaser", "goreleaser"},
+					},
+					ShellCompletionScripts: map[string]map[string][]string{
+						"amd64": {
+							"bash": {"goreleaser_Linux_x86_64.tar.gz", "completion/goreleaser.bash", "goreleaser.bash"},
+							"fish": {"goreleaser_Linux_x86_64.tar.gz", "completion/goreleaser.fish", "goreleaser.fish"},
+						},
+						"arm": {
+							"bash": {"goreleaser_Linux_armv7.tar.gz", "completion/goreleaser.bash", "goreleaser.bash"},
+							"fish": {"goreleaser_Linux_armv7.tar.gz", "completion/goreleaser.fish", "goreleaser.fish"},
+						},
+					},
+					Documents:    map[string][]string{},
+					ManualPage:   map[string][]string{},
+					Dependencies: []string{},
 				},
 			},
 		},
@@ -153,32 +203,38 @@ func TestParseConfigFile(t *testing.T) {
 }
 
 func TestConfigString(t *testing.T) {
-	config := &InputConfig{
-		EntryNumber:      0,
-		Type:             "Github AppImage Release",
-		GithubProjectUrl: "https://github.com/janhq/jan/",
-		Category:         "app-misc",
-		EbuildName:       "jan-appimage.ebuild",
-		Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
-		Homepage:         "https://jan.ai/",
-		Workarounds: map[string]string{
-			"Test Workaround":            "",
-			"Test Workaround with value": "Values",
-		},
-		Programs: map[string]*Program{
-			"": {
-				ProgramName:  "",
-				DesktopFile:  "jan.desktop",
-				Dependencies: []string{"dev-libs/libappindicator"},
-				Binary: map[string][]string{
-					"amd64": {"anotherrepo-${VERSION}.AppImage", "jan"},
+	for _, test := range []struct {
+		name   string
+		config *InputConfig
+		want   string
+	}{
+		{
+			name: "jan-appimage",
+			config: &InputConfig{
+				EntryNumber:      0,
+				Type:             "Github AppImage Release",
+				GithubProjectUrl: "https://github.com/janhq/jan/",
+				Category:         "app-misc",
+				EbuildName:       "jan-appimage.ebuild",
+				Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
+				Homepage:         "https://jan.ai/",
+				Workarounds: map[string]string{
+					"Test Workaround":            "",
+					"Test Workaround with value": "Values",
 				},
-				Icons: []string{"hicolor-apps", "root"},
+				Programs: map[string]*Program{
+					"": {
+						ProgramName:  "",
+						DesktopFile:  "jan.desktop",
+						Dependencies: []string{"dev-libs/libappindicator"},
+						Binary: map[string][]string{
+							"amd64": {"anotherrepo-${VERSION}.AppImage", "jan"},
+						},
+						Icons: []string{"hicolor-apps", "root"},
+					},
+				},
 			},
-		},
-	}
-
-	expected := `Type Github AppImage Release
+			want: `Type Github AppImage Release
 GithubProjectUrl https://github.com/janhq/jan/
 Category app-misc
 EbuildName jan-appimage.ebuild
@@ -190,10 +246,65 @@ DesktopFile jan.desktop
 Icons hicolor-apps root
 Dependencies dev-libs/libappindicator
 Binary amd64=>anotherrepo-${VERSION}.AppImage > jan
-`
-
-	result := config.String()
-	if diff := cmp.Diff(result, expected); diff != "" {
-		t.Errorf("InputConfig.String() = \n%s", diff)
+`,
+		},
+		{
+			name: "goreleaser-bin",
+			config: &InputConfig{
+				EntryNumber:      0,
+				Type:             "Github Binary Release",
+				GithubProjectUrl: "https://github.com/goreleaser/goreleaser",
+				Category:         "dev-go",
+				EbuildName:       "goreleaser-bin",
+				Description:      "Deliver Go binaries as fast and easily as possible",
+				Homepage:         "https://goreleaser.com",
+				License:          "MIT License",
+				Programs: map[string]*Program{
+					"": {
+						Binary: map[string][]string{
+							"amd64": {"goreleaser_Linux_x86_64.tar.gz", "goreleaser", "goreleaser"},
+							"arm":   {"goreleaser_Linux_armv7.tar.gz", "goreleaser", "goreleaser"},
+							"arm64": {"goreleaser_Linux_arm64.tar.gz", "goreleaser", "goreleaser"},
+							"ppc64": {"goreleaser_Linux_ppc64.tar.gz", "goreleaser", "goreleaser"},
+							"x86":   {"goreleaser_Linux_i386.tar.gz", "goreleaser", "goreleaser"},
+						},
+						ShellCompletionScripts: map[string]map[string][]string{
+							"amd64": {
+								"bash": {"goreleaser_Linux_x86_64.tar.gz", "completion/goreleaser.bash", "goreleaser.bash"},
+								"fish": {"goreleaser_Linux_x86_64.tar.gz", "completion/goreleaser.fish", "goreleaser.fish"},
+							},
+							"arm": {
+								"bash": {"goreleaser_Linux_armv7.tar.gz", "completion/goreleaser.bash", "goreleaser.bash"},
+								"fish": {"goreleaser_Linux_armv7.tar.gz", "completion/goreleaser.fish", "goreleaser.fish"},
+							},
+						},
+					},
+				},
+			},
+			want: `Type Github Binary Release
+GithubProjectUrl https://github.com/goreleaser/goreleaser
+Category dev-go
+EbuildName goreleaser-bin
+Description Deliver Go binaries as fast and easily as possible
+Homepage https://goreleaser.com
+License MIT License
+ShellCompletionScript amd64:bash=>goreleaser_Linux_x86_64.tar.gz > completion/goreleaser.bash > goreleaser.bash
+ShellCompletionScript amd64:fish=>goreleaser_Linux_x86_64.tar.gz > completion/goreleaser.fish > goreleaser.fish
+ShellCompletionScript arm:bash=>goreleaser_Linux_armv7.tar.gz > completion/goreleaser.bash > goreleaser.bash
+ShellCompletionScript arm:fish=>goreleaser_Linux_armv7.tar.gz > completion/goreleaser.fish > goreleaser.fish
+Binary amd64=>goreleaser_Linux_x86_64.tar.gz > goreleaser > goreleaser
+Binary arm=>goreleaser_Linux_armv7.tar.gz > goreleaser > goreleaser
+Binary arm64=>goreleaser_Linux_arm64.tar.gz > goreleaser > goreleaser
+Binary ppc64=>goreleaser_Linux_ppc64.tar.gz > goreleaser > goreleaser
+Binary x86=>goreleaser_Linux_i386.tar.gz > goreleaser > goreleaser
+`,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			result := test.config.String()
+			if diff := cmp.Diff(result, test.want); diff != "" {
+				t.Errorf("InputConfig.String() = \n%s", diff)
+			}
+		})
 	}
 }
