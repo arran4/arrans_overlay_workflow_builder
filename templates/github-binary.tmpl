@@ -140,13 +140,17 @@ jobs:
 [[- end ]]
 [[- if $.HasCompressedManualPages ]]
                 echo '  if use man; then'
-    [[- range $i, $man := $.CompressedManualPages ]]
-        [[- if ne $man.Keyword "" ]]
-                echo '    if use [[ $man.Keyword ]]; then'
+    [[- range $i, $mans := $.CompressedManualPages ]]
+        [[- if ne $mans.Keyword "" ]]
+                echo '    if use [[ $mans.Keyword ]]; then'
+            [[- range $i, $man := $mans.Grouped ]]
                 echo '      [[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
+            [[- end ]]
                 echo '    fi'
         [[- else ]]
+            [[- range $i, $man := $mans.Grouped ]]
                 echo '    [[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
+            [[- end ]]
         [[- end ]]
     [[- end ]]
                 echo '  fi'
@@ -229,13 +233,17 @@ jobs:
 [[- end ]]
 [[- if $.HasManualPages ]]
                 echo '  if use man; then'
-    [[- range $i, $man := $.ManualPages ]]
-        [[- if ne $man.Keyword "" ]]
-                echo '    if use [[ $man.Keyword ]]; then'
+    [[- range $i, $mans := $.ManualPages ]]
+        [[- if ne $mans.Keyword "" ]]
+                echo '    if use [[ $mans.Keyword ]]; then'
+            [[- range $i, $man := $mans.Grouped ]]
                 echo '      newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
+            [[- end ]]
                 echo '    fi'
         [[- else ]]
+            [[- range $i, $man := $mans.Grouped ]]
                 echo '    newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
+            [[- end ]]
         [[- end ]]
     [[- end ]]
                 echo '  fi'

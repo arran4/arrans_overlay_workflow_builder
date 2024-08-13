@@ -182,21 +182,31 @@ func (kmpr KeywordedManualPageReference) Decompressor() string {
 	return "touch"
 }
 
-func (ggbtd *GenerateGithubBinaryTemplateData) ManualPages() (result []*KeywordedManualPageReference) {
+func (ggbtd *GenerateGithubBinaryTemplateData) ManualPages() (result []KeywordGrouped[*KeywordedManualPageReference]) {
+	m := map[string]int{}
 	for _, p := range ggbtd.Programs {
 		for kw, mps := range p.ManualPage {
 			for _, mp := range mps {
-				result = append(result, (*KeywordedManualPageReference)(&KeywordedFilenameReference{
+				offset, ok := m[kw]
+				if !ok {
+					m[kw] = len(result)
+					offset = m[kw]
+					result = append(result, KeywordGrouped[*KeywordedManualPageReference]{
+						Keyword: kw,
+					})
+				}
+				result[offset].Grouped = append(result[offset].Grouped, (*KeywordedManualPageReference)(&KeywordedFilenameReference{
 					Filepath: mp,
 					Keyword:  kw,
 				}))
 			}
 		}
 	}
-	return
+	return ggbtd.CompressGroupedKeywordedanualPageReference(result)
 }
 
-func (ggbtd *GenerateGithubBinaryTemplateData) CompressedManualPages() (result []*KeywordedManualPageReference) {
+func (ggbtd *GenerateGithubBinaryTemplateData) CompressedManualPages() (result []KeywordGrouped[*KeywordedManualPageReference]) {
+	m := map[string]int{}
 	for _, p := range ggbtd.Programs {
 		for kw, mps := range p.ManualPage {
 			for _, mp := range mps {
@@ -205,12 +215,20 @@ func (ggbtd *GenerateGithubBinaryTemplateData) CompressedManualPages() (result [
 					Keyword:  kw,
 				})
 				if manPage.Compressed() {
-					result = append(result, manPage)
+					offset, ok := m[kw]
+					if !ok {
+						m[kw] = len(result)
+						offset = m[kw]
+						result = append(result, KeywordGrouped[*KeywordedManualPageReference]{
+							Keyword: kw,
+						})
+					}
+					result[offset].Grouped = append(result[offset].Grouped, manPage)
 				}
 			}
 		}
 	}
-	return
+	return ggbtd.CompressGroupedKeywordedanualPageReference(result)
 }
 
 type KeywordGrouped[T any] struct {
@@ -246,6 +264,19 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Documents() (result []KeywordGrou
 
 func (ggbtd *GenerateGithubBinaryTemplateData) CompressGroupedKeywordedFilenameReference(result []KeywordGrouped[*KeywordedFilenameReference]) []KeywordGrouped[*KeywordedFilenameReference] {
 	comparerFunc := func(reference *KeywordedFilenameReference, reference2 *KeywordedFilenameReference) bool {
+		if len(reference.Filepath) == 0 && len(reference2.Filepath) == 0 {
+			return true
+		}
+		if len(reference.Filepath) == 0 || len(reference2.Filepath) == 0 {
+			return false
+		}
+		return slices.Equal(reference.Filepath[1:], reference2.Filepath[1:])
+	}
+	return KeywordGroupCompressor(ggbtd, result, comparerFunc)
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) CompressGroupedKeywordedanualPageReference(result []KeywordGrouped[*KeywordedManualPageReference]) []KeywordGrouped[*KeywordedManualPageReference] {
+	comparerFunc := func(reference *KeywordedManualPageReference, reference2 *KeywordedManualPageReference) bool {
 		if len(reference.Filepath) == 0 && len(reference2.Filepath) == 0 {
 			return true
 		}
