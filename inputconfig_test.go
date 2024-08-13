@@ -45,6 +45,12 @@ EbuildName goreleaser-bin
 Description Deliver Go binaries as fast and easily as possible
 Homepage https://goreleaser.com
 License MIT License
+Document amd64=>goreleaser_Linux_x86_64.tar.gz > LICENSE.md > LICENSE.md
+Document amd64=>goreleaser_Linux_x86_64.tar.gz > README.md > README.md
+Document arm=>goreleaser_Linux_armv7.tar.gz > LICENSE.md > LICENSE.md
+Document arm=>goreleaser_Linux_armv7.tar.gz > README.md > README.md
+ManualPage amd64=>goreleaser_Linux_x86_64.tar.gz > manpages/goreleaser.1.gz > goreleaser.1
+ManualPage arm=>goreleaser_Linux_armv7.tar.gz > manpages/goreleaser.1.gz > goreleaser.1
 ShellCompletionScript amd64:bash=>goreleaser_Linux_x86_64.tar.gz > completion/goreleaser.bash > goreleaser.bash
 ShellCompletionScript amd64:fish=>goreleaser_Linux_x86_64.tar.gz > completion/goreleaser.fish > goreleaser.fish
 ShellCompletionScript arm:bash=>goreleaser_Linux_armv7.tar.gz > completion/goreleaser.bash > goreleaser.bash
@@ -184,8 +190,20 @@ func TestParseConfigFile(t *testing.T) {
 							"fish": {"goreleaser_Linux_armv7.tar.gz", "completion/goreleaser.fish", "goreleaser.fish"},
 						},
 					},
-					Documents:    map[string][]string{},
-					ManualPage:   map[string][]string{},
+					Documents: map[string][][]string{
+						"amd64": {
+							{"goreleaser_Linux_x86_64.tar.gz", "LICENSE.md", "LICENSE.md"},
+							{"goreleaser_Linux_x86_64.tar.gz", "README.md", "README.md"},
+						},
+						"arm": {
+							{"goreleaser_Linux_armv7.tar.gz", "LICENSE.md", "LICENSE.md"},
+							{"goreleaser_Linux_armv7.tar.gz", "README.md", "README.md"},
+						},
+					},
+					ManualPage: map[string][][]string{
+						"amd64": {{"goreleaser_Linux_x86_64.tar.gz", "manpages/goreleaser.1.gz", "goreleaser.1"}},
+						"arm":   {{"goreleaser_Linux_armv7.tar.gz", "manpages/goreleaser.1.gz", "goreleaser.1"}},
+					},
 					Dependencies: []string{},
 				},
 			},
@@ -278,6 +296,20 @@ Binary amd64=>anotherrepo-${VERSION}.AppImage > jan
 								"fish": {"goreleaser_Linux_armv7.tar.gz", "completion/goreleaser.fish", "goreleaser.fish"},
 							},
 						},
+						Documents: map[string][][]string{
+							"amd64": {
+								{"goreleaser_Linux_x86_64.tar.gz", "LICENSE.md", "LICENSE.md"},
+								{"goreleaser_Linux_x86_64.tar.gz", "README.md", "README.md"},
+							},
+							"arm": {
+								{"goreleaser_Linux_armv7.tar.gz", "LICENSE.md", "LICENSE.md"},
+								{"goreleaser_Linux_armv7.tar.gz", "README.md", "README.md"},
+							},
+						},
+						ManualPage: map[string][][]string{
+							"amd64": {{"goreleaser_Linux_x86_64.tar.gz", "manpages/goreleaser.1.gz", "goreleaser.1"}},
+							"arm":   {{"goreleaser_Linux_armv7.tar.gz", "manpages/goreleaser.1.gz", "goreleaser.1"}},
+						},
 					},
 				},
 			},
@@ -288,6 +320,12 @@ EbuildName goreleaser-bin
 Description Deliver Go binaries as fast and easily as possible
 Homepage https://goreleaser.com
 License MIT License
+Document amd64=>goreleaser_Linux_x86_64.tar.gz > LICENSE.md > LICENSE.md
+Document amd64=>goreleaser_Linux_x86_64.tar.gz > README.md > README.md
+Document arm=>goreleaser_Linux_armv7.tar.gz > LICENSE.md > LICENSE.md
+Document arm=>goreleaser_Linux_armv7.tar.gz > README.md > README.md
+ManualPage amd64=>goreleaser_Linux_x86_64.tar.gz > manpages/goreleaser.1.gz > goreleaser.1
+ManualPage arm=>goreleaser_Linux_armv7.tar.gz > manpages/goreleaser.1.gz > goreleaser.1
 ShellCompletionScript amd64:bash=>goreleaser_Linux_x86_64.tar.gz > completion/goreleaser.bash > goreleaser.bash
 ShellCompletionScript amd64:fish=>goreleaser_Linux_x86_64.tar.gz > completion/goreleaser.fish > goreleaser.fish
 ShellCompletionScript arm:bash=>goreleaser_Linux_armv7.tar.gz > completion/goreleaser.bash > goreleaser.bash

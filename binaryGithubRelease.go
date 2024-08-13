@@ -167,8 +167,8 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 			p = &Program{
 				ProgramName:            binary.ProgramName,
 				Binary:                 map[string][]string{},
-				Documents:              map[string][]string{},
-				ManualPage:             map[string][]string{},
+				Documents:              map[string][][]string{},
+				ManualPage:             map[string][][]string{},
 				ShellCompletionScripts: map[string]map[string][]string{},
 				Dependencies:           []string{},
 			}
@@ -209,22 +209,19 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		if binary.container != nil {
 			for _, doc := range binary.container.Documents {
 				if doc.Container != nil {
-					p.Documents[keyword] = append(p.Documents[keyword], doc.Container.Filename)
-					p.Documents[keyword] = append(p.Documents[keyword], doc.ArchivePathname)
+					p.Documents[keyword] = append(p.Documents[keyword], []string{doc.Container.Filename, doc.ArchivePathname, doc.InstalledName})
 				} else {
-					p.Documents[keyword] = append(p.Documents[keyword], doc.Filename)
+					p.Documents[keyword] = append(p.Documents[keyword], []string{doc.Filename, doc.InstalledName})
 				}
-				p.Documents[keyword] = append(p.Documents[keyword], doc.InstalledName)
 			}
 
 			for _, manPage := range binary.container.ManualPages {
+				installedName := strings.TrimSuffix(manPage.InstalledName, "."+strings.Join(manPage.Containers, "."))
 				if manPage.Container != nil {
-					p.ManualPage[keyword] = append(p.ManualPage[keyword], manPage.Container.Filename)
-					p.ManualPage[keyword] = append(p.ManualPage[keyword], manPage.ArchivePathname)
+					p.ManualPage[keyword] = append(p.ManualPage[keyword], []string{manPage.Container.Filename, manPage.ArchivePathname, installedName})
 				} else {
-					p.ManualPage[keyword] = append(p.ManualPage[keyword], manPage.Filename)
+					p.ManualPage[keyword] = append(p.ManualPage[keyword], []string{manPage.Filename, installedName})
 				}
-				p.ManualPage[keyword] = append(p.ManualPage[keyword], strings.TrimSuffix(manPage.InstalledName, "."+strings.Join(manPage.Containers, ".")))
 			}
 
 			for _, scs := range binary.container.ShellCompletionScripts {
@@ -247,7 +244,6 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		alternativeUses = slices.Compact(alternativeUses)
 		ic.Workarounds["Programs as Alternatives"] = strings.Join(alternativeUses, " ")
 	}
-
 	return ic, nil
 }
 
@@ -537,7 +533,7 @@ func (bases BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenameP
 			log.Printf("Can't simplify %s", base.Filename)
 			continue
 		}
-		if len(compiled.Unmatched) > 0 {
+		if len(compiled.Unmatched) > 0 && !compiled.UnmatchedOkay() {
 			log.Printf("Unmatched tokens in name: %s: %#v", base.Filename, compiled.Unmatched)
 			continue
 		}
@@ -763,4 +759,15 @@ func (brfi *BinaryReleaseFileInfo) CheckMaybe() (bool, error) {
 
 func (brfi *BinaryReleaseFileInfo) Free() {
 	brfi.close()
+}
+
+func (brfi *BinaryReleaseFileInfo) UnmatchedOkay() bool {
+	switch {
+	case brfi.Document:
+		return true
+	case brfi.ManualPage != 0:
+		return true
+	default:
+		return false
+	}
 }

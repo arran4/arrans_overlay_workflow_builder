@@ -26,8 +26,8 @@ type Program struct {
 	Binary                 map[string][]string
 	DesktopFile            string
 	Icons                  []string
-	Documents              map[string][]string
-	ManualPage             map[string][]string
+	Documents              map[string][][]string
+	ManualPage             map[string][][]string
 	ShellCompletionScripts map[string]map[string][]string
 	Dependencies           []string
 }
@@ -70,8 +70,8 @@ func (p *Program) String() string {
 	if len(p.Dependencies) > 0 {
 		sb.WriteString(fmt.Sprintf("Dependencies %s\n", strings.Join(p.Dependencies, " ")))
 	}
-	MapStringer(&sb, "Document", p.Documents)
-	MapStringer(&sb, "ManualPage", p.ManualPage)
+	MapDoubleStringer(&sb, "Document", p.Documents)
+	MapDoubleStringer(&sb, "ManualPage", p.ManualPage)
 	DoubleMapStringer(&sb, "ShellCompletionScript", p.ShellCompletionScripts)
 	MapStringer(&sb, "Binary", p.Binary)
 	return sb.String()
@@ -85,6 +85,19 @@ func MapStringer(sb *strings.Builder, key string, valueMap map[string][]string) 
 	sort.Strings(keywords)
 	for _, kw := range keywords {
 		sb.WriteString(fmt.Sprintf("%s %s=>%s\n", key, kw, strings.Join(valueMap[kw], " > ")))
+	}
+}
+
+func MapDoubleStringer(sb *strings.Builder, key string, valueMap map[string][][]string) {
+	keywords := make([]string, 0, len(valueMap))
+	for key := range valueMap {
+		keywords = append(keywords, key)
+	}
+	sort.Strings(keywords)
+	for _, kw := range keywords {
+		for _, values := range valueMap[kw] {
+			sb.WriteString(fmt.Sprintf("%s %s=>%s\n", key, kw, strings.Join(values, " > ")))
+		}
 	}
 }
 
@@ -488,11 +501,11 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 			program.DesktopFile = util.TrimSuffixes(program.DesktopFile, ".desktop") + ".desktop"
 		}
 	case "Github Binary Release":
-		program.Documents, err = parseMapStringListType1(programFields["Document"])
+		program.Documents, err = parseMapDoubleStringListType1(programFields["Document"])
 		if err != nil {
 			return nil, fmt.Errorf("on Document: %v: %w", programFields["Document"], err)
 		}
-		program.ManualPage, err = parseMapStringListType1(programFields["ManualPage"])
+		program.ManualPage, err = parseMapDoubleStringListType1(programFields["ManualPage"])
 		if err != nil {
 			return nil, fmt.Errorf("on ManualPage: %v: %w", programFields["ManualPage"], err)
 		}
@@ -567,6 +580,22 @@ func parseMapStringListType1(a []string) (map[string][]string, error) {
 		for _, e := range strings.Split(strings.TrimSpace(s[1]), ">") {
 			result[strings.TrimSpace(s[0])] = append(result[strings.TrimSpace(s[0])], strings.TrimSpace(e))
 		}
+	}
+	return result, nil
+}
+
+func parseMapDoubleStringListType1(a []string) (map[string][][]string, error) {
+	result := make(map[string][][]string, len(a))
+	for i, v := range a {
+		s := strings.SplitN(v, "=>", 2)
+		if len(s) != 2 {
+			return nil, fmt.Errorf("entry %d, can't split %#v", i, v)
+		}
+		var v []string
+		for _, e := range strings.Split(strings.TrimSpace(s[1]), ">") {
+			v = append(v, strings.TrimSpace(e))
+		}
+		result[strings.TrimSpace(s[0])] = append(result[strings.TrimSpace(s[0])], v)
 	}
 	return result, nil
 }
