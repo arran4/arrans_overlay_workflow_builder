@@ -157,18 +157,71 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ManualPages() (result []*Keyworde
 	return
 }
 
-func (ggbtd *GenerateGithubBinaryTemplateData) Documents() (result []*KeywordedFilenameReference) {
+type KeywordGrouped[T any] struct {
+	Keyword string
+	Grouped []T
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) Documents() (result []KeywordGrouped[*KeywordedFilenameReference]) {
+	m := map[string]int{}
 	for _, p := range ggbtd.Programs {
 		for kw, mps := range p.Documents {
 			for _, mp := range mps {
-				result = append(result, &KeywordedFilenameReference{
+				offset, ok := m[kw]
+				if !ok {
+					m[kw] = len(result)
+					offset = m[kw]
+					result = append(result, KeywordGrouped[*KeywordedFilenameReference]{
+						Keyword: kw,
+					})
+				}
+				result[offset].Grouped = append(result[offset].Grouped, &KeywordedFilenameReference{
 					Filepath: mp,
 					Keyword:  kw,
 				})
 			}
 		}
 	}
-	return
+	slices.SortFunc(result, func(a, b KeywordGrouped[*KeywordedFilenameReference]) int {
+		return strings.Compare(a.Keyword, b.Keyword)
+	})
+	return ggbtd.CompressGroupedKeywordedFilenameReference(result)
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) CompressGroupedKeywordedFilenameReference(result []KeywordGrouped[*KeywordedFilenameReference]) []KeywordGrouped[*KeywordedFilenameReference] {
+	comparerFunc := func(reference *KeywordedFilenameReference, reference2 *KeywordedFilenameReference) bool {
+		if len(reference.Filepath) == 0 && len(reference2.Filepath) == 0 {
+			return true
+		}
+		if len(reference.Filepath) == 0 || len(reference2.Filepath) == 0 {
+			return false
+		}
+		return slices.Equal(reference.Filepath[1:], reference2.Filepath[1:])
+	}
+	return KeywordGroupCompressor(ggbtd, result, comparerFunc)
+}
+
+func KeywordGroupCompressor[T any](ggbtd *GenerateGithubBinaryTemplateData, result []KeywordGrouped[T], comparerFunc func(reference T, reference2 T) bool) []KeywordGrouped[T] {
+	if len(result) == 0 {
+		return result
+	}
+	requiredKeywords := map[string]bool{}
+	for _, kw := range ggbtd.KeywordList() {
+		requiredKeywords[kw] = true
+	}
+	first := result[0]
+	for _, kwg := range result {
+		delete(requiredKeywords, kwg.Keyword)
+		if !slices.EqualFunc(kwg.Grouped, first.Grouped, comparerFunc) {
+			return result
+		}
+	}
+	if len(requiredKeywords) == 0 {
+		return result
+	}
+	return []KeywordGrouped[T]{{
+		Grouped: result[0].Grouped,
+	}}
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) HasShellCompletion(shell string) bool {

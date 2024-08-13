@@ -229,13 +229,17 @@ jobs:
 [[- end ]]
 [[- if $.HasDocuments ]]
                 echo '  if use doc; then'
-    [[- range $i, $doc := $.Documents ]]
-        [[- if ne $doc.Keyword "" ]]
-                echo '    if use [[ $doc.Keyword ]]; then'
+    [[- range $i, $docs := $.Documents ]]
+        [[- if ne $docs.Keyword "" ]]
+                echo '    if use [[ $docs.Keyword ]]; then'
+            [[- range $ii, $doc := $docs.Grouped ]]
                 echo '      newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
+            [[- end ]]
                 echo '    fi'
         [[- else ]]
+            [[- range $ii, $doc := $docs.Grouped ]]
                 echo '    newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
+            [[- end ]]
         [[- end ]]
     [[- end ]]
                 echo '  fi'
