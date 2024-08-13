@@ -116,6 +116,15 @@ func (ggbtd *GenerateGithubBinaryTemplateData) HasManualPages() bool {
 	return false
 }
 
+func (ggbtd *GenerateGithubBinaryTemplateData) HasCompressedManualPages() bool {
+	for _, p := range ggbtd.Programs {
+		if p.HasCompressedManualPages() {
+			return true
+		}
+	}
+	return false
+}
+
 func (ggbtd *GenerateGithubBinaryTemplateData) HasDocuments() bool {
 	for _, p := range ggbtd.Programs {
 		if p.HasDocuments() {
@@ -143,6 +152,36 @@ func (kmpr KeywordedManualPageReference) DestinationFilename() string {
 	return ((*KeywordedFilenameReference)(&kmpr)).DestinationFilename()
 }
 
+func (kmpr KeywordedManualPageReference) Compressed() bool {
+	sf := kmpr.SourceFilepath()
+	switch strings.ToLower(filepath.Ext(sf)) {
+	case ".gz", ".bz2":
+		return true
+	}
+	return false
+}
+
+func (kmpr KeywordedManualPageReference) UncompressedSourceFilepath() string {
+	sf := kmpr.SourceFilepath()
+	ext := filepath.Ext(sf)
+	switch strings.ToLower(ext) {
+	case ".gz", ".bz2":
+		return strings.TrimSuffix(sf, ext)
+	}
+	return sf
+}
+
+func (kmpr KeywordedManualPageReference) Decompressor() string {
+	sf := kmpr.SourceFilepath()
+	switch strings.ToLower(filepath.Ext(sf)) {
+	case ".gz":
+		return "gzip -d"
+	case ".bz2":
+		return "bzip2 -d"
+	}
+	return "touch"
+}
+
 func (ggbtd *GenerateGithubBinaryTemplateData) ManualPages() (result []*KeywordedManualPageReference) {
 	for _, p := range ggbtd.Programs {
 		for kw, mps := range p.ManualPage {
@@ -151,6 +190,23 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ManualPages() (result []*Keyworde
 					Filepath: mp,
 					Keyword:  kw,
 				}))
+			}
+		}
+	}
+	return
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) CompressedManualPages() (result []*KeywordedManualPageReference) {
+	for _, p := range ggbtd.Programs {
+		for kw, mps := range p.ManualPage {
+			for _, mp := range mps {
+				manPage := (*KeywordedManualPageReference)(&KeywordedFilenameReference{
+					Filepath: mp,
+					Keyword:  kw,
+				})
+				if manPage.Compressed() {
+					result = append(result, manPage)
+				}
 			}
 		}
 	}

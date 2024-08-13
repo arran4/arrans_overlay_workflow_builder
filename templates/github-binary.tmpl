@@ -138,6 +138,19 @@ jobs:
                 echo '  fi'
   [[- end ]]
 [[- end ]]
+[[- if $.HasCompressedManualPages ]]
+                echo '  if use man; then'
+    [[- range $i, $man := $.CompressedManualPages ]]
+        [[- if ne $man.Keyword "" ]]
+                echo '    if use [[ $man.Keyword ]]; then'
+                echo '      [[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
+                echo '    fi'
+        [[- else ]]
+                echo '    [[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
+        [[- end ]]
+    [[- end ]]
+                echo '  fi'
+[[- end ]]
                 echo '}'
                 echo ''
                 echo 'src_install() {'
@@ -219,10 +232,10 @@ jobs:
     [[- range $i, $man := $.ManualPages ]]
         [[- if ne $man.Keyword "" ]]
                 echo '    if use [[ $man.Keyword ]]; then'
-                echo '      newman "[[ $man.SourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
+                echo '      newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
                 echo '    fi'
         [[- else ]]
-                echo '    newman "[[ $man.SourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
+                echo '    newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
         [[- end ]]
     [[- end ]]
                 echo '  fi'

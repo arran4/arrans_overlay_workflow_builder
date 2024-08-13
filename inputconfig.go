@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
@@ -134,6 +135,20 @@ func (p *Program) HasManualPage() bool {
 		for _, ee := range e {
 			if len(ee) > 0 {
 				return true
+			}
+		}
+	}
+	return false
+}
+
+func (p *Program) HasCompressedManualPages() bool {
+	for _, e := range p.ManualPage {
+		for _, ee := range e {
+			if len(ee) > 2 {
+				switch strings.ToLower(filepath.Ext(ee[len(ee)-2])) {
+				case ".gz", ".bz2":
+					return true
+				}
 			}
 		}
 	}
