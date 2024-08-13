@@ -40,8 +40,10 @@ func (ggbtd *GenerateGithubBinaryTemplateData) KeywordList() []string {
 func (ggbtd *GenerateGithubBinaryTemplateData) ShellCompletionShells() []string {
 	shells := make([]string, 0)
 	for programName := range ggbtd.Programs {
-		for key := range ggbtd.Programs[programName].Binary {
-			shells = append(shells, key)
+		for _, shellMapping := range ggbtd.Programs[programName].ShellCompletionScripts {
+			for shell := range shellMapping {
+				shells = append(shells, shell)
+			}
 		}
 	}
 	sort.Strings(shells)
