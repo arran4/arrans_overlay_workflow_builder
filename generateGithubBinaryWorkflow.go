@@ -157,6 +157,20 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ManualPages() (result []*Keyworde
 	return
 }
 
+func (ggbtd *GenerateGithubBinaryTemplateData) Documents() (result []*KeywordedFilenameReference) {
+	for _, p := range ggbtd.Programs {
+		for kw, mps := range p.ManualPage {
+			for _, mp := range mps {
+				result = append(result, &KeywordedFilenameReference{
+					Filepath: mp,
+					Keyword:  kw,
+				})
+			}
+		}
+	}
+	return
+}
+
 func (ggbtd *GenerateGithubBinaryTemplateData) HasShellCompletion(shell string) bool {
 	for _, p := range ggbtd.Programs {
 		if p.HasShellCompletion(shell) {

@@ -219,10 +219,23 @@ jobs:
     [[- range $i, $man := $.ManualPages ]]
         [[- if ne $man.Keyword "" ]]
                 echo '    if use [[ $man.Keyword ]]; then'
-                echo '      newman "[[ $man.SourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to powershell completion file"'
+                echo '      newman "[[ $man.SourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
                 echo '    fi'
         [[- else ]]
-                echo '    newman "[[ $man.SourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to powershell completion file"'
+                echo '    newman "[[ $man.SourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
+        [[- end ]]
+    [[- end ]]
+                echo '  fi'
+[[- end ]]
+[[- if $.HasDocuments ]]
+                echo '  if use doc; then'
+    [[- range $i, $doc := $.Documents ]]
+        [[- if ne $doc.Keyword "" ]]
+                echo '    if use [[ $doc.Keyword ]]; then'
+                echo '      newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
+                echo '    fi'
+        [[- else ]]
+                echo '    newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
         [[- end ]]
     [[- end ]]
                 echo '  fi'
