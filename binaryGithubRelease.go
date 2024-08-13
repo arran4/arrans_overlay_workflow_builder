@@ -248,18 +248,6 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		ic.Workarounds["Programs as Alternatives"] = strings.Join(alternativeUses, " ")
 	}
 
-	//for _, doc := range rootFiles.Documents {
-	//
-	//}
-	//
-	//for _, manPage := range rootFiles.ManualPages {
-	//
-	//}
-	//
-	//for _, scs := range rootFiles.ShellCompletionScripts {
-	//
-	//}
-
 	return ic, nil
 }
 
