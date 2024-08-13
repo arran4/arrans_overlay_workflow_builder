@@ -159,7 +159,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ManualPages() (result []*Keyworde
 
 func (ggbtd *GenerateGithubBinaryTemplateData) Documents() (result []*KeywordedFilenameReference) {
 	for _, p := range ggbtd.Programs {
-		for kw, mps := range p.ManualPage {
+		for kw, mps := range p.Documents {
 			for _, mp := range mps {
 				result = append(result, &KeywordedFilenameReference{
 					Filepath: mp,
