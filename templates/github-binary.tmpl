@@ -133,7 +133,8 @@ jobs:
                 echo 'src_unpack() {'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
-                echo '  if [[range $i, $kw := .HaveKeywords]]use [[ $kw ]][[end]][[if and (gt (len .MustntHaveKeywords) 0) (gt (len .HaveKeywords) 0) ]] && [[end]][[range $i, $kw := .MustntHaveKeywords]] && ! use [[ $kw ]] [[end]]; then'
+    [[- $count := 0 ]]
+                echo '  if [[range $i, $kw := .HaveKeywords]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $kw ]][[end]][[range $i, $kw := .MustntHaveKeywords]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $kw ]] [[end]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
   [[- end ]]
