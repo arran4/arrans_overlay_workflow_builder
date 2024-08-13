@@ -123,8 +123,8 @@ func TestParseConfigFile(t *testing.T) {
 				"appimaged": {
 					ProgramName:  "appimaged",
 					Icons:        []string{},
-					Docs:         []string{},
-					Dependencies: nil,
+					Docs:         nil,
+					Dependencies: []string{},
 					Binary: map[string][]string{
 						"amd64": {"appimaged-838-x86_64.AppImage", "appimaged.AppImage"},
 					},
