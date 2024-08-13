@@ -311,6 +311,20 @@ func KeywordGroupCompressor[T any](ggbtd *GenerateGithubBinaryTemplateData, resu
 	}}
 }
 
+func (ggbtd *GenerateGithubBinaryTemplateData) ShellCompletionInstallPath(shell string) (string, error) {
+	switch shell {
+	case "bash":
+		return "/usr/share/bash-completion/completions", nil
+	case "fish":
+		return "/usr/share/fish/vendor_completions.d", nil
+	case "zsh":
+		return "/usr/share/zsh/site-functions", nil
+	case "powershell":
+		return "/usr/share/powershell/Modules", nil
+	}
+	return "", fmt.Errorf("unknown shell: %s", shell)
+}
+
 func (ggbtd *GenerateGithubBinaryTemplateData) HasShellCompletion(shell string) bool {
 	for _, p := range ggbtd.Programs {
 		if p.HasShellCompletion(shell) {
@@ -320,15 +334,24 @@ func (ggbtd *GenerateGithubBinaryTemplateData) HasShellCompletion(shell string) 
 	return false
 }
 
-func (ggbtd *GenerateGithubBinaryTemplateData) ShellCompletion(shell string) []*KeywordedFilenameReference {
-	result := make([]*KeywordedFilenameReference, 0)
+func (ggbtd *GenerateGithubBinaryTemplateData) ShellCompletion(shell string) []KeywordGrouped[*KeywordedFilenameReference] {
+	m := map[string]int{}
+	result := make([]KeywordGrouped[*KeywordedFilenameReference], 0)
 	for _, p := range ggbtd.Programs {
-		v := p.ShellCompletion(shell)
-		if len(v) > 0 {
-			result = append(result, v...)
+		scs := p.ShellCompletion(shell)
+		for _, sc := range scs {
+			offset, ok := m[sc.Keyword]
+			if !ok {
+				m[sc.Keyword] = len(result)
+				offset = m[sc.Keyword]
+				result = append(result, KeywordGrouped[*KeywordedFilenameReference]{
+					Keyword: sc.Keyword,
+				})
+			}
+			result[offset].Grouped = append(result[offset].Grouped, sc)
 		}
 	}
-	return result
+	return ggbtd.CompressGroupedKeywordedFilenameReference(result)
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) IsArchived(keyword string) bool {

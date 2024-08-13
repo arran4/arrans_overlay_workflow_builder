@@ -198,11 +198,11 @@ func (kr *KeywordedFilenameReference) DestinationFilename() string {
 
 func (p *Program) ShellCompletion(shell string) (result []*KeywordedFilenameReference) {
 	for kw, e := range p.ShellCompletionScripts {
-		for shellName, filepath := range e {
+		for shellName, fp := range e {
 			if strings.EqualFold(shellName, shell) {
 				result = append(result, &KeywordedFilenameReference{
 					Keyword:  kw,
-					Filepath: filepath,
+					Filepath: fp,
 				})
 			}
 		}

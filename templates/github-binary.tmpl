@@ -175,58 +175,20 @@ jobs:
 [[- end ]]
 
 
-[[- if $.HasShellCompletion "bash" ]]
-                echo '  if use bash; then'
-                echo '    insinto /usr/share/bash-completion/completions
-    [[- range $i, $file := $.ShellCompletion "bash" ]]
-        [[- if ne $file.Keyword "" ]]
-                echo '    if use [[ $file.Keyword ]]; then'
+[[- range $i, $shell := $.ShellCompletionShells]]
+                echo '  if use [[ $shell ]]; then'
+                echo '    insinto "[[ $.ShellCompletionInstallPath $shell ]]"
+    [[- range $i, $files := $.ShellCompletion $shell ]]
+        [[- if ne $files.Keyword "" ]]
+                echo '    if use [[ $files.Keyword ]]; then'
+            [[- range $i, $file := $files.Grouped ]]
                 echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
+            [[- end ]]
                 echo '    fi'
         [[- else ]]
+            [[- range $i, $file := $files.Grouped ]]
                 echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
-        [[- end ]]
-    [[- end ]]
-                echo '  fi'
-[[- end ]]
-[[- if $.HasShellCompletion "fish" ]]
-                echo '  if use fish; then'
-                echo '    insinto /usr/share/fish/vendor_completions.d
-    [[- range $i, $file := $.ShellCompletion "fish" ]]
-        [[- if ne $file.Keyword "" ]]
-                echo '    if use [[ $file.Keyword ]]; then'
-                echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to fish completion file"'
-                echo '    fi'
-        [[- else ]]
-                echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to fish completion file"'
-        [[- end ]]
-    [[- end ]]
-                echo '  fi'
-[[- end ]]
-[[- if $.HasShellCompletion "zsh" ]]
-                echo '  if use zsh; then'
-                echo '    insinto /usr/share/zsh/site-functions
-    [[- range $i, $file := $.ShellCompletion "zsh" ]]
-        [[- if ne $file.Keyword "" ]]
-                echo '    if use [[ $file.Keyword ]]; then'
-                echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to zsh completion file"'
-                echo '    fi'
-        [[- else ]]
-                echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to zsh completion file"'
-        [[- end ]]
-    [[- end ]]
-                echo '  fi'
-[[- end ]]
-[[- if $.HasShellCompletion "powershell" ]]
-                echo '  if use powershell; then'
-                echo '    insinto /usr/share/powershell/Modules
-    [[- range $i, $file := $.ShellCompletion "powershell" ]]
-        [[- if ne $file.Keyword "" ]]
-                echo '    if use [[ $file.Keyword ]]; then'
-                echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to powershell completion file"'
-                echo '    fi'
-        [[- else ]]
-                echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to powershell completion file"'
+            [[- end ]]
         [[- end ]]
     [[- end ]]
                 echo '  fi'
