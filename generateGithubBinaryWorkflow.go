@@ -216,7 +216,7 @@ func KeywordGroupCompressor[T any](ggbtd *GenerateGithubBinaryTemplateData, resu
 			return result
 		}
 	}
-	if len(requiredKeywords) == 0 {
+	if len(requiredKeywords) != 0 {
 		return result
 	}
 	return []KeywordGrouped[T]{{
