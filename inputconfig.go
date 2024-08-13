@@ -140,6 +140,17 @@ func (p *Program) HasManualPage() bool {
 	return false
 }
 
+func (p *Program) HasDocuments() bool {
+	for _, e := range p.Documents {
+		for _, ee := range e {
+			if len(ee) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (p *Program) HasShellCompletion(shell string) bool {
 	for _, e := range p.ShellCompletionScripts {
 		for ee := range e {

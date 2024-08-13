@@ -116,6 +116,15 @@ func (ggbtd *GenerateGithubBinaryTemplateData) HasManualPages() bool {
 	return false
 }
 
+func (ggbtd *GenerateGithubBinaryTemplateData) HasDocuments() bool {
+	for _, p := range ggbtd.Programs {
+		if p.HasDocuments() {
+			return true
+		}
+	}
+	return false
+}
+
 type KeywordedManualPageReference KeywordedFilenameReference
 
 func (kmpr KeywordedManualPageReference) Page() int {

@@ -108,6 +108,7 @@ jobs:
                 echo 'IUSE="[[- `` -]]
                         [[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use]][[end]]
                         [[- if $.HasManualPages ]] man[[end]]
+                        [[- if $.HasDocuments ]] doc[[end]]
                         [[- range $i, $shell := $.ShellCompletionShells]] [[$shell]][[end]]
                     [[- `` -]]"'
                 echo 'REQUIRED_USE="[[- `` -]]
