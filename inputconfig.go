@@ -129,6 +129,61 @@ func (p *Program) IsEmpty() bool {
 		len(p.Dependencies) == 0
 }
 
+func (p *Program) HasManualPage() bool {
+	for _, e := range p.ManualPage {
+		for _, ee := range e {
+			if len(ee) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (p *Program) HasShellCompletion(shell string) bool {
+	for _, e := range p.ShellCompletionScripts {
+		for ee := range e {
+			if strings.EqualFold(ee, shell) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+type KeywordedFilenameReference struct {
+	Filepath []string
+	Keyword  string
+}
+
+func (kr *KeywordedFilenameReference) SourceFilepath() string {
+	if len(kr.Filepath) <= 1 {
+		return strings.Join(kr.Filepath, "/")
+	}
+	return strings.Join(kr.Filepath[1:len(kr.Filepath)-1], "/")
+}
+
+func (kr *KeywordedFilenameReference) DestinationFilename() string {
+	if len(kr.Filepath) == 0 {
+		return ""
+	}
+	return kr.Filepath[len(kr.Filepath)-1]
+}
+
+func (p *Program) ShellCompletion(shell string) (result []*KeywordedFilenameReference) {
+	for kw, e := range p.ShellCompletionScripts {
+		for shellName, filepath := range e {
+			if strings.EqualFold(shellName, shell) {
+				result = append(result, &KeywordedFilenameReference{
+					Keyword:  kw,
+					Filepath: filepath,
+				})
+			}
+		}
+	}
+	return
+}
+
 // InputConfig represents a single configuration entry.
 type InputConfig struct {
 	EntryNumber      int

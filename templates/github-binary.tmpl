@@ -30,10 +30,10 @@ env:
   [[- if $prog.HasDesktopFile ]]
   [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: '[[ $prog.DesktopFile ]]'
   [[- end ]]
-  [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
+  [[ join (filterEmpty $pname "binary_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
   [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
-  [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
+  [[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
   [[- end ]]
   [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | ebuildvardoublequoted ]]'
   [[- end ]]
@@ -105,8 +105,14 @@ jobs:
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
-                echo 'IUSE="[[range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use]] [[end]]"'
-                echo 'REQUIRED_USE="[[range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use]]? (|| ( [[range $i, $arch := $archs]][[$arch]] [[end]] )) [[end]]"'
+                echo 'IUSE="[[- `` -]]
+                        [[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use]][[end]]
+                        [[- if $.HasManualPages ]] man[[end]]
+                        [[- range $i, $shell := $.ShellCompletionShells]] [[$shell]][[end]]
+                    [[- `` -]]"'
+                echo 'REQUIRED_USE="[[- `` -]]
+                    [[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use]]? (|| ( [[range $i, $arch := $archs]][[$arch]] [[end]] )) [[end]]
+                    [[- `` -]]"'
                 echo 'DEPEND=""'
                 echo 'RDEPEND="[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]
 [[- range $prog, $deps := .AlternativeDependencies]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end -]]
@@ -115,7 +121,6 @@ jobs:
                 echo ''
 [[- if .HasDesktopFile ]]
                 echo ''
-                echo "inherit xdg-utils"
 [[- end ]]
                 echo ''
                 echo 'SRC_URI="'
@@ -127,7 +132,7 @@ jobs:
                 echo 'src_unpack() {'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
-                echo '  if [[range $i, $kw := .HaveKeywords]]use [[ $kw ]] && [[end]][[range $i, $kw := .MustntHaveKeywords]] ! use [[ $kw ]] && [[end]] true; then'
+                echo '  if [[range $i, $kw := .HaveKeywords]]use [[ $kw ]][[end]][[if and (gt (len .MustntHaveKeywords) 0) (gt (len .HaveKeywords) 0) ]] && [[end]][[range $i, $kw := .MustntHaveKeywords]] && ! use [[ $kw ]] [[end]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
   [[- end ]]
@@ -141,14 +146,85 @@ jobs:
   [[- range $keyword, $binary := $prog.Binary ]]
     [[- if gt (len $binary) 2 ]]
                 echo '  if use [[ $keyword ]]; then'
-                echo '    newexe "${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
+                echo '    newexe "${{ env.[[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
                 echo '  fi'
     [[- else ]]
                 echo '  if use [[ $keyword ]]; then'
-                echo '    newexe "${DISTDIR}/${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
+                echo '    newexe "${DISTDIR}/${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
                 echo '  fi'
     [[- end ]]
   [[- end ]]
+[[- end ]]
+
+
+[[- if $.HasShellCompletion "bash" ]]
+                echo '  if use bash; then'
+                echo '    insinto /usr/share/bash-completion/completions
+    [[- range $i, $file := $.ShellCompletion "bash" ]]
+        [[- if ne $file.Keyword "" ]]
+                echo '    if use [[ $file.Keyword ]]; then'
+                echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
+                echo '    fi'
+        [[- else ]]
+                echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
+        [[- end ]]
+    [[- end ]]
+                echo '  fi'
+[[- end ]]
+[[- if $.HasShellCompletion "fish" ]]
+                echo '  if use fish; then'
+                echo '    insinto /usr/share/fish/vendor_completions.d
+    [[- range $i, $file := $.ShellCompletion "fish" ]]
+        [[- if ne $file.Keyword "" ]]
+                echo '    if use [[ $file.Keyword ]]; then'
+                echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to fish completion file"'
+                echo '    fi'
+        [[- else ]]
+                echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to fish completion file"'
+        [[- end ]]
+    [[- end ]]
+                echo '  fi'
+[[- end ]]
+[[- if $.HasShellCompletion "zsh" ]]
+                echo '  if use zsh; then'
+                echo '    insinto /usr/share/zsh/site-functions
+    [[- range $i, $file := $.ShellCompletion "zsh" ]]
+        [[- if ne $file.Keyword "" ]]
+                echo '    if use [[ $file.Keyword ]]; then'
+                echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to zsh completion file"'
+                echo '    fi'
+        [[- else ]]
+                echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to zsh completion file"'
+        [[- end ]]
+    [[- end ]]
+                echo '  fi'
+[[- end ]]
+[[- if $.HasShellCompletion "powershell" ]]
+                echo '  if use powershell; then'
+                echo '    insinto /usr/share/powershell/Modules
+    [[- range $i, $file := $.ShellCompletion "powershell" ]]
+        [[- if ne $file.Keyword "" ]]
+                echo '    if use [[ $file.Keyword ]]; then'
+                echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to powershell completion file"'
+                echo '    fi'
+        [[- else ]]
+                echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to powershell completion file"'
+        [[- end ]]
+    [[- end ]]
+                echo '  fi'
+[[- end ]]
+[[- if $.HasManualPages ]]
+                echo '  if use man; then'
+    [[- range $i, $man := $.ManualPages ]]
+        [[- if ne $man.Keyword "" ]]
+                echo '    if use [[ $man.Keyword ]]; then'
+                echo '      newman "[[ $man.SourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to powershell completion file"'
+                echo '    fi'
+        [[- else ]]
+                echo '    newman "[[ $man.SourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to powershell completion file"'
+        [[- end ]]
+    [[- end ]]
+                echo '  fi'
 [[- end ]]
                 echo '}'
                 echo ""

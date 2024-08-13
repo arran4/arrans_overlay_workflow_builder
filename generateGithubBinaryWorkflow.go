@@ -2,8 +2,10 @@ package arrans_overlay_workflow_builder
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,6 +35,17 @@ func (ggbtd *GenerateGithubBinaryTemplateData) KeywordList() []string {
 	}
 	sort.Strings(keywords)
 	return keywords
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) ShellCompletionShells() []string {
+	shells := make([]string, 0)
+	for programName := range ggbtd.Programs {
+		for key := range ggbtd.Programs[programName].Binary {
+			shells = append(shells, key)
+		}
+	}
+	sort.Strings(shells)
+	return slices.CompactFunc(shells, strings.EqualFold)
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) MainDependencies() []string {
@@ -90,6 +103,67 @@ func (ggbtd *GenerateGithubBinaryTemplateData) HasDesktopFile() bool {
 		}
 	}
 	return false
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) HasManualPages() bool {
+	for _, p := range ggbtd.Programs {
+		if p.HasManualPage() {
+			return true
+		}
+	}
+	return false
+}
+
+type KeywordedManualPageReference KeywordedFilenameReference
+
+func (kmpr KeywordedManualPageReference) Page() int {
+	if len(kmpr.Filepath) == 0 {
+		return 0
+	}
+	v, _ := strconv.Atoi(filepath.Ext(kmpr.Filepath[len(kmpr.Filepath)-1]))
+	return v
+}
+
+func (kmpr KeywordedManualPageReference) SourceFilepath() string {
+	return ((*KeywordedFilenameReference)(&kmpr)).SourceFilepath()
+}
+
+func (kmpr KeywordedManualPageReference) DestinationFilename() string {
+	return ((*KeywordedFilenameReference)(&kmpr)).DestinationFilename()
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) ManualPages() (result []*KeywordedManualPageReference) {
+	for _, p := range ggbtd.Programs {
+		for kw, mps := range p.ManualPage {
+			for _, mp := range mps {
+				result = append(result, (*KeywordedManualPageReference)(&KeywordedFilenameReference{
+					Filepath: mp,
+					Keyword:  kw,
+				}))
+			}
+		}
+	}
+	return
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) HasShellCompletion(shell string) bool {
+	for _, p := range ggbtd.Programs {
+		if p.HasShellCompletion(shell) {
+			return true
+		}
+	}
+	return false
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) ShellCompletion(shell string) []*KeywordedFilenameReference {
+	result := make([]*KeywordedFilenameReference, 0)
+	for _, p := range ggbtd.Programs {
+		v := p.ShellCompletion(shell)
+		if len(v) > 0 {
+			result = append(result, v...)
+		}
+	}
+	return result
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) IsArchived(keyword string) bool {
