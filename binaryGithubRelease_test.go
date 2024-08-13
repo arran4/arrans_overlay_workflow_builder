@@ -124,7 +124,7 @@ func TestBinaryReleaseFileInfo_CompileMeanings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBrfi, gotOk := tt.base.CompileMeanings(tt.input)
+			gotBrfi, gotOk := tt.base.CompileMeanings(tt.input, nil)
 			if diff := cmp.Diff(gotBrfi, tt.want, cmpopts.IgnoreUnexported(BinaryReleaseFileInfo{})); diff != "" {
 				t.Errorf("CompileMeanings() gotBrfi =\n%v", diff)
 			}

@@ -87,6 +87,18 @@ func TestDecodeFilename(t *testing.T) {
 				{Container: "zip", SuffixOnly: true, Captured: "zip"},
 			},
 		},
+		{
+			name:           "goreleaser.1.gz",
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("goreleaser", []string{"2.11.4"}, []string{"v2.11.4"})),
+			filename:       "goreleaser.1.gz",
+			want: []*FilenamePartMeaning{
+				{ProjectName: true, CaseInsensitive: true, Captured: "goreleaser"},
+				{Separator: true, Captured: "."},
+				{ManualPage: 1, SuffixOnly: true, Captured: "1"},
+				{Separator: true, Captured: "."},
+				{Container: "gz", SuffixOnly: true, Captured: "gz"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

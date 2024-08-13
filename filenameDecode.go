@@ -154,6 +154,7 @@ type FilenamePartMeaning struct {
 	Version     bool
 	Tag         bool
 	ProjectName bool
+	Folder      bool
 
 	// Match rules
 	SuffixOnly      bool
@@ -273,6 +274,7 @@ func GenerateWordMeanings(gitRepo string, versions []string, tags []string) map[
 		"ps1":         {ShellScript: "powershell", SuffixOnly: true},
 		"zsh":         {ShellScript: "zsh", SuffixOnly: true},
 		"sh":          {ShellScript: "shell", SuffixOnly: true},
+		"manpages":    {},
 		"1":           {ManualPage: 1, SuffixOnly: true},
 		"2":           {ManualPage: 2, SuffixOnly: true},
 		"3":           {ManualPage: 3, SuffixOnly: true},
