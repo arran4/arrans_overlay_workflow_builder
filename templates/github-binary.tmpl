@@ -125,17 +125,17 @@ jobs:
 [[- end ]]
                 echo ''
                 echo 'SRC_URI="'
-[[- range $releaseFilename, $externalResource := .ExternalResources ]]
-                echo "  [[range $i, $kw := .HaveKeywords]][[ $kw ]]? ( [[end]][[range $i, $kw := .MustntHaveKeywords]]![[ $kw ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $releaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] [[range $i, $kw := .HaveKeywords]] ) [[end]][[range $i, $kw := .MustntHaveKeywords]] ) [[ end ]] "
+[[- range $i, $externalResource := .ExternalResources ]]
+                echo "  [[range $i, $uf := .MustHaveUseFlags]][[ $uf ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
 [[- end ]]
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
-[[- range $releaseFilename, $externalResource := .ExternalResources ]]
+[[- range $i, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
     [[- $count := 0 ]]
-                echo '  if [[range $i, $kw := .HaveKeywords]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $kw ]][[end]][[range $i, $kw := .MustntHaveKeywords]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $kw ]] [[end]]; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
+                echo '  if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
   [[- end ]]
 [[- end ]]
@@ -164,11 +164,13 @@ jobs:
 [[- range $pname, $prog := .Programs ]]
   [[- range $keyword, $binary := $prog.Binary ]]
     [[- if gt (len $binary) 2 ]]
-                echo '  if use [[ $keyword ]]; then'
+        [[- $count := 0 ]]
+                echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
                 echo '    newexe "${{ env.[[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
                 echo '  fi'
     [[- else ]]
-                echo '  if use [[ $keyword ]]; then'
+        [[- $count := 0 ]]
+                echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
                 echo '    newexe "${DISTDIR}/${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
                 echo '  fi'
     [[- end ]]
@@ -233,11 +235,11 @@ jobs:
               } > $ebuild_file
 
               # Manifest generation
-[[ range $releaseFilename, $externalResource := .ExternalResources ]]
+[[ range $i, $externalResource := .ExternalResources ]]
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
     [[- else ]]
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
     [[- end ]]
 
 [[- end ]]

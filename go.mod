@@ -1,6 +1,6 @@
 module github.com/arran4/arrans_overlay_workflow_builder
 
-go 1.22
+go 1.23
 
 require (
 	github.com/Masterminds/semver v1.5.0

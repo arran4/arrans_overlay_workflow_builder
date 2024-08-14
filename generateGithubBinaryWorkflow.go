@@ -16,6 +16,8 @@ type GenerateGithubBinaryTemplateData struct {
 	ConfigFile                     string
 	_programsAsAlternatives        map[string][]string
 	_reverseProgramsAsAlternatives map[string][]string
+	MustntHaveUseFlags             map[string]map[string][]string
+	MustHaveUseFlags               map[string]map[string][]string
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) TemplateFileName() string {
@@ -363,10 +365,58 @@ func (ggbtd *GenerateGithubBinaryTemplateData) IsArchived(keyword string) bool {
 	return false
 }
 
+func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
+	if ggbtd.MustHaveUseFlags != nil && ggbtd.MustntHaveUseFlags != nil {
+		return
+	}
+	archAlts := ggbtd.ProgramsAsAlternatives()
+	progAlts := ggbtd.ReverseProgramsAsAlternatives()
+	ggbtd.MustHaveUseFlags = map[string]map[string][]string{}
+	ggbtd.MustntHaveUseFlags = map[string]map[string][]string{}
+	for programName := range ggbtd.Programs {
+		for kw := range ggbtd.Programs[programName].Binary {
+			if v, ok := ggbtd.MustHaveUseFlags[programName]; !ok || v == nil {
+				ggbtd.MustHaveUseFlags[programName] = map[string][]string{}
+			}
+			if v, ok := ggbtd.MustHaveUseFlags[programName][kw]; !ok || v == nil {
+				ggbtd.MustHaveUseFlags[programName][kw] = []string{kw}
+			}
+			if v, ok := ggbtd.MustntHaveUseFlags[programName]; !ok || v == nil {
+				ggbtd.MustntHaveUseFlags[programName] = map[string][]string{}
+			}
+			if v, ok := ggbtd.MustntHaveUseFlags[programName][kw]; !ok || v == nil {
+				ggbtd.MustntHaveUseFlags[programName][kw] = []string{}
+			}
+			if programName == "" || programName == ggbtd.GithubRepo {
+				alts, ok := archAlts[kw]
+				if !ok || len(alts) == 0 {
+					continue
+				}
+				for _, alt := range alts {
+					ggbtd.MustntHaveUseFlags[programName][kw] = append(ggbtd.MustntHaveUseFlags[programName][kw], alt)
+				}
+			}
+			if v, ok := progAlts[programName]; ok && len(v) > 0 {
+				alts, ok := archAlts[kw]
+				if !ok || len(alts) == 0 {
+					continue
+				}
+				ggbtd.MustHaveUseFlags[programName][kw] = append(ggbtd.MustHaveUseFlags[programName][kw], programName)
+				for _, alt := range alts {
+					if alt == programName {
+						continue
+					}
+					ggbtd.MustntHaveUseFlags[programName][kw] = append(ggbtd.MustntHaveUseFlags[programName][kw], alt)
+				}
+			}
+		}
+	}
+}
+
 type ExternalResourceKeywordExtended struct {
 	ExternalResource   *ExternalResource
-	HaveKeywords       []string
-	MustntHaveKeywords []string
+	MustHaveUseFlags   []string
+	MustntHaveUseFlags []string
 }
 
 func (erke *ExternalResourceKeywordExtended) Keyword() string {
@@ -381,10 +431,9 @@ func (erke *ExternalResourceKeywordExtended) Archived() bool {
 	return erke.ExternalResource.Archived
 }
 
-func (ggbtd *GenerateGithubBinaryTemplateData) ExternalResources() map[string]*ExternalResourceKeywordExtended {
-	archAlts := ggbtd.ProgramsAsAlternatives()
-	progAlts := ggbtd.ReverseProgramsAsAlternatives()
-	result := make(map[string]*ExternalResourceKeywordExtended)
+func (ggbtd *GenerateGithubBinaryTemplateData) ExternalResources() []*ExternalResourceKeywordExtended {
+	ggbtd.inferUseFlags()
+	m := make(map[string]*ExternalResourceKeywordExtended)
 	for programName := range ggbtd.Programs {
 		for kw, rfn := range ggbtd.Programs[programName].Binary {
 			e := &ExternalResourceKeywordExtended{
@@ -393,35 +442,52 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ExternalResources() map[string]*E
 					ReleaseFilename: rfn[0],
 					Archived:        len(rfn) > 2,
 				},
-				HaveKeywords:       []string{kw},
-				MustntHaveKeywords: []string{},
+				MustHaveUseFlags:   ggbtd.GetMustHaveUseFlags(programName, kw),
+				MustntHaveUseFlags: ggbtd.GetMustntHaveUseFlags(programName, kw),
 			}
-			result[rfn[0]] = e
-			if programName == "" || programName == ggbtd.GithubRepo {
-				alts, ok := archAlts[kw]
-				if !ok || len(alts) == 0 {
-					continue
-				}
-				for _, alt := range alts {
-					e.MustntHaveKeywords = append(e.MustntHaveKeywords, alt)
-				}
-			}
-			if v, ok := progAlts[programName]; ok && len(v) > 0 {
-				alts, ok := archAlts[kw]
-				if !ok || len(alts) == 0 {
-					continue
-				}
-				e.HaveKeywords = append(e.HaveKeywords, programName)
-				for _, alt := range alts {
-					if alt == programName {
-						continue
-					}
-					e.MustntHaveKeywords = append(e.MustntHaveKeywords, alt)
-				}
-			}
+			m[rfn[0]] = e
 		}
 	}
+	result := make([]*ExternalResourceKeywordExtended, 0, len(ggbtd.Programs))
+	for _, each := range m {
+		result = append(result, each)
+	}
+	slices.SortFunc(result, func(a, b *ExternalResourceKeywordExtended) int {
+		v1 := strings.Compare(a.ExternalResource.Keyword, b.ExternalResource.Keyword)
+		if v1 != 0 {
+			return v1
+		}
+		return strings.Compare(a.ExternalResource.ReleaseFilename, b.ExternalResource.ReleaseFilename)
+	})
 	return result
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) GetMustHaveUseFlags(programName string, kw string) []string {
+	if ggbtd.MustHaveUseFlags == nil {
+		ggbtd.inferUseFlags()
+	}
+	if v, ok := ggbtd.MustHaveUseFlags[programName]; !ok || v == nil {
+		return []string{}
+	}
+	if v, ok := ggbtd.MustHaveUseFlags[programName][kw]; !ok || v == nil {
+		return []string{}
+	} else {
+		return v
+	}
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) GetMustntHaveUseFlags(programName string, kw string) []string {
+	if ggbtd.MustntHaveUseFlags == nil {
+		ggbtd.inferUseFlags()
+	}
+	if v, ok := ggbtd.MustntHaveUseFlags[programName]; !ok || v == nil {
+		return []string{}
+	}
+	if v, ok := ggbtd.MustntHaveUseFlags[programName][kw]; !ok || v == nil {
+		return []string{}
+	} else {
+		return v
+	}
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) ProgramsAsAlternatives() map[string][]string {
