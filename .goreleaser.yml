@@ -5,7 +5,7 @@ builds:
     binary: "overlay_workflow_builder_generator"
     dir: cmd/generate
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     goos:
       - linux
       - windows
