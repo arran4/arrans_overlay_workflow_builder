@@ -227,7 +227,6 @@ grab the current build number, which we don't. This will remain unsupported for 
 # Notes
 
 * The program has been extended without being refactored beyond its original purpose, I am keen to get someone who has a better design to weigh in, create a PR, or a discussion
-* The program was written during a period of low sleep, hence its structure
 * In the future, the app should (hopefully will) call itself or my app [g2](https://github.com/arran4/g2) for the ebuild generation component of the workflow
 * this tool is for VERY specific use cases. You will have to be prepared to modify it for yours if not included
 * This program is provided under the "good enough for my itch" philosophy. You're welcome to fork, create pull requests and extend as needed.
