@@ -135,14 +135,16 @@ jobs:
 [[- end ]]
 [[- range $pname, $prog := .Programs ]]
 [[- range $keyword, $binary := $prog.Binary ]]
-  [[- if gt (len $binary) 2 ]]
+  [[- if ne $prog.InstalledFilename (index $binary 1) ]]
+    [[- if gt (len $binary) 2 ]]
                 echo '  if use [[ $keyword ]]; then'
                 echo "    mv \"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't move archived file\""
                 echo '  fi'
-[[- else ]]
+    [[- else ]]
                 echo '  if use [[ $keyword ]]; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
+    [[- end ]]
   [[- end ]]
 [[- end ]]
                 echo '  chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
