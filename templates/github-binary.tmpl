@@ -180,7 +180,7 @@ jobs:
 
 [[- range $i, $shell := $.ShellCompletionShells]]
                 echo '  if use [[ $shell ]]; then'
-                echo '    insinto "[[ $.ShellCompletionInstallPath $shell ]]"
+                echo '    insinto "[[ $.ShellCompletionInstallPath $shell ]]"'
     [[- range $i, $files := $.ShellCompletion $shell ]]
         [[- if ne $files.Keyword "" ]]
                 echo '    if use [[ $files.Keyword ]]; then'
