@@ -767,6 +767,10 @@ func (brfi *BinaryReleaseFileInfo) UnmatchedOkay() bool {
 		return true
 	case brfi.ManualPage != 0:
 		return true
+	case len(brfi.Unmatched) == 1 && strings.EqualFold(brfi.Unmatched[0], brfi.ProgramName):
+		return true
+	case len(brfi.Unmatched) == 1 && strings.EqualFold(brfi.Unmatched[0], brfi.OriginalFilename) && filepath.Ext(brfi.OriginalFilename) == "":
+		return true
 	default:
 		return false
 	}
