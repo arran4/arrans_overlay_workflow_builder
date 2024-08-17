@@ -67,6 +67,7 @@ func main() {
 		log.Printf("Try %s for %s", "generate", "commands to generate github action workflows output")
 		log.Printf("Try %s for %s", "oneshot", "does both the config and generate steps")
 		log.Printf("Try %s for %s", "config", "commands to view results and content")
+		log.Printf("Try %s for %s", "version", "commands to view version information")
 		os.Exit(-1)
 	}
 }
