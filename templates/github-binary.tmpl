@@ -120,7 +120,7 @@ jobs:
                     [[- `` -]]"'
                 echo 'DEPEND=""'
                 echo 'RDEPEND="[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]
-[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]][[end]] ) [[end -]]
+[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]
                      "'
                 echo 'S="${WORKDIR}"'
                 echo ''
