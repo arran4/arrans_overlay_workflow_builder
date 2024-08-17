@@ -26,7 +26,7 @@ type ExternalResource struct {
 	Archived        bool
 }
 
-func GenerateGithubWorkflows(file string) error {
+func GenerateGithubWorkflows(file string, outputDir string) error {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", file, err)
@@ -35,10 +35,10 @@ func GenerateGithubWorkflows(file string) error {
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", file, err)
 	}
-	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, err)
+	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, outputDir)
 }
 
-func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, err error) error {
+func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, outputDir string) error {
 	missing := false
 	for _, inputConfig := range inputConfigs {
 		if inputConfig.Category == "" {
@@ -53,7 +53,6 @@ func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputC
 	if err != nil {
 		return err
 	}
-	outputDir := "./output"
 	now := time.Now()
 	_ = os.MkdirAll(outputDir, 0755)
 	for _, inputConfig := range inputConfigs {

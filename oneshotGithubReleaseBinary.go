@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func CmdOneshotGithubReleaseBinary(gitRepo, tagOverride, tagPrefix string) error {
+func CmdOneshotGithubReleaseBinary(gitRepo, tagOverride, tagPrefix, outputDir string) error {
 	ic, err := GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix)
 	if err != nil {
 		return err
@@ -30,7 +30,6 @@ func CmdOneshotGithubReleaseBinary(gitRepo, tagOverride, tagPrefix string) error
 	if err != nil {
 		return err
 	}
-	outputDir := "./output"
 	now := time.Now()
 	_ = os.MkdirAll(outputDir, 0755)
 	if err := ic.GenerateGithubWorkflow("-", now, templates, outputDir); err != nil {

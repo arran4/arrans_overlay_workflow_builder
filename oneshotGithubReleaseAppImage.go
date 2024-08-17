@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func CmdOneshotGithubReleaseAppImage(gitRepo, tagOverride, tagPrefix string) error {
+func CmdOneshotGithubReleaseAppImage(gitRepo, tagOverride, tagPrefix, outputDir string) error {
 	ic, err := GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix)
 	if err != nil {
 		return err
@@ -30,7 +30,6 @@ func CmdOneshotGithubReleaseAppImage(gitRepo, tagOverride, tagPrefix string) err
 	if err != nil {
 		return err
 	}
-	outputDir := "./output"
 	now := time.Now()
 	_ = os.MkdirAll(outputDir, 0755)
 	if err := ic.GenerateGithubWorkflow("-", now, templates, outputDir); err != nil {

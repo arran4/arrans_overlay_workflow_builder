@@ -80,6 +80,7 @@ func (mac *MainArgConfig) cmdGenerate(args []string) error {
 type CmdGenerateGithubWorkflowsArgConfig struct {
 	*CmdGenerateArgConfig
 	InputFile *string
+	OutputDir *string
 }
 
 func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error {
@@ -88,6 +89,7 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 	}
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	config.InputFile = fs.String("input-file", "input.config", "The input with config")
+	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
@@ -96,7 +98,7 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 		if config.InputFile == nil || *config.InputFile == "" {
 			return fmt.Errorf("input file argument missing")
 		}
-		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile)
+		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
@@ -362,6 +364,7 @@ type CmdOneshotGithubReleaseAppImageArgConfig struct {
 	GithubUrl          *string
 	SelectedVersionTag *string
 	TagPrefix          *string
+	OutputDir          *string
 }
 
 func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) error {
@@ -372,6 +375,7 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) e
 	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
 	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
 	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
@@ -380,7 +384,7 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) e
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
@@ -393,6 +397,7 @@ type CmdOneshotGithubReleaseBinaryArgConfig struct {
 	GithubUrl          *string
 	SelectedVersionTag *string
 	TagPrefix          *string
+	OutputDir          *string
 }
 
 func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) error {
@@ -403,6 +408,7 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) err
 	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
 	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
 	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
@@ -411,7 +417,7 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) err
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
