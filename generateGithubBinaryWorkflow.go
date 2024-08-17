@@ -7,13 +7,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type GenerateGithubBinaryTemplateData struct {
-	*InputConfig
-	Now                            time.Time
-	ConfigFile                     string
+	*GenerateGithubWorkflowBase
 	_programsAsAlternatives        map[string][]string
 	_reverseProgramsAsAlternatives map[string][]string
 	MustntHaveUseFlags             map[string]map[string][]string

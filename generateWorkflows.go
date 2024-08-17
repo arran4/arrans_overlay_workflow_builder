@@ -26,7 +26,7 @@ type ExternalResource struct {
 	Archived        bool
 }
 
-func GenerateGithubWorkflows(file string, outputDir string) error {
+func GenerateGithubWorkflows(file, outputDir, version string) error {
 	b, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", file, err)
@@ -35,10 +35,10 @@ func GenerateGithubWorkflows(file string, outputDir string) error {
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", file, err)
 	}
-	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, outputDir)
+	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, outputDir, version)
 }
 
-func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, outputDir string) error {
+func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, outputDir, version string) error {
 	missing := false
 	for _, inputConfig := range inputConfigs {
 		if inputConfig.Category == "" {
@@ -56,7 +56,7 @@ func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputC
 	now := time.Now()
 	_ = os.MkdirAll(outputDir, 0755)
 	for _, inputConfig := range inputConfigs {
-		if err := inputConfig.GenerateGithubWorkflow(file, now, templates, outputDir); err != nil {
+		if err := inputConfig.GenerateGithubWorkflow(file, now, templates, outputDir, version); err != nil {
 			return err
 		}
 	}
@@ -138,7 +138,14 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 	return templates, nil
 }
 
-func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir string) error {
+type GenerateGithubWorkflowBase struct {
+	*InputConfig
+	Version    string
+	Now        time.Time
+	ConfigFile string
+}
+
+func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string) error {
 	if err := ic.Validate(); err != nil {
 		return fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
 	}
@@ -148,18 +155,20 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		WorkflowFileName() string
 		TemplateFileName() string
 	}
+	base := &GenerateGithubWorkflowBase{
+		Version:     version,
+		Now:         now,
+		ConfigFile:  file,
+		InputConfig: ic,
+	}
 	switch ic.Type {
 	case "Github AppImage Release":
 		data = &GenerateGithubAppImageTemplateData{
-			Now:         now,
-			ConfigFile:  file,
-			InputConfig: ic,
+			GenerateGithubWorkflowBase: base,
 		}
 	case "Github Binary Release":
 		data = &GenerateGithubBinaryTemplateData{
-			Now:         now,
-			ConfigFile:  file,
-			InputConfig: ic,
+			GenerateGithubWorkflowBase: base,
 		}
 	default:
 		return fmt.Errorf("unknown type %s", ic.Type)

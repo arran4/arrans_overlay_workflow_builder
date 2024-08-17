@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 )
 
 type GenerateGithubAppImageTemplateData struct {
-	*InputConfig
-	Now        time.Time
-	ConfigFile string
+	*GenerateGithubWorkflowBase
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) WorkflowName() string {
