@@ -116,11 +116,11 @@ jobs:
                         [[- range $i, $shell := $.ShellCompletionShells]] [[$shell]][[end]]
                     [[- `` -]]"'
                 echo 'REQUIRED_USE="[[- `` -]]
-                    [[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use]]? (|| ( [[range $i, $arch := $archs]][[$arch]] [[end]] )) [[end]]
+                    [[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]
                     [[- `` -]]"'
                 echo 'DEPEND=""'
                 echo 'RDEPEND="[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]
-[[- range $prog, $deps := .AlternativeDependencies]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end -]]
+[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]][[end]] ) [[end -]]
                      "'
                 echo 'S="${WORKDIR}"'
                 echo ''
