@@ -179,6 +179,8 @@ func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
 		}
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "github-release-appimage", "To generate a config file from a github release with semantic version for AppImages.")
+		log.Printf("Try %s for %s", "github-release-binary", "To generate a config file from a github release with semantic version for Binary Releases.")
 		os.Exit(-1)
 	}
 	return nil
