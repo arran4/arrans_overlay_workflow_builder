@@ -108,6 +108,7 @@ var (
 		"ld-linux-armhf.so":         "sys-libs/glibc",
 		"ld-linux-armhf.so.1":       "sys-libs/glibc",
 		"ld-linux-armhf.so.2":       "sys-libs/glibc",
+		"ld-linux-armhf.so.3":       "sys-libs/glibc",
 		"libm.so.6":                 "sys-libs/glibc",
 		"libm.so":                   "sys-libs/glibc",
 		"libz.so.1":                 "sys-libs/zlib",
