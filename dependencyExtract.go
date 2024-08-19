@@ -66,6 +66,8 @@ func ReadDependenciesFromReader(program *Program, f io.ReaderAt, unknownSymbols 
 	return unknownSymbols, nil
 }
 
+// TODO make this a 'embedded' csv or some such, so it can be substituted at run time and externally hosted
+
 var (
 	// Once you have installed the correct dep use `equery b <name>` to determine which package if you're unsure
 	symbolMap = map[string]string{
@@ -125,6 +127,14 @@ var (
 		"libgcc_s.so":               "sys-devel/gcc",
 		"librt.so.1":                "sys-libs/glibc",
 		"librt.so":                  "sys-libs/glibc",
+		"libgtk-3.so":               "x11-libs/gtk+",
+		"libgtk-3.so.0":             "x11-libs/gtk+",
+		"libGL.so":                  "media-libs/libglvnd",
+		"libGL.so.7":                "media-libs/libglvnd",
+		"libGL.so.7.0":              "media-libs/libglvnd",
+		"libX11.so.6":               "x11-libs/libX11",
+		"libX11.so.6.4":             "x11-libs/libX11",
+		"libX11.so.6.4.0":           "x11-libs/libX11",
 	}
 )
 
