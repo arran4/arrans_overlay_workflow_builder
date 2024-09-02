@@ -11,10 +11,8 @@ import (
 	"github.com/stoewer/go-strcase"
 	"io"
 	"log"
-	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -228,9 +226,8 @@ type InputConfig struct {
 	Programs         map[string]*Program
 }
 
-func (ic *InputConfig) GetPrograms() []*Program {
-	itr := maps.Values(ic.Programs)
-	return slices.Collect(itr)
+func (ic *InputConfig) GetPrograms() map[string]*Program {
+	return ic.Programs
 }
 
 const (
