@@ -5,7 +5,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"slices"
 	"sort"
-	"strings"
 	"testing"
 	"time"
 )
@@ -142,13 +141,9 @@ func TestExternalResourcesToArchivedResourceNameConsistency(t *testing.T) {
 				t.Fatalf("unkown type %s", ic.Type)
 			}
 			archivedFilename = slices.Collect(func(yield func(s string) bool) {
-				for pname, prog := range data.GetPrograms() {
-					for keyword, bin := range prog.Binary {
-						name := strings.Join([]string{
-							pname,
-							bin[0],
-							keyword,
-						}, "_")
+				for _, prog := range data.GetPrograms() {
+					for _, bin := range prog.Binary {
+						name := bin[0]
 						if !yield(name) {
 							return
 						}
@@ -156,6 +151,7 @@ func TestExternalResourcesToArchivedResourceNameConsistency(t *testing.T) {
 				}
 			})
 			sort.Strings(releaseFilename)
+			sort.Strings(archivedFilename)
 			if diff := cmp.Diff(releaseFilename, archivedFilename); diff != "" {
 				t.Fatalf("mismatch (-releaseFn +archiveFn):\n%s", diff)
 			}
