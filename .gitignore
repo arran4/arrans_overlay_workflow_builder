@@ -1,6 +1,8 @@
 /output
+/output/*
 /dist
 /.idea
 /*.iml
 /input.config
 /todo.config
+/test.config

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"github.com/stoewer/go-strcase"
 	"io/fs"
 	"log"
 	"os"
@@ -94,6 +95,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					}
 				})
 			},
+			"UseFlagSafe": strcase.SnakeCase,
 			"ebuildvardoublequoted": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {

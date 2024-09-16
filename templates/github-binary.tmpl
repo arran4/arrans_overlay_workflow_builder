@@ -110,13 +110,13 @@ jobs:
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo 'IUSE="[[- `` -]]
-                        [[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use]][[end]]
+                        [[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]
                         [[- if $.HasManualPages ]] man[[end]]
                         [[- if $.HasDocuments ]] doc[[end]]
-                        [[- range $i, $shell := $.ShellCompletionShells]] [[$shell]][[end]]
+                        [[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]
                     [[- `` -]]"'
                 echo 'REQUIRED_USE="[[- `` -]]
-                    [[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]
+                    [[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]
                     [[- `` -]]"'
                 echo 'DEPEND=""'
                 echo 'RDEPEND="[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]
@@ -130,7 +130,7 @@ jobs:
                 echo ''
                 echo 'SRC_URI="'
 [[- range $i, $externalResource := .ExternalResources ]]
-                echo "  [[range $i, $uf := .MustHaveUseFlags]][[ $uf ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+                echo "  [[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
 [[- end ]]
                 echo '"'
                 echo ''
@@ -138,7 +138,7 @@ jobs:
 [[- range $i, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
     [[- $count := 0 ]]
-                echo '  if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
+                echo '  if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe  ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
   [[- end ]]
@@ -169,7 +169,7 @@ jobs:
   [[- range $keyword, $binary := $prog.Binary ]]
     [[- if gt (len $binary) 2 ]]
         [[- $count := 0 ]]
-                echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
+                echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
                 echo '    newexe "${{ env.[[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
                 echo '  fi'
     [[- else ]]
