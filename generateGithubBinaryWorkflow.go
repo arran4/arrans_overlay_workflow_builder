@@ -386,7 +386,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 			}
 			if programName == "" || programName == ggbtd.GithubRepo {
 				alts, ok := archAlts[kw]
-				if !ok || len(alts) == 0 {
+				if !ok || len(alts) <= 1 {
 					continue
 				}
 				for _, alt := range alts {
@@ -395,7 +395,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 			}
 			if v, ok := progAlts[programName]; ok && len(v) > 0 {
 				alts, ok := archAlts[kw]
-				if !ok || len(alts) == 0 {
+				if !ok || len(alts) <= 1 {
 					continue
 				}
 				ggbtd.MustHaveUseFlags[programName][kw] = append(ggbtd.MustHaveUseFlags[programName][kw], programName)
