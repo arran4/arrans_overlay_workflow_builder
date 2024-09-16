@@ -292,6 +292,8 @@ Binary amd64=>chezmoi_${VERSION}_linux_loong64.tar.gz > chezmoi > chezmoi
 			wantGetMustntHaveUseFlags: []string{},
 		},
 	}
+	// TODO the problem with these tests is that `inferUseFlags` and later stages are too smart. -- When and if I get around to making this tree
+	// structured it should resolve that.
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.ggbtd.GetMustHaveUseFlags(tt.programName, tt.kw); !reflect.DeepEqual(got, tt.wantGetMustHaveUseFlags) {
