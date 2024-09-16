@@ -30,30 +30,7 @@ func TestInstalledFilename(t *testing.T) {
 			if len(ics) != 1 {
 				t.Fatalf("len(ics) = %d, want 1", len(ics))
 			}
-			ic := ics[0]
-			base := &GenerateGithubWorkflowBase{
-				Version:     "1",
-				Now:         time.Now(),
-				ConfigFile:  "test.config",
-				InputConfig: ic,
-			}
-			var data interface {
-				WorkflowFileName() string
-				TemplateFileName() string
-				GetPrograms() map[string]*Program
-			}
-			switch ic.Type {
-			case "Github AppImage Release":
-				data = &GenerateGithubAppImageTemplateData{
-					GenerateGithubWorkflowBase: base,
-				}
-			case "Github Binary Release":
-				data = &GenerateGithubBinaryTemplateData{
-					GenerateGithubWorkflowBase: base,
-				}
-			default:
-				t.Fatalf("unkown type %s", ic.Type)
-			}
+			data := NewTestGithubWorkflow(t, ics[0])
 			filenames := slices.Collect(func(yield func(s string) bool) {
 				for _, v := range data.GetPrograms() {
 					if !yield(v.InstalledFilename()) {
@@ -67,6 +44,37 @@ func TestInstalledFilename(t *testing.T) {
 			}
 		})
 	}
+}
+
+func NewTestGithubWorkflow(t *testing.T, ic *InputConfig) interface {
+	WorkflowFileName() string
+	TemplateFileName() string
+	GetPrograms() map[string]*Program
+} {
+	base := &GenerateGithubWorkflowBase{
+		Version:     "1",
+		Now:         time.Now(),
+		ConfigFile:  "test.config",
+		InputConfig: ic,
+	}
+	var data interface {
+		WorkflowFileName() string
+		TemplateFileName() string
+		GetPrograms() map[string]*Program
+	}
+	switch ic.Type {
+	case "Github AppImage Release":
+		data = &GenerateGithubAppImageTemplateData{
+			GenerateGithubWorkflowBase: base,
+		}
+	case "Github Binary Release":
+		data = &GenerateGithubBinaryTemplateData{
+			GenerateGithubWorkflowBase: base,
+		}
+	default:
+		t.Fatalf("unkown type %s", ic.Type)
+	}
+	return data
 }
 
 func TestExternalResourcesToArchivedResourceNameConsistency(t *testing.T) {
@@ -88,35 +96,12 @@ func TestExternalResourcesToArchivedResourceNameConsistency(t *testing.T) {
 			if len(ics) != 1 {
 				t.Fatalf("len(ics) = %d, want 1", len(ics))
 			}
-			ic := ics[0]
-			base := &GenerateGithubWorkflowBase{
-				Version:     "1",
-				Now:         time.Now(),
-				ConfigFile:  "test.config",
-				InputConfig: ic,
-			}
-			var data interface {
-				WorkflowFileName() string
-				TemplateFileName() string
-				GetPrograms() map[string]*Program
-			}
+			data := NewTestGithubWorkflow(t, ics[0])
 			type ERSimple interface {
 				ExternalResources() map[string]*ExternalResource
 			}
 			type ERComplex interface {
 				ExternalResources() []*ExternalResourceKeywordExtended
-			}
-			switch ic.Type {
-			case "Github AppImage Release":
-				data = &GenerateGithubAppImageTemplateData{
-					GenerateGithubWorkflowBase: base,
-				}
-			case "Github Binary Release":
-				data = &GenerateGithubBinaryTemplateData{
-					GenerateGithubWorkflowBase: base,
-				}
-			default:
-				t.Fatalf("unkown type %s", ic.Type)
 			}
 			var releaseFilename []string
 			var archivedFilename []string
@@ -138,7 +123,7 @@ func TestExternalResourcesToArchivedResourceNameConsistency(t *testing.T) {
 					}
 				})
 			default:
-				t.Fatalf("unkown type %s", ic.Type)
+				t.Fatalf("unkown type %s", ics[0].Type)
 			}
 			archivedFilename = slices.Collect(func(yield func(s string) bool) {
 				for _, prog := range data.GetPrograms() {
