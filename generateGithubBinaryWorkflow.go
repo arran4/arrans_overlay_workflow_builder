@@ -390,6 +390,9 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 					continue
 				}
 				for _, alt := range alts {
+					if alt == programName {
+						continue
+					}
 					ggbtd.MustntHaveUseFlags[programName][kw] = append(ggbtd.MustntHaveUseFlags[programName][kw], alt)
 				}
 			}
