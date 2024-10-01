@@ -306,7 +306,7 @@ func (ic *InputConfig) String() string {
 			sb.WriteString(ic.Programs[programName].String())
 		}
 	default:
-		sb.WriteString(fmt.Sprintf("# Unknown type\n"))
+		sb.WriteString("# Unknown type\n")
 	}
 
 	return sb.String()
@@ -624,7 +624,7 @@ func (ic *InputConfig) WorkaroundTagPrefix() string {
 	if ic.Workarounds == nil {
 		return ""
 	}
-	s, _ := ic.Workarounds["Tag Prefix"]
+	s := ic.Workarounds["Tag Prefix"]
 	return s
 }
 
@@ -643,6 +643,7 @@ func (ic *InputConfig) Validate() error {
 	return nil
 }
 
+//nolint:unused
 func parseMapType1(a []string) (map[string]string, error) {
 	result := make(map[string]string, len(a))
 	for i, v := range a {

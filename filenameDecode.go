@@ -122,7 +122,7 @@ func DecodeFilename(groupedWordMap map[string][]*GroupedFilenamePartMeaning, fil
 				SuffixOnly: suffixOnly,
 			})
 		}
-		unmatched = -1
+		//unmatched = -1
 	}
 
 	return result

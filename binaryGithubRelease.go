@@ -331,9 +331,12 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 				continue
 			}
 			zfr, err := f.Open()
-			tmpFile, err := util.SaveReaderToTempFile(zfr)
 			if err != nil {
 				return archivedFiles, fmt.Errorf("extracting file %s from %s: %w", f.Name, url, err)
+			}
+			tmpFile, err := util.SaveReaderToTempFile(zfr)
+			if err != nil {
+				return archivedFiles, fmt.Errorf("saving file %s to temp file: %w", f.Name, err)
 			}
 			defer func() {
 				if err := zfr.Close(); err != nil {

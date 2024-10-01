@@ -498,7 +498,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ProgramsAsAlternatives() map[stri
 		return map[string][]string{}
 	}
 	ggbtd._programsAsAlternatives = map[string][]string{}
-	s, _ := ggbtd.Workarounds["Programs as Alternatives"]
+	s := ggbtd.Workarounds["Programs as Alternatives"]
 	ss := strings.Split(s, " ")
 	for _, each := range ss {
 		e := strings.Split(each, ":")

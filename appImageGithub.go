@@ -112,13 +112,11 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix st
 			log.Printf("Searching: %s", container.Filename)
 			archivedFiles, err := container.SearchArchiveForAppImageFiles()
 			if err != nil {
-				if archivedFiles != nil {
-					for _, af := range archivedFiles {
-						if err := os.Remove(af.tempFile); err != nil {
-							log.Printf("Error removing temp file: %s", err)
-						}
-						af.tempFile = ""
+				for _, af := range archivedFiles {
+					if err := os.Remove(af.tempFile); err != nil {
+						log.Printf("Error removing temp file: %s", err)
 					}
+					af.tempFile = ""
 				}
 				return nil, err
 			}
@@ -276,9 +274,12 @@ func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageF
 		}()
 		for _, f := range zf.File {
 			zfr, err := f.Open()
-			tmpFile, err := util.SaveReaderToTempFile(zfr)
 			if err != nil {
 				return archivedFiles, fmt.Errorf("extracting file %s from %s: %w", f.Name, url, err)
+			}
+			tmpFile, err := util.SaveReaderToTempFile(zfr)
+			if err != nil {
+				return archivedFiles, fmt.Errorf("saving file %s to temp file: %w", f.Name, err)
 			}
 			defer func() {
 				if err := zfr.Close(); err != nil {
