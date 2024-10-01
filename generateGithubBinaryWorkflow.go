@@ -33,7 +33,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) KeywordList() []string {
 		}
 	}
 	sort.Strings(keywords)
-	return keywords
+	return slices.Compact(keywords)
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) ShellCompletionShells() []string {

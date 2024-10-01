@@ -2,6 +2,7 @@ package arrans_overlay_workflow_builder
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -22,7 +23,7 @@ func (ggaitd *GenerateGithubAppImageTemplateData) KeywordList() []string {
 		}
 	}
 	sort.Strings(keywords)
-	return keywords
+	return slices.Compact(keywords)
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) Dependencies() []string {
