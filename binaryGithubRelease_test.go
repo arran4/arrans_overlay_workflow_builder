@@ -1,8 +1,14 @@
 package arrans_overlay_workflow_builder
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -132,5 +138,77 @@ func TestBinaryReleaseFileInfo_CompileMeanings(t *testing.T) {
 				t.Errorf("CompileMeanings() gotOk = %v, want %v", gotOk, tt.want1)
 			}
 		})
+	}
+}
+
+func TestSearchArchiveForFiles_Multilayer(t *testing.T) {
+	tmp := t.TempDir()
+
+	innerZipPath := filepath.Join(tmp, "inner.zip")
+	zf, err := os.Create(innerZipPath)
+	if err != nil {
+		t.Fatalf("create inner zip: %v", err)
+	}
+	zw := zip.NewWriter(zf)
+	w, err := zw.Create("prog")
+	if err != nil {
+		t.Fatalf("create file in zip: %v", err)
+	}
+	if _, err := w.Write([]byte("data")); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip writer: %v", err)
+	}
+	if err := zf.Close(); err != nil {
+		t.Fatalf("close zip file: %v", err)
+	}
+
+	outerPath := filepath.Join(tmp, "outer.tar.gz")
+	of, err := os.Create(outerPath)
+	if err != nil {
+		t.Fatalf("create outer tar: %v", err)
+	}
+	gw := gzip.NewWriter(of)
+	tw := tar.NewWriter(gw)
+	innerFile, err := os.Open(innerZipPath)
+	if err != nil {
+		t.Fatalf("open inner zip: %v", err)
+	}
+	stat, _ := innerFile.Stat()
+	hdr := &tar.Header{Name: "inner.zip", Mode: 0644, Size: stat.Size()}
+	if err := tw.WriteHeader(hdr); err != nil {
+		t.Fatalf("write header: %v", err)
+	}
+	if _, err := io.Copy(tw, innerFile); err != nil {
+		t.Fatalf("copy inner: %v", err)
+	}
+	innerFile.Close()
+	tw.Close()
+	gw.Close()
+	of.Close()
+
+	brfi := &BinaryReleaseFileInfo{
+		Filename:   "outer.tar.gz",
+		Containers: []string{"tar", "gz"},
+		tempFile:   outerPath,
+	}
+
+	layer, err := brfi.SearchArchiveForFiles()
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if len(layer.Layers) != 1 {
+		t.Fatalf("expected 1 sub layer got %d", len(layer.Layers))
+	}
+	inner := layer.Layers[0]
+	if inner.Archive.Filename != "inner.zip" {
+		t.Errorf("inner archive name %s", inner.Archive.Filename)
+	}
+	if len(inner.Files) != 1 {
+		t.Fatalf("expected 1 file inside, got %d", len(inner.Files))
+	}
+	if inner.Files[0].Filename != "prog" {
+		t.Errorf("inner file name %s", inner.Files[0].Filename)
 	}
 }

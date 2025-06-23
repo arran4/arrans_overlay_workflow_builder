@@ -110,26 +110,11 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix st
 		log.Printf("No app images found, but some archives / compressed files")
 		for _, container := range containers {
 			log.Printf("Searching: %s", container.Filename)
-			archivedFiles, err := container.SearchArchiveForAppImageFiles()
+			layer, err := container.SearchArchiveForAppImageFiles()
 			if err != nil {
-				for _, af := range archivedFiles {
-					if err := os.Remove(af.tempFile); err != nil {
-						log.Printf("Error removing temp file: %s", err)
-					}
-					af.tempFile = ""
-				}
 				return nil, err
 			}
-			nai, nc := AppImageFiles(archivedFiles).ExtractAppImagesAndContainers(wordMap)
-			for _, nce := range nc {
-				if len(nce.tempFile) == 0 {
-					continue
-				}
-				if err := os.Remove(nce.tempFile); err != nil {
-					log.Printf("Error removing temp file: %s", err)
-				}
-				nce.tempFile = ""
-			}
+			nai, _ := ExtractAppImagesFromLayer(layer, wordMap)
 			if len(nai) > 0 {
 				appImages = append(appImages, nai...)
 			}
@@ -237,10 +222,9 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 	return nil
 }
 
-func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageFileInfo, error) {
+func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() (*ArchiveLayer[*AppImageFileInfo], error) {
 	switch strings.ToLower(strings.Join(container.Containers, ".")) {
 	case "deb", "rpm":
-		// Skip repo archives for the moment.
 		return nil, nil
 	}
 	url := container.ReleaseAsset.GetBrowserDownloadURL()
@@ -259,13 +243,12 @@ func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageF
 
 	log.Printf("Got %s => %s", url, container.tempFile)
 
-	var archivedFiles []*AppImageFileInfo
-	// TODO support weirdly nested containers.
+	layer := &ArchiveLayer[*AppImageFileInfo]{Archive: container}
 	switch strings.Join(container.Containers, ".") {
 	case "zip":
 		zf, err := zip.OpenReader(container.tempFile)
 		if err != nil {
-			return archivedFiles, fmt.Errorf("opening zip file: %s: %w", url, err)
+			return layer, fmt.Errorf("opening zip file: %s:%w", url, err)
 		}
 		defer func() {
 			if err := zf.Close(); err != nil {
@@ -273,28 +256,52 @@ func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageF
 			}
 		}()
 		for _, f := range zf.File {
+			if f.Mode().IsDir() {
+				continue
+			}
 			zfr, err := f.Open()
 			if err != nil {
-				return archivedFiles, fmt.Errorf("extracting file %s from %s: %w", f.Name, url, err)
+				return layer, fmt.Errorf("extracting file %s from %s: %w", f.Name, url, err)
 			}
 			tmpFile, err := util.SaveReaderToTempFile(zfr)
 			if err != nil {
-				return archivedFiles, fmt.Errorf("saving file %s to temp file: %w", f.Name, err)
+				return layer, fmt.Errorf("saving file %s to temp file: %w", f.Name, err)
 			}
-			defer func() {
-				if err := zfr.Close(); err != nil {
-					log.Printf("error closing zip file %s from %s: %s", f.Name, url, err)
-				}
-			}()
-			archivedFiles = append(archivedFiles, &AppImageFileInfo{
+			if err := zfr.Close(); err != nil {
+				log.Printf("error closing zip file %s from %s: %s", f.Name, url, err)
+			}
+			ai := &AppImageFileInfo{
 				Container:    container.Filename,
 				Filename:     f.Name,
 				tempFile:     tmpFile,
 				ReleaseAsset: container.ReleaseAsset,
-			})
+			}
+			if isArchiveFilename(f.Name) {
+				ai.Containers = containersFromName(f.Name)
+				sub, err := ai.SearchArchiveForAppImageFiles()
+				if err != nil {
+					return layer, err
+				}
+				layer.Layers = append(layer.Layers, sub)
+			} else {
+				layer.Files = append(layer.Files, ai)
+			}
 		}
 	}
-	return archivedFiles, nil
+	return layer, nil
+}
+
+func ExtractAppImagesFromLayer(layer *ArchiveLayer[*AppImageFileInfo], wordMap map[string][]*GroupedFilenamePartMeaning) ([]*AppImageFileInfo, []*AppImageFileInfo) {
+	if layer == nil {
+		return nil, nil
+	}
+	appImages, containers := AppImageFiles(layer.Files).ExtractAppImagesAndContainers(wordMap)
+	for _, sub := range layer.Layers {
+		nai, nc := ExtractAppImagesFromLayer(sub, wordMap)
+		appImages = append(appImages, nai...)
+		containers = append(containers, nc...)
+	}
+	return appImages, containers
 }
 
 type AppImageFiles []*AppImageFileInfo

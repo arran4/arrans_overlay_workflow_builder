@@ -129,20 +129,11 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 		log.Printf("No binaries found, but some archives / compressed files")
 		for _, container := range rootFiles.CompressedArchives {
 			log.Printf("Searching: %s", container.Filename)
-			archivedFiles, err := container.SearchArchiveForFiles()
+			layer, err := container.SearchArchiveForFiles()
 			if err != nil {
 				return nil, err
 			}
-			containerFiles := BinaryReleaseFiles(archivedFiles).FindFiles(wordMap, rootFiles)
-			for _, nce := range containerFiles.CompressedArchives {
-				if len(nce.tempFile) == 0 {
-					continue
-				}
-				if err := os.Remove(nce.tempFile); err != nil {
-					log.Printf("Error removing temp file: %s", err)
-				}
-				nce.tempFile = ""
-			}
+			containerFiles := FindFilesArchiveLayer(layer, wordMap, rootFiles)
 			rootFiles.CompressedArchiveContent[container.Filename] = containerFiles
 		}
 	}
@@ -247,10 +238,9 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 	return ic, nil
 }
 
-func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFileInfo, error) {
+func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() (*ArchiveLayer[*BinaryReleaseFileInfo], error) {
 	switch strings.ToLower(strings.Join(brfi.Containers, ".")) {
 	case "deb", "rpm":
-		// Skip repo archives for the moment.
 		return nil, nil
 	}
 	url, err := brfi.FetchContent()
@@ -258,14 +248,14 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 		return nil, err
 	}
 
-	var archivedFiles []*BinaryReleaseFileInfo
-	// TODO support weirdly nested containers.
+	layer := &ArchiveLayer[*BinaryReleaseFileInfo]{Archive: brfi}
+
 	switch strings.ToLower(strings.Join(brfi.Containers, ".")) {
 	case "tar.gz", "tar.bz2", "tar":
 		var cr io.Reader
 		f, err := os.Open(brfi.tempFile)
 		if err != nil {
-			return archivedFiles, fmt.Errorf("opening file: %s: %w", url, err)
+			return layer, fmt.Errorf("opening file: %s: %w", url, err)
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
@@ -278,12 +268,12 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 			case "gz":
 				cr, err = gzip.NewReader(f)
 				if err != nil {
-					return archivedFiles, fmt.Errorf("opening gzip file: %s: %w", url, err)
+					return layer, fmt.Errorf("opening gzip file: %s: %w", url, err)
 				}
 			case "bz2":
 				cr = bzip2.NewReader(f)
 			default:
-				return archivedFiles, fmt.Errorf("unknown format for file: %s", url)
+				return layer, fmt.Errorf("unknown format for file: %s", url)
 			}
 		} else {
 			cr = f
@@ -296,17 +286,17 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 				break
 			}
 			if err != nil {
-				return archivedFiles, fmt.Errorf("reading next tar file: %s: %w", url, err)
+				return layer, fmt.Errorf("reading next tar file: %s: %w", url, err)
 			}
 			if zfh.FileInfo().IsDir() {
 				continue
 			}
 			tmpFile, err := util.SaveReaderToTempFile(tr)
 			if err != nil {
-				return archivedFiles, fmt.Errorf("extracting file %s from %s: %w", zfh.Name, url, err)
+				return layer, fmt.Errorf("extracting file %s from %s: %w", zfh.Name, url, err)
 			}
 			dir, fn := path.Split(zfh.Name)
-			archivedFiles = append(archivedFiles, &BinaryReleaseFileInfo{
+			file := &BinaryReleaseFileInfo{
 				Container:       brfi,
 				ArchivePathname: zfh.Name,
 				DirectoryName:   dir,
@@ -314,12 +304,22 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 				tempFile:        tmpFile,
 				ReleaseAsset:    brfi.ReleaseAsset,
 				ExecutableBit:   (zfh.Mode & 0o0500) == 0o0500,
-			})
+			}
+			if isArchiveFilename(fn) {
+				file.Containers = containersFromName(fn)
+				sub, err := file.SearchArchiveForFiles()
+				if err != nil {
+					return layer, err
+				}
+				layer.Layers = append(layer.Layers, sub)
+			} else {
+				layer.Files = append(layer.Files, file)
+			}
 		}
 	case "zip":
 		zf, err := zip.OpenReader(brfi.tempFile)
 		if err != nil {
-			return archivedFiles, fmt.Errorf("opening zip file: %s: %w", url, err)
+			return layer, fmt.Errorf("opening zip file: %s:%w", url, err)
 		}
 		defer func() {
 			if err := zf.Close(); err != nil {
@@ -332,19 +332,17 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 			}
 			zfr, err := f.Open()
 			if err != nil {
-				return archivedFiles, fmt.Errorf("extracting file %s from %s: %w", f.Name, url, err)
+				return layer, fmt.Errorf("extracting file %s from %s: %w", f.Name, url, err)
 			}
 			tmpFile, err := util.SaveReaderToTempFile(zfr)
 			if err != nil {
-				return archivedFiles, fmt.Errorf("saving file %s to temp file: %w", f.Name, err)
+				return layer, fmt.Errorf("saving file %s to temp file: %w", f.Name, err)
 			}
-			defer func() {
-				if err := zfr.Close(); err != nil {
-					log.Printf("error closing zip file %s from %s: %s", f.Name, url, err)
-				}
-			}()
+			if err := zfr.Close(); err != nil {
+				log.Printf("error closing zip file %s from %s: %s", f.Name, url, err)
+			}
 			dir, fn := path.Split(f.Name)
-			archivedFiles = append(archivedFiles, &BinaryReleaseFileInfo{
+			file := &BinaryReleaseFileInfo{
 				Container:       brfi,
 				ArchivePathname: f.Name,
 				Filename:        fn,
@@ -352,10 +350,20 @@ func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFile
 				tempFile:        tmpFile,
 				ReleaseAsset:    brfi.ReleaseAsset,
 				ExecutableBit:   (f.Mode().Perm() & 0o500) == 0o500,
-			})
+			}
+			if isArchiveFilename(fn) {
+				file.Containers = containersFromName(fn)
+				sub, err := file.SearchArchiveForFiles()
+				if err != nil {
+					return layer, err
+				}
+				layer.Layers = append(layer.Layers, sub)
+			} else {
+				layer.Files = append(layer.Files, file)
+			}
 		}
 	}
-	return archivedFiles, nil
+	return layer, nil
 }
 
 func (brfi *BinaryReleaseFileInfo) close() {
@@ -501,6 +509,18 @@ func (t *FileTypes) Free() {
 	}
 }
 
+func FindFilesArchiveLayer(layer *ArchiveLayer[*BinaryReleaseFileInfo], wordMap map[string][]*GroupedFilenamePartMeaning, root *FileTypes) *FileTypes {
+	if layer == nil {
+		return &FileTypes{}
+	}
+	result := BinaryReleaseFiles(layer.Files).FindFiles(wordMap, root)
+	for _, sub := range layer.Layers {
+		subFiles := FindFilesArchiveLayer(sub, wordMap, result)
+		result.CompressedArchiveContent[sub.Archive.Filename] = subFiles
+	}
+	return result
+
+}
 func (bases BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenamePartMeaning, root *FileTypes) *FileTypes {
 	result := &FileTypes{
 		CompressedArchives:       []*BinaryReleaseFileInfo{},
