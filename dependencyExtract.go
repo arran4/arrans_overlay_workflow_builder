@@ -1,4 +1,4 @@
-package arrans_overlay_workflow_builder
+package arrans_binary_overlay_builder
 
 import (
 	"debug/elf"

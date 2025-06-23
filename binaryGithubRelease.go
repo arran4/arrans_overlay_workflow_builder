@@ -1,4 +1,4 @@
-package arrans_overlay_workflow_builder
+package arrans_binary_overlay_builder
 
 import (
 	"archive/tar"
@@ -8,7 +8,7 @@ import (
 	"debug/elf"
 	"errors"
 	"fmt"
-	"github.com/arran4/arrans_overlay_workflow_builder/util"
+	"github.com/arran4/arrans_binary_overlay_builder/util"
 	"github.com/google/go-github/v62/github"
 	"io"
 	"log"

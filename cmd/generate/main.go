@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/arran4/arrans_overlay_workflow_builder"
+	"github.com/arran4/arrans_binary_overlay_builder"
 	"log"
 	"os"
 )
@@ -118,7 +118,7 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 		if config.InputFile == nil || *config.InputFile == "" {
 			return fmt.Errorf("input file argument missing")
 		}
-		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version)
+		return arrans_binary_overlay_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
@@ -214,7 +214,7 @@ func (mac *CmdConfigAddArgConfig) cmdConfigAddAppImageGithubReleases(args []stri
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to add is missing")
 		}
-		return arrans_overlay_workflow_builder.ConfigAddAppImageGithubReleases(*config.ConfigFile, *config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+		return arrans_binary_overlay_builder.ConfigAddAppImageGithubReleases(*config.ConfigFile, *config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-appimage", "Adds an configuration to a configuration file.")
@@ -251,7 +251,7 @@ func (mac *CmdConfigAddArgConfig) cmdConfigAddBinaryGithubReleases(args []string
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to add is missing")
 		}
-		return arrans_overlay_workflow_builder.ConfigAddBinaryGithubReleases(*config.ConfigFile, *config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+		return arrans_binary_overlay_builder.ConfigAddBinaryGithubReleases(*config.ConfigFile, *config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-binary", "Adds an configuration to a configuration file.")
@@ -311,7 +311,7 @@ func (mac *CmdConfigViewArgConfig) cmdConfigViewAppImageGithubReleases(args []st
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.ConfigViewAppImageGithubReleases(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+		return arrans_binary_overlay_builder.ConfigViewAppImageGithubReleases(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-appimage", "Views an addition to a configuration file for a particular query.")
@@ -343,7 +343,7 @@ func (mac *CmdConfigViewArgConfig) cmdConfigViewBinaryGithubReleases(args []stri
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.ConfigViewBinaryGithubReleases(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+		return arrans_binary_overlay_builder.ConfigViewBinaryGithubReleases(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-binary", "Views an addition to a configuration file for a particular query.")
@@ -411,7 +411,7 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) e
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
+		return arrans_binary_overlay_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
@@ -444,7 +444,7 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) err
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
+		return arrans_binary_overlay_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)

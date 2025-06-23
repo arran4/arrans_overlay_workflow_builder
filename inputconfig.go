@@ -1,4 +1,4 @@
-package arrans_overlay_workflow_builder
+package arrans_binary_overlay_builder
 
 import (
 	"bufio"
@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Masterminds/semver"
-	"github.com/arran4/arrans_overlay_workflow_builder/util"
+	"github.com/arran4/arrans_binary_overlay_builder/util"
 	"github.com/google/go-github/v62/github"
 	"github.com/stoewer/go-strcase"
 	"io"
@@ -626,6 +626,17 @@ func (ic *InputConfig) WorkaroundTagPrefix() string {
 	}
 	s := ic.Workarounds["Tag Prefix"]
 	return s
+}
+
+func (ic *InputConfig) TagFromVersion(version string) string {
+	tag := version
+	if !ic.WorkaroundSemanticVersionWithoutV() {
+		tag = "v" + tag
+	}
+	if p := ic.WorkaroundTagPrefix(); p != "" {
+		tag = p + tag
+	}
+	return tag
 }
 
 func (ic *InputConfig) Validate() error {

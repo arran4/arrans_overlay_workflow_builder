@@ -1,10 +1,12 @@
-module github.com/arran4/arrans_overlay_workflow_builder
+module github.com/arran4/arrans_binary_overlay_builder
 
-go 1.23
+go 1.23.0
+
 toolchain go1.24.1
 
 require (
 	github.com/Masterminds/semver v1.5.0
+	github.com/arran4/g2 v0.0.2
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v62 v62.0.0
 	github.com/probonopd/go-appimage v0.0.0-20240708195358-9d82c19270b4

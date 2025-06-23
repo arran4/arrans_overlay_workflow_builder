@@ -1,4 +1,4 @@
-package arrans_overlay_workflow_builder
+package arrans_binary_overlay_builder
 
 import (
 	"bytes"
@@ -143,6 +143,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 type GenerateGithubWorkflowBase struct {
 	*InputConfig
 	Version    string
+	Tag        string
 	Now        time.Time
 	ConfigFile string
 }
