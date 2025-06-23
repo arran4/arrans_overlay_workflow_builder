@@ -85,7 +85,7 @@ func MapStringer(sb *strings.Builder, key string, valueMap map[string][]string) 
 	}
 	sort.Strings(keywords)
 	for _, kw := range keywords {
-		sb.WriteString(fmt.Sprintf("%s %s=>%s\n", key, kw, strings.Join(valueMap[kw], " > ")))
+		fmt.Fprintf(sb, "%s %s=>%s\n", key, kw, strings.Join(valueMap[kw], " > "))
 	}
 }
 
@@ -97,7 +97,7 @@ func MapDoubleStringer(sb *strings.Builder, key string, valueMap map[string][][]
 	sort.Strings(keywords)
 	for _, kw := range keywords {
 		for _, values := range valueMap[kw] {
-			sb.WriteString(fmt.Sprintf("%s %s=>%s\n", key, kw, strings.Join(values, " > ")))
+			fmt.Fprintf(sb, "%s %s=>%s\n", key, kw, strings.Join(values, " > "))
 		}
 	}
 }
@@ -115,7 +115,7 @@ func DoubleMapStringer(sb *strings.Builder, key string, valueMap map[string]map[
 		}
 		sort.Strings(subKeywords)
 		for _, skw := range subKeywords {
-			sb.WriteString(fmt.Sprintf("%s %s:%s=>%s\n", key, kw, skw, strings.Join(valueMap[kw][skw], " > ")))
+			fmt.Fprintf(sb, "%s %s:%s=>%s\n", key, kw, skw, strings.Join(valueMap[kw][skw], " > "))
 		}
 	}
 }
