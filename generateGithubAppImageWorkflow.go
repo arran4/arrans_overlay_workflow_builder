@@ -90,3 +90,7 @@ func (ggaitd *GenerateGithubAppImageTemplateData) ExternalResources() map[string
 	}
 	return result
 }
+
+func (ggaitd *GenerateGithubAppImageTemplateData) NeedsSrcUnpack() bool {
+	return len(ggaitd.Programs) > 0
+}
