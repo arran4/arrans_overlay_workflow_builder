@@ -12,7 +12,7 @@ type GroupedFilenamePartMeaning struct {
 }
 
 func (m *GroupedFilenamePartMeaning) Match(s string) bool {
-	if m.FilenamePartMeaning.CaseInsensitive {
+	if m.CaseInsensitive {
 		return strings.EqualFold(s, m.Key)
 	} else {
 		return s == m.Key
@@ -75,13 +75,13 @@ func DecodeFilename(groupedWordMap map[string][]*GroupedFilenamePartMeaning, fil
 						}
 						unmatched = -1
 					}
-					if suffixOnly && !meaning.FilenamePartMeaning.SuffixOnly {
+					if suffixOnly && !meaning.SuffixOnly {
 						continue
 					}
 					var fi = *meaning.FilenamePartMeaning
 					fi.Captured = filename[i : i+keyLen]
 					result = append(result, &fi)
-					if meaning.FilenamePartMeaning.SuffixOnly {
+					if meaning.SuffixOnly {
 						suffixOnly = true
 					}
 					i += keyLen
@@ -95,7 +95,7 @@ func DecodeFilename(groupedWordMap map[string][]*GroupedFilenamePartMeaning, fil
 			if unmatched == -1 {
 				unmatched = i
 			}
-			for i < length && !(filename[i] == '-' || filename[i] == '_' || filename[i] == '.') {
+			for i < length && filename[i] != '-' && filename[i] != '_' && filename[i] != '.' {
 				i++
 			}
 		}

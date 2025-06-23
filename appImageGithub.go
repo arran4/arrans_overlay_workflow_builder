@@ -169,7 +169,7 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 		}()
 	}
 	log.Printf("Got %s", appImage.tempFile)
-	var programName string = appImage.ProgramName
+	programName := appImage.ProgramName
 	if programName == "" {
 		programName = repoName
 	}
