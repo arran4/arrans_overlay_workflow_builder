@@ -533,3 +533,12 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ProgramsAsAlternativesForArch(for
 	}
 	return v
 }
+
+func (ggbtd *GenerateGithubBinaryTemplateData) NeedsSrcUnpack() bool {
+	for _, r := range ggbtd.ExternalResources() {
+		if r.Archived() {
+			return true
+		}
+	}
+	return ggbtd.HasCompressedManualPages()
+}

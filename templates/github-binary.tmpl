@@ -134,6 +134,7 @@ jobs:
 [[- end ]]
                 echo '"'
                 echo ''
+                [[- if $.NeedsSrcUnpack ]]
                 echo 'src_unpack() {'
 [[- range $i, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
@@ -161,6 +162,9 @@ jobs:
                 echo '  fi'
 [[- end ]]
                 echo '}'
+                [[- else ]]
+                echo 'src_unpack() { : }'
+                [[- end ]]
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'

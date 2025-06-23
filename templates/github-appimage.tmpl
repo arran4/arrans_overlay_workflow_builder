@@ -125,6 +125,7 @@ jobs:
 [[- end ]]
                 echo '"'
                 echo ''
+                [[- if $.NeedsSrcUnpack ]]
                 echo 'src_unpack() {'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
@@ -162,6 +163,9 @@ jobs:
 [[- end ]]
 [[- end ]]
                 echo '}'
+                [[- else ]]
+                echo 'src_unpack() { : }'
+                [[- end ]]
                 echo ''
                 echo 'src_prepare() {'
 [[- if .HasDesktopFile ]]
