@@ -1,6 +1,7 @@
 module github.com/arran4/arrans_overlay_workflow_builder
 
-go 1.23
+go 1.23.0
+
 toolchain go1.24.1
 
 require (
