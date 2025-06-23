@@ -121,6 +121,33 @@ func TestBinaryReleaseFileInfo_CompileMeanings(t *testing.T) {
 			},
 			want1: true,
 		},
+		{
+			name: "folder tokens ignored",
+			input: []*FilenamePartMeaning{
+				{Captured: "linux", OS: "linux", Folder: true},
+				{Separator: true, Captured: "-", Folder: true},
+				{Captured: "amd64", Keyword: "~amd64", Folder: true},
+				{Captured: "foo", Unmatched: true},
+			},
+			base: &BinaryReleaseFileInfo{
+				Filename:        "foo",
+				ArchivePathname: "linux-amd64/foo",
+				ExecutableBit:   true,
+			},
+			want: &BinaryReleaseFileInfo{
+				ProgramName:      "foo",
+				OriginalFilename: "foo",
+				ArchivePathname:  "linux-amd64/foo",
+				InstalledName:    "foo",
+				Filename:         "foo",
+				ExecutableBit:    true,
+				Binary:           true,
+				Keyword:          "",
+				OS:               "",
+				SuffixOnly:       true,
+			},
+			want1: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -132,5 +159,44 @@ func TestBinaryReleaseFileInfo_CompileMeanings(t *testing.T) {
 				t.Errorf("CompileMeanings() gotOk = %v, want %v", gotOk, tt.want1)
 			}
 		})
+	}
+}
+
+func TestFindFiles_SubdirectoryBinary(t *testing.T) {
+	wordMap := GroupAndSort(GenerateWordMeanings("foo", nil, nil))
+
+	files := BinaryReleaseFiles{
+		&BinaryReleaseFileInfo{
+			Filename:        "foo",
+			ArchivePathname: "linux-amd64/foo",
+			DirectoryName:   "linux-amd64/",
+			ExecutableBit:   true,
+		},
+	}
+
+	ft := files.FindFiles(wordMap, nil)
+
+	if len(ft.Binaries) != 1 {
+		t.Fatalf("expected 1 binary, got %d", len(ft.Binaries))
+	}
+
+	got := ft.Binaries[0]
+	want := &BinaryReleaseFileInfo{
+		ProgramName:      "foo",
+		OriginalFilename: "foo",
+		ArchivePathname:  "linux-amd64/foo",
+		InstalledName:    "foo",
+		Filename:         "foo",
+		ExecutableBit:    true,
+		Binary:           true,
+		Keyword:          "~amd64",
+		KeywordDefaulted: true,
+		ProjectName:      true,
+		OS:               "",
+		SuffixOnly:       true,
+	}
+
+	if diff := cmp.Diff(got, want, cmpopts.IgnoreUnexported(BinaryReleaseFileInfo{})); diff != "" {
+		t.Fatalf("FindFiles diff:\n%s", diff)
 	}
 }

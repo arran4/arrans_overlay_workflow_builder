@@ -636,6 +636,8 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning,
 	simple := true
 	for _, each := range input {
 		switch {
+		case each.Folder:
+			// Folder markers are purely advisory
 		case each.Version:
 			result.Filename += "${VERSION}"
 		case each.Tag:
@@ -645,11 +647,16 @@ func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning,
 		case each.ProjectName:
 			result.Filename += each.Captured
 			capturedProjectName = each.Captured
-		case each.Folder:
 		default:
 			simple = false
 			result.Filename += each.Captured
 		}
+
+		if each.Folder {
+			// Ignore keywords and other properties for folder names
+			continue
+		}
+
 		if each.Keyword != "" {
 			if result.Keyword != "" && result.Keyword != each.Keyword {
 				return nil, false
