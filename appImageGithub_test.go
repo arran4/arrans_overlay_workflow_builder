@@ -152,3 +152,72 @@ func TestCompileMeanings(t *testing.T) {
 		})
 	}
 }
+
+func TestSelectPrimaryAppImage(t *testing.T) {
+	tests := []struct {
+		name      string
+		repo      string
+		input     []*AppImageFileInfo
+		wantFirst string
+	}{
+		{
+			name: "prefer repo name match",
+			repo: "example",
+			input: []*AppImageFileInfo{
+				{ProgramName: "other", OriginalFilename: "other.AppImage"},
+				{ProgramName: "example", OriginalFilename: "example.AppImage"},
+				{ProgramName: "third", OriginalFilename: "third.AppImage"},
+			},
+			wantFirst: "example.AppImage",
+		},
+		{
+			name: "prefer blank when no match",
+			repo: "example",
+			input: []*AppImageFileInfo{
+				{ProgramName: "foo", OriginalFilename: "foo.AppImage"},
+				{ProgramName: "", OriginalFilename: "example.AppImage"},
+				{ProgramName: "bar", OriginalFilename: "bar.AppImage"},
+			},
+			wantFirst: "example.AppImage",
+		},
+		{
+			name: "fallback to closest name",
+			repo: "example",
+			input: []*AppImageFileInfo{
+				{ProgramName: "sample", OriginalFilename: "sample.AppImage"},
+				{ProgramName: "exampel", OriginalFilename: "exampel.AppImage"},
+				{ProgramName: "another", OriginalFilename: "another.AppImage"},
+			},
+			wantFirst: "exampel.AppImage",
+		},
+		{
+			name: "match ignoring case",
+			repo: "Example",
+			input: []*AppImageFileInfo{
+				{ProgramName: "EXAMPLE", OriginalFilename: "EXAMPLE.AppImage"},
+				{ProgramName: "other", OriginalFilename: "other.AppImage"},
+			},
+			wantFirst: "EXAMPLE.AppImage",
+		},
+		{
+			name: "match camel and snake case",
+			repo: "exampleApp",
+			input: []*AppImageFileInfo{
+				{ProgramName: "example_app", OriginalFilename: "example_app.AppImage"},
+				{ProgramName: "sample", OriginalFilename: "sample.AppImage"},
+			},
+			wantFirst: "example_app.AppImage",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := selectPrimaryAppImage(tt.input, tt.repo)
+			if len(got) != 1 {
+				t.Fatalf("len(got) = %d, want 1", len(got))
+			}
+			if got[0].OriginalFilename != tt.wantFirst {
+				t.Fatalf("got %s, want %s", got[0].OriginalFilename, tt.wantFirst)
+			}
+		})
+	}
+}
