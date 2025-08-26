@@ -99,6 +99,18 @@ func TestDecodeFilename(t *testing.T) {
 				{Container: "gz", SuffixOnly: true, Captured: "gz"},
 			},
 		},
+		{
+			name:           "example.AppImage.tgz",
+			groupedWordMap: GroupAndSort(GenerateWordMeanings("example", []string{"1.0.0"}, []string{"v1.0.0"})),
+			filename:       "example.AppImage.tgz",
+			want: []*FilenamePartMeaning{
+				{ProjectName: true, CaseInsensitive: true, Captured: "example"},
+				{Separator: true, Captured: "."},
+				{AppImage: true, SuffixOnly: true, OS: "linux", Captured: "AppImage"},
+				{Separator: true, Captured: "."},
+				{Container: "tgz", SuffixOnly: true, Captured: "tgz"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

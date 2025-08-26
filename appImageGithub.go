@@ -1,11 +1,17 @@
 package arrans_overlay_workflow_builder
 
 import (
+	"archive/tar"
 	"archive/zip"
+	"compress/bzip2"
+	"compress/gzip"
 	"fmt"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-github/v62/github"
+	"github.com/klauspost/compress/zstd"
 	"github.com/probonopd/go-appimage/src/goappimage"
+	"github.com/ulikunitz/xz"
+	"io"
 	"log"
 	"os"
 	"slices"
@@ -261,7 +267,8 @@ func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageF
 
 	var archivedFiles []*AppImageFileInfo
 	// TODO support weirdly nested containers.
-	switch strings.Join(container.Containers, ".") {
+	containerType := strings.ToLower(strings.Join(container.Containers, "."))
+	switch containerType {
 	case "zip":
 		zf, err := zip.OpenReader(container.tempFile)
 		if err != nil {
@@ -289,6 +296,68 @@ func (container *AppImageFileInfo) SearchArchiveForAppImageFiles() ([]*AppImageF
 			archivedFiles = append(archivedFiles, &AppImageFileInfo{
 				Container:    container.Filename,
 				Filename:     f.Name,
+				tempFile:     tmpFile,
+				ReleaseAsset: container.ReleaseAsset,
+			})
+		}
+	case "tar", "tar.gz", "tgz", "tar.bz2", "tbz", "tbz2", "tar.xz", "tar.zst":
+		f, err := os.Open(container.tempFile)
+		if err != nil {
+			return archivedFiles, fmt.Errorf("opening tar file: %s: %w", url, err)
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Printf("Error closing file: %s: %s", container.tempFile, err)
+			}
+		}()
+		var r io.Reader = f
+		switch containerType {
+		case "tar.gz", "tgz":
+			gr, err := gzip.NewReader(f)
+			if err != nil {
+				return archivedFiles, fmt.Errorf("opening gzip file: %s: %w", url, err)
+			}
+			defer func() {
+				if err := gr.Close(); err != nil {
+					log.Printf("Error closing gzip file %s: %s", container.tempFile, err)
+				}
+			}()
+			r = gr
+		case "tar.bz2", "tbz", "tbz2":
+			r = bzip2.NewReader(f)
+		case "tar.xz":
+			xzr, err := xz.NewReader(f)
+			if err != nil {
+				return archivedFiles, fmt.Errorf("opening xz file: %s: %w", url, err)
+			}
+			r = xzr
+		case "tar.zst":
+			zr, err := zstd.NewReader(f)
+			if err != nil {
+				return archivedFiles, fmt.Errorf("opening zst file: %s: %w", url, err)
+			}
+			defer zr.Close()
+			r = zr
+		}
+		tr := tar.NewReader(r)
+		for {
+			hdr, err := tr.Next()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return archivedFiles, fmt.Errorf("extracting file %s from %s: %w", container.tempFile, url, err)
+			}
+			if hdr.FileInfo().IsDir() {
+				continue
+			}
+			tmpFile, err := util.SaveReaderToTempFile(tr)
+			if err != nil {
+				return archivedFiles, fmt.Errorf("saving file %s to temp file: %w", hdr.Name, err)
+			}
+			archivedFiles = append(archivedFiles, &AppImageFileInfo{
+				Container:    container.Filename,
+				Filename:     hdr.Name,
 				tempFile:     tmpFile,
 				ReleaseAsset: container.ReleaseAsset,
 			})
