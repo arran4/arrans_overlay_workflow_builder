@@ -11,7 +11,7 @@ require (
 	github.com/klauspost/compress v1.15.12
 	github.com/probonopd/go-appimage v0.0.0-20240708195358-9d82c19270b4
 	github.com/stoewer/go-strcase v1.3.0
-	github.com/ulikunitz/xz v0.5.12
+	github.com/ulikunitz/xz v0.5.14
 )
 
 require (
