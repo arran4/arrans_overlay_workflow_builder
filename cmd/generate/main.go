@@ -20,6 +20,13 @@ type MainArgConfig struct {
 	Date    string
 }
 
+func valueOrDefault(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
+}
+
 func main() {
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	config := &MainArgConfig{
@@ -177,10 +184,15 @@ func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
 		if err := config.cmdConfigAddBinaryGithubReleases(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config add: %w", err)
 		}
+	case "web-appimage":
+		if err := config.cmdConfigAddWebAppImage(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config add: %w", err)
+		}
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		log.Printf("Try %s for %s", "github-release-appimage", "To generate a config file from a github release with semantic version for AppImages.")
 		log.Printf("Try %s for %s", "github-release-binary", "To generate a config file from a github release with semantic version for Binary Releases.")
+		log.Printf("Try %s for %s", "web-appimage", "To generate a config file from a webpage that links to AppImages.")
 		os.Exit(-1)
 	}
 	return nil
@@ -260,6 +272,41 @@ func (mac *CmdConfigAddArgConfig) cmdConfigAddBinaryGithubReleases(args []string
 	return nil
 }
 
+type CmdConfigAddWebAppImageArgConfig struct {
+	*CmdConfigAddArgConfig
+	PageUrl    *string
+	MatchExpr  *string
+	ConfigFile *string
+	Extension  *string
+}
+
+func (mac *CmdConfigAddArgConfig) cmdConfigAddWebAppImage(args []string) error {
+	config := &CmdConfigAddWebAppImageArgConfig{CmdConfigAddArgConfig: mac}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.ConfigFile = fs.String("to", "input.config", "The input with config")
+	config.PageUrl = fs.String("url", "", "The webpage to inspect for AppImages")
+	config.MatchExpr = fs.String("match", "", "Optional regular expression used to filter AppImage links")
+	config.Extension = fs.String("extension", "", "File extension to match (defaults to AppImage)")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.ConfigFile == nil || *config.ConfigFile == "" {
+			return fmt.Errorf("config file to modify argument missing")
+		}
+		if config.PageUrl == nil || *config.PageUrl == "" {
+			return fmt.Errorf("url missing")
+		}
+		return arrans_overlay_workflow_builder.ConfigAddWebAppImage(*config.ConfigFile, *config.PageUrl, *config.MatchExpr, valueOrDefault(config.Extension))
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "web-appimage", "Adds a configuration generated from a webpage hosting AppImages.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
 type CmdConfigViewArgConfig struct {
 	*CmdConfigArgConfig
 }
@@ -279,6 +326,10 @@ func (mac *CmdConfigArgConfig) cmdConfigView(args []string) error {
 		}
 	case "github-release-binary":
 		if err := config.cmdConfigViewBinaryGithubReleases(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config view: %w", err)
+		}
+	case "web-appimage":
+		if err := config.cmdConfigViewWebAppImage(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config view: %w", err)
 		}
 	default:
@@ -352,6 +403,35 @@ func (mac *CmdConfigViewArgConfig) cmdConfigViewBinaryGithubReleases(args []stri
 	return nil
 }
 
+type CmdConfigViewWebAppImageArgConfig struct {
+	*CmdConfigViewArgConfig
+	PageUrl   *string
+	MatchExpr *string
+	Extension *string
+}
+
+func (mac *CmdConfigViewArgConfig) cmdConfigViewWebAppImage(args []string) error {
+	config := &CmdConfigViewWebAppImageArgConfig{CmdConfigViewArgConfig: mac}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.PageUrl = fs.String("url", "", "Webpage containing AppImage link")
+	config.MatchExpr = fs.String("match", "", "Optional regular expression used to filter AppImage links")
+	config.Extension = fs.String("extension", "", "File extension to match (defaults to AppImage)")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.PageUrl == nil || *config.PageUrl == "" {
+			return fmt.Errorf("url missing")
+		}
+		return arrans_overlay_workflow_builder.ConfigViewWebAppImage(*config.PageUrl, *config.MatchExpr, valueOrDefault(config.Extension))
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		os.Exit(-1)
+	}
+	return nil
+}
+
 type CmdOneshotArgConfig struct {
 	*MainArgConfig
 }
@@ -372,6 +452,10 @@ func (mac *MainArgConfig) cmdOneshot(args []string) error {
 	case "github-release-binary":
 		if err := config.cmdOneshotGithubReleaseBinary(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("github binary: %w", err)
+		}
+	case "web-appimage":
+		if err := config.cmdOneshotWebAppImage(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("web appimage: %w", err)
 		}
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
@@ -445,6 +529,37 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) err
 			return fmt.Errorf("github URL to view is missing")
 		}
 		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdOneshotWebAppImageArgConfig struct {
+	*CmdOneshotArgConfig
+	PageUrl   *string
+	MatchExpr *string
+	Extension *string
+	OutputDir *string
+}
+
+func (mac *CmdOneshotArgConfig) cmdOneshotWebAppImage(args []string) error {
+	config := &CmdOneshotWebAppImageArgConfig{CmdOneshotArgConfig: mac}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.PageUrl = fs.String("url", "", "Webpage containing AppImage link")
+	config.MatchExpr = fs.String("match", "", "Optional regular expression used to filter AppImage links")
+	config.Extension = fs.String("extension", "", "File extension to match (defaults to AppImage)")
+	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.PageUrl == nil || *config.PageUrl == "" {
+			return fmt.Errorf("url missing")
+		}
+		return arrans_overlay_workflow_builder.CmdOneshotWebAppImage(*config.PageUrl, *config.MatchExpr, valueOrDefault(config.Extension), *config.OutputDir, config.Version)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)

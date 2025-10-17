@@ -168,6 +168,12 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		data = &GenerateGithubAppImageTemplateData{
 			GenerateGithubWorkflowBase: base,
 		}
+	case "Web AppImage":
+		data = &GenerateWebAppImageTemplateData{
+			GenerateGithubAppImageTemplateData: &GenerateGithubAppImageTemplateData{
+				GenerateGithubWorkflowBase: base,
+			},
+		}
 	case "Github Binary Release":
 		data = &GenerateGithubBinaryTemplateData{
 			GenerateGithubWorkflowBase: base,

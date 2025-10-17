@@ -215,6 +215,8 @@ type InputConfig struct {
 	EntryNumber      int
 	Type             string
 	GithubProjectUrl string
+	DownloadPageUrl  string
+	DownloadMatch    string
 	Category         string
 	EbuildName       string
 	Description      string
@@ -247,6 +249,16 @@ func (ic *InputConfig) String() string {
 		if ic.GithubProjectUrl != "" {
 			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", ic.GithubProjectUrl))
 		}
+	case "Web AppImage":
+		if ic.DownloadPageUrl != "" {
+			sb.WriteString(fmt.Sprintf("DownloadPageUrl %s\n", ic.DownloadPageUrl))
+		}
+		if ic.DownloadMatch != "" {
+			sb.WriteString(fmt.Sprintf("DownloadMatch %s\n", ic.DownloadMatch))
+		}
+	}
+	switch ic.Type {
+	case "Github AppImage Release", "Web AppImage":
 		if ic.Category != "" {
 			sb.WriteString(fmt.Sprintf("Category %s\n", ic.Category))
 		}
@@ -367,6 +379,8 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 			parseFields = map[string][]string{
 				"Type":                  nil,
 				"GithubProjectUrl":      nil,
+				"DownloadPageUrl":       nil,
+				"DownloadMatch":         nil,
 				"Category":              {DefaultCategory},
 				"EbuildName":            nil,
 				"Description":           nil,
@@ -480,9 +494,21 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	if err != nil {
 		return nil, fmt.Errorf("on Type: %v: %w", parsedFields["Type"], err)
 	}
-	currentConfig.GithubProjectUrl, err = onlyOrFail(parsedFields["GithubProjectUrl"])
-	if err != nil {
-		return nil, fmt.Errorf("on GithubProjectUrl: %v: %w", parsedFields["GithubProjectUrl"], err)
+	switch currentConfig.Type {
+	case "Web AppImage":
+		currentConfig.DownloadPageUrl, err = onlyOrFail(parsedFields["DownloadPageUrl"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadPageUrl: %v: %w", parsedFields["DownloadPageUrl"], err)
+		}
+		currentConfig.DownloadMatch, err = emptyOrOnlyOrFail(parsedFields["DownloadMatch"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
+		}
+	default:
+		currentConfig.GithubProjectUrl, err = onlyOrFail(parsedFields["GithubProjectUrl"])
+		if err != nil {
+			return nil, fmt.Errorf("on GithubProjectUrl: %v: %w", parsedFields["GithubProjectUrl"], err)
+		}
 	}
 	currentConfig.Category, err = emptyOrLast(parsedFields["Category"])
 	if err != nil {
@@ -504,9 +530,11 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	if err != nil {
 		return nil, fmt.Errorf("on License: %v: %w", parsedFields["License"], err)
 	}
-	currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
-	if err != nil {
-		return nil, fmt.Errorf("github url parser: %w", err)
+	if currentConfig.Type == "Github AppImage Release" || currentConfig.Type == "Github Binary Release" {
+		currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
+		if err != nil {
+			return nil, fmt.Errorf("github url parser: %w", err)
+		}
 	}
 	currentConfig.Workarounds, err = parseOptionalMapType1(parsedFields["Workaround"])
 	if err != nil {
@@ -516,6 +544,14 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	case "Github AppImage Release":
 		if currentConfig.EbuildName == "" {
 			currentConfig.EbuildName = currentConfig.GithubRepo
+		}
+		currentConfig.EbuildName = util.TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-appimage", "-AppImage") + "-appimage.ebuild"
+		if currentConfig.Programs == nil {
+			currentConfig.Programs = map[string]*Program{}
+		}
+	case "Web AppImage":
+		if currentConfig.GithubRepo == "" && currentConfig.EbuildName != "" {
+			currentConfig.GithubRepo = strings.TrimSuffix(currentConfig.EbuildName, ".ebuild")
 		}
 		currentConfig.EbuildName = util.TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-appimage", "-AppImage") + "-appimage.ebuild"
 		if currentConfig.Programs == nil {
@@ -570,7 +606,7 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 		return nil, fmt.Errorf("on Binary: %v: %w", programFields["Binary"], err)
 	}
 	switch ic.Type {
-	case "Github AppImage Release":
+	case "Github AppImage Release", "Web AppImage":
 		program.DesktopFile, err = emptyOrOnlyOrFail(programFields["DesktopFile"])
 		if err != nil {
 			return nil, fmt.Errorf("on DesktopFile: %v: %w", programFields["DesktopFile"], err)
