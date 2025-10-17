@@ -1,0 +1,157 @@
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder [[.Version]] [[.Type]] [[.ConfigFile]] [[.Now]]
+
+name: [[ .WorkflowName ]]
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '[[ .Cron ]]'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/[[ .WorkflowFileName ]]'
+
+env:
+  ecn: [[ .Category ]]
+  epn: [[ .PackageName ]]
+  description: [[ .Description | quoteStr ]]
+  homepage: [[ .Homepage  | quoteStr ]]
+  keywords: [[ .MaskedKeywords ]]
+  workflow_filename: [[ .WorkflowFileName ]]
+  [[- range $pname, $prog := .Programs ]]
+  [[- if $prog.HasDesktopFile ]]
+  [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: '[[ $prog.DesktopFile ]]'
+  [[- end ]]
+  [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
+  [[- end ]]
+
+jobs:
+  fetch-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Install required tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget jq coreutils htmlq
+
+      - name: Determine latest AppImage
+        id: find_appimage
+        run: |
+          set -euo pipefail
+          source_url="$(curl -sL '[[ .DownloadPageUrl ]]' | htmlq -a href 'a' | grep -iE '[[ if .DownloadMatch ]][[ .DownloadMatch ]][[ else ]]\.AppImage$[[ end ]]' | sort -V | tail -n1)"
+          if [ -z "$source_url" ]; then
+            echo "failed to find AppImage link" >&2
+            exit 1
+          fi
+          appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' "$source_url")"
+          if [ -z "$appimage_url" ]; then
+            echo "failed to resolve AppImage redirect" >&2
+            exit 1
+          fi
+          fname="$(basename "$appimage_url")"
+          artifact_ext="${fname##*.}"
+          if [ -z "$artifact_ext" ] || [ "$artifact_ext" = "$fname" ]; then
+            echo "unable to determine artifact extension from $fname" >&2
+            exit 1
+          fi
+          base_name="${fname%.*}"
+          version="${base_name##*-}"
+          echo "appimage_url=$appimage_url" >> "$GITHUB_ENV"
+          echo "appimage_extension=$artifact_ext" >> "$GITHUB_ENV"
+          echo "version=$version" >> "$GITHUB_ENV"
+
+      - name: Update ebuild
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p "$ebuild_dir"
+          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
+          if [ ! -f "$ebuild_file" ]; then
+            {
+              echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
+              echo 'EAPI=8'
+              echo "DESCRIPTION=\"${{ env.description }}\""
+              echo "HOMEPAGE=\"${{ env.homepage }}\""
+              echo 'LICENSE="MIT"'
+              echo 'SLOT="0"'
+              echo 'KEYWORDS="${{ env.keywords }}"'
+              echo 'IUSE=""'
+              echo 'DEPEND=""'
+              echo 'RDEPEND="[[range $i, $dep := .Dependencies]][[$dep]] [[end]]"'
+              echo 'S="${WORKDIR}"'
+              echo 'RESTRICT="strip"'
+              echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
+[[ if .HasDesktopFile ]]
+              echo ''
+              echo 'inherit xdg-utils'
+[[ end ]]
+              echo ''
+              echo 'src_install() {'
+              echo '  cp "${DISTDIR}/${P}.${appimage_extension}" "${P}.${appimage_extension}" || die "Failed to copy AppImage"'
+              echo '  chmod a+x "${P}.${appimage_extension}" || die "Can'"'"'t chmod archive file"'
+[[ range $pname, $prog := .Programs ]]
+[[ if $prog.HasDesktopFile ]]
+              echo '  "./${P}.${appimage_extension}" --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
+[[ end ]]
+[[ range $i, $icon := $prog.Icons ]]
+[[ if eq $icon "hicolor-apps" ]]
+              echo '  "./${P}.${appimage_extension}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
+[[ else if eq $icon "pixmaps" ]]
+              echo '  "./${P}.${appimage_extension}" --appimage-extract "usr/share/pixmaps" || die "Failed to extract pixmaps icons from app image"'
+[[ else if eq $icon "root" ]]
+              echo '  "./${P}.${appimage_extension}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
+[[ end ]]
+[[ end ]]
+[[ end ]]
+              echo '  exeinto /opt/bin'
+[[ range $pname, $prog := .Programs ]]
+              echo '  newexe "${P}.${appimage_extension}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
+[[ end ]]
+[[ if .HasDesktopFile ]]
+              echo '  insinto /usr/share/applications'
+[[ range $pname, $prog := .Programs ]]
+              echo '  doins "squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to install desktop file"'
+[[ end ]]
+[[ end ]]
+[[ range $pname, $prog := .Programs ]]
+[[ range $i, $icon := $prog.Icons ]]
+[[ if eq $icon "hicolor-apps" ]]
+              echo '  insinto /usr/share/icons'
+              echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
+[[ else if eq $icon "pixmaps" ]]
+              echo '  insinto /usr/share/pixmaps'
+              echo '  doins squashfs-root/usr/share/pixmaps/*.png || die "Failed to install icons"'
+[[ else if eq $icon "root" ]]
+              echo '  insinto /usr/share/pixmaps'
+              echo '  doins squashfs-root/*.png || die "Failed to install icons"'
+[[ end ]]
+[[ end ]]
+[[ end ]]
+              echo '}'
+[[ if .HasDesktopFile ]]
+              echo ''
+              echo 'pkg_postinst() {'
+              echo '  xdg_desktop_database_update'
+              echo '}'
+[[ end ]]
+            } > "$ebuild_file"
+
+            g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
+            echo "generated_tag=${version}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          git add "${ebuild_dir}"
+          git commit -m "Add ebuild for version ${version}" && git pull --rebase && git push || true
+        if: steps.find_appimage.outputs.version
