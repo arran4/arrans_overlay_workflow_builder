@@ -17,6 +17,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 type AppImageFileInfo struct {
@@ -147,6 +148,7 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix st
 	if ic.Programs == nil {
 		ic.Programs = map[string]*Program{}
 	}
+	appImages = selectPrimaryAppImage(appImages, repoName)
 	for _, appImage := range appImages {
 		if err := appImage.GetInformationFromAppImage(repoName, ic); err != nil {
 			return nil, err
@@ -154,6 +156,85 @@ func GenerateAppImageGithubReleaseConfigEntry(gitRepo, tagOverride, tagPrefix st
 		// Desktop icon: ai.Desktop.Section("Desktop Entry").Key("Icon").Value()
 	}
 	return ic, nil
+}
+
+func selectPrimaryAppImage(appImages []*AppImageFileInfo, repoName string) []*AppImageFileInfo {
+	if len(appImages) <= 1 {
+		return appImages
+	}
+	repoNorm := normalizeName(repoName)
+	sort.Slice(appImages, func(i, j int) bool {
+		ai, aj := appImages[i], appImages[j]
+		key := func(a *AppImageFileInfo) (int, int) {
+			norm := normalizeName(a.ProgramName)
+			switch {
+			case norm == repoNorm:
+				return 0, 0
+			case a.ProgramName == "":
+				return 1, 0
+			default:
+				return 2, stringDistance(norm, repoNorm)
+			}
+		}
+		ki1, ki2 := key(ai)
+		kj1, kj2 := key(aj)
+		if ki1 != kj1 {
+			return ki1 < kj1
+		}
+		if ki2 != kj2 {
+			return ki2 < kj2
+		}
+		return ai.OriginalFilename < aj.OriginalFilename
+	})
+	log.Printf("Multiple AppImages found, using %s", appImages[0].OriginalFilename)
+	return []*AppImageFileInfo{appImages[0]}
+}
+
+func normalizeName(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(unicode.ToLower(r))
+		}
+	}
+	return b.String()
+}
+
+func stringDistance(a, b string) int {
+	ra, rb := []rune(a), []rune(b)
+	la, lb := len(ra), len(rb)
+	if la == 0 {
+		return lb
+	}
+	if lb == 0 {
+		return la
+	}
+	dp := make([][]int, la+1)
+	for i := range dp {
+		dp[i] = make([]int, lb+1)
+	}
+	for i := 0; i <= la; i++ {
+		dp[i][0] = i
+	}
+	for j := 0; j <= lb; j++ {
+		dp[0][j] = j
+	}
+	for i := 1; i <= la; i++ {
+		for j := 1; j <= lb; j++ {
+			cost := 0
+			if ra[i-1] != rb[j-1] {
+				cost = 1
+			}
+			dp[i][j] = dp[i-1][j-1] + cost
+			if dp[i][j-1]+1 < dp[i][j] {
+				dp[i][j] = dp[i][j-1] + 1
+			}
+			if dp[i-1][j]+1 < dp[i][j] {
+				dp[i][j] = dp[i-1][j] + 1
+			}
+		}
+	}
+	return dp[la][lb]
 }
 
 func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic *InputConfig) error {
