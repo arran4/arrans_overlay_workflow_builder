@@ -85,7 +85,12 @@ func FindAppImageLinksWithExtension(pageURL, matchExpr, extension string) ([]App
 	if err != nil {
 		return nil, fmt.Errorf("fetching %s: %w", pageURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Printf("failed to close response body: %v", err)
+		}
+	}()
 
 	log.Printf("%s -> %s", pageURL, resp.Status)
 
@@ -282,7 +287,12 @@ func followRedirect(rawURL string) (string, string) {
 		log.Printf("HEAD request for %s failed: %v", rawURL, err)
 		return fallbackURL(rawURL)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Printf("failed to close response body: %v", err)
+		}
+	}()
 	final := resp.Request.URL
 	if resp.StatusCode >= 400 || final == nil {
 		log.Printf("HEAD request for %s returned status %d, falling back", rawURL, resp.StatusCode)

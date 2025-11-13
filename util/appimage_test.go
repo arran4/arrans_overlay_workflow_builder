@@ -10,11 +10,14 @@ import (
 func TestFindAppImageLinks(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<html><body>
+		_, err := fmt.Fprint(w, `<html><body>
                         <a href="/builds/Beeper-4.1.9.AppImage">Old</a>
                         <a href="/builds/Beeper-4.1.10.AppImage">New</a>
                         <a href="/other/Tool-1.0.AppImage">Other</a>
                 </body></html>`)
+		if err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
 	}))
 	defer ts.Close()
 
@@ -40,10 +43,13 @@ func TestFindAppImageLinks(t *testing.T) {
 func TestFindAppImageLinkLatest(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<html><body>
+		_, err := fmt.Fprint(w, `<html><body>
                         <a href="/builds/Beeper-4.1.135.AppImage">Download</a>
                         <a href="/builds/Beeper-4.1.140.AppImage">Download</a>
                 </body></html>`)
+		if err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
 	}))
 	defer ts.Close()
 
@@ -62,10 +68,13 @@ func TestFindAppImageLinksWithExtensionRedirect(t *testing.T) {
 		switch r.URL.Path {
 		case "/":
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprint(w, `<html><body>
+			_, err := fmt.Fprint(w, `<html><body>
                                 <a href="/download/BeeperSetup.exe">Windows</a>
                                 <a href="/download/com.automattic.beeper.desktop">Download</a>
                         </body></html>`)
+			if err != nil {
+				t.Fatalf("failed to write response: %v", err)
+			}
 		case "/download/BeeperSetup.exe":
 			http.Redirect(w, r, "/builds/BeeperSetup.exe", http.StatusFound)
 		case "/builds/BeeperSetup.exe":
