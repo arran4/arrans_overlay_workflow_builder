@@ -110,9 +110,12 @@ func TestFindAppImageLinksWithExtensionQueryAndDotPrefix(t *testing.T) {
 		switch r.URL.Path {
 		case "/":
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprint(w, `<html><body>
+			_, err := fmt.Fprint(w, `<html><body>
                                 <a href="/download/com.automattic.beeper.desktop?channel=stable">Download</a>
                         </body></html>`)
+			if err != nil {
+				t.Fatalf("failed to write response: %v", err)
+			}
 		case "/download/com.automattic.beeper.desktop":
 			if r.URL.RawQuery != "channel=stable" {
 				t.Fatalf("unexpected query %q", r.URL.RawQuery)
@@ -148,7 +151,10 @@ func TestFindAppImageLinksWithExtensionScriptFallback(t *testing.T) {
 		case "/":
 			w.Header().Set("Content-Type", "text/html")
 			page := fmt.Sprintf(`<html><body><script>var data={"platforms":[{"key":"windows","binaries":{"x64":{"productionURL":{"url":"%s/download/windows.desktop","type":"download"}}}},{"key":"linux","binaries":{"x64":{"productionURL":{"url":"%s/download/linux.desktop","type":"download"}}}}]};</script></body></html>`, ts.URL, ts.URL)
-			fmt.Fprint(w, page)
+			_, err := fmt.Fprint(w, page)
+			if err != nil {
+				t.Fatalf("failed to write response: %v", err)
+			}
 		case "/download/windows.desktop":
 			http.Redirect(w, r, "/builds/windows.exe", http.StatusFound)
 		case "/builds/windows.exe":
@@ -181,10 +187,13 @@ func TestFindAppImageLinksWithExtensionScriptFallback(t *testing.T) {
 func TestFindAppImageLinksPrefersSemanticVersions(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<html><body>
+		_, err := fmt.Fprint(w, `<html><body>
                         <a href="/builds/Beeper-nightly.AppImage">Nightly</a>
                         <a href="/builds/Beeper-4.1.400.AppImage">Stable</a>
                 </body></html>`)
+		if err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
 	}))
 	defer ts.Close()
 
