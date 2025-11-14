@@ -11,10 +11,13 @@ import (
 func TestGenerateWebAppImageConfigEntry(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<html><body>
+		_, err := fmt.Fprint(w, `<html><body>
                         <a href="/builds/Beeper-4.1.135.AppImage">Download</a>
                         <a href="/builds/Beeper-4.1.140.AppImage">Download</a>
                 </body></html>`)
+		if err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
 	}))
 	defer ts.Close()
 
@@ -58,9 +61,12 @@ func TestGenerateWebAppImageConfigEntryWithExtension(t *testing.T) {
 		switch r.URL.Path {
 		case "/":
 			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprint(w, `<html><body>
+			_, err := fmt.Fprint(w, `<html><body>
                                 <a href="/download/com.automattic.beeper.desktop">Beeper</a>
                         </body></html>`)
+			if err != nil {
+				t.Fatalf("failed to write response: %v", err)
+			}
 		case "/download/com.automattic.beeper.desktop":
 			http.Redirect(w, r, "/builds/Beeper-4.1.276-arm64.AppImage", http.StatusFound)
 		case "/builds/Beeper-4.1.276-arm64.AppImage":
