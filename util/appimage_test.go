@@ -212,9 +212,12 @@ func TestFindAppImageLinksPrefersSemanticVersions(t *testing.T) {
 func TestFindAppImageLinksKeepsNightlyWhenOnlyNightly(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprint(w, `<html><body>
+		_, err := fmt.Fprint(w, `<html><body>
                         <a href="/builds/Beeper-nightly.AppImage">Nightly</a>
                 </body></html>`)
+		if err != nil {
+			t.Fatalf("failed to write response: %v", err)
+		}
 	}))
 	defer ts.Close()
 
