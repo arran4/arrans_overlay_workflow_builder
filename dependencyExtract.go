@@ -129,6 +129,8 @@ var (
 		"librt.so":                  "sys-libs/glibc",
 		"libgtk-3.so":               "x11-libs/gtk+",
 		"libgtk-3.so.0":             "x11-libs/gtk+",
+		"libwayland-cursor.so":      "dev-libs/wayland",
+		"libwayland-cursor.so.0":    "dev-libs/wayland",
 		"libGL.so":                  "media-libs/libglvnd",
 		"libGL.so.1":                "media-libs/libglvnd",
 		"libGL.so.1.0":              "media-libs/libglvnd",
