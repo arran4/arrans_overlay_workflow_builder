@@ -74,6 +74,19 @@ jobs:
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
+          metadata_file="${ebuild_dir}/metadata.xml"
+          if [ ! -f "$metadata_file" ]; then
+            cat <<EOF > "$metadata_file"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>admin@example.com</email>
+		<name>Admin</name>
+	</maintainer>
+</pkgmetadata>
+EOF
+          fi
           ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
           if [ ! -f "$ebuild_file" ]; then
             {

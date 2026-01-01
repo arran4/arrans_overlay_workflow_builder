@@ -54,7 +54,7 @@ jobs:
       - name: Install required tools
         run: |
             sudo apt-get update
-            sudo apt-get install -y wget jq coreutils
+            sudo apt-get install -y wget jq coreutils xmlstarlet
             url="$(curl -s --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/arran4/g2/releases/latest | jq -r '.assets[].browser_download_url | select(endswith("_linux_amd64.deb"))')"
             echo "$url"
             wget "${url}" -O /tmp/g2.deb
@@ -66,6 +66,39 @@ jobs:
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p $ebuild_dir
+          metadata_file="${ebuild_dir}/metadata.xml"
+          if [ ! -f "$metadata_file" ]; then
+            cat <<EOF > "$metadata_file"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>admin@example.com</email>
+		<name>Admin</name>
+	</maintainer>
+	<upstream>
+		<remote-id type="github">${{ env.github_owner }}/${{ env.github_repo }}</remote-id>
+	</upstream>
+</pkgmetadata>
+EOF
+          fi
+          add_use_flag() {
+            local flag=$1
+            local desc=$2
+            if [ "$(xmlstarlet sel -t -v "count(/pkgmetadata/use/flag[@name='${flag}'])" "$metadata_file")" -eq 0 ]; then
+              if [ "$(xmlstarlet sel -t -v "count(/pkgmetadata/use)" "$metadata_file")" -eq 0 ]; then
+                xmlstarlet ed --L -s "/pkgmetadata" -t elem -n "use" -v "" "$metadata_file"
+              fi
+              xmlstarlet ed --L -s "/pkgmetadata/use" -t elem -n "flag" -v "$desc" -s "/pkgmetadata/use/flag[last()]" -t attr -n "name" -v "$flag" "$metadata_file"
+            fi
+          }
+          [[- range $use, $archs := $.ReverseProgramsAsAlternatives]]
+          add_use_flag "[[ $use | UseFlagSafe ]]" "Install [[ $use ]] binary"
+          [[- end ]]
+          [[- range $i, $shell := $.ShellCompletionShells]]
+          add_use_flag "[[ $shell | UseFlagSafe ]]" "Install [[ $shell ]] completion"
+          [[- end ]]
+          xmlstarlet fo --indent-tab "$metadata_file" > "$metadata_file.tmp" && mv "$metadata_file.tmp" "$metadata_file"
           declare -A releaseTypes=()
           tags=$(curl -s  --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
 [[- if .WorkaroundSemanticVersionWithoutV ]]
