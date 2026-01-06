@@ -46,9 +46,9 @@ require (
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
-	// Known issue: gopkg.in/src-d/go-git.v4 has mulitple CVEs, however the upstream
-	// probonopd/go-appimage has been archived and no longer updated. Due to this
-	// the risk is being accepted as is.
+	// Known issue: gopkg.in/src-d/go-git.v4 has mulitple CVEs including the "Argument Injection"
+	// vulnerability. However the upstream probonopd/go-appimage has been archived and no longer
+	// updated. Due to this the risk is being accepted as is.
 	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
