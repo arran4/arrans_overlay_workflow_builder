@@ -106,34 +106,35 @@ jobs:
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo 'SRC_URI="'
+[[- range $i, $externalResource := .ExternalResources ]]
+                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]\${PV}[[- else ]][[- $.WorkaroundTagPrefix ]]v\${PV}[[- end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+[[- end ]]
+                echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
-                echo 'IUSE="[[- `` -]]
-                        [[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]
-                        [[- if $.HasManualPages ]] man[[end]]
-                        [[- if $.HasDocuments ]] doc[[end]]
-                        [[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]
-                    [[- `` -]]"'
-                echo 'REQUIRED_USE="[[- `` -]]
-                    [[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]
-                    [[- `` -]]"'
-                echo 'DEPEND=""'
-                echo 'RDEPEND="[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]
-[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]
-                     "'
+                echo -n 'IUSE="'
+                echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]'
+                echo -n '[[- if $.HasManualPages ]] man[[end]]'
+                echo -n '[[- if $.HasDocuments ]] doc[[end]]'
+                echo -n '[[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]'
+                echo '"'
+                echo ''
+                echo -n 'REQUIRED_USE="'
+                echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]'
+                echo '"'
+                echo ''
+                echo -n 'RDEPEND="'
+                echo -n '[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]'
+                echo -n '[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]'
+                echo '"'
+                echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
 [[- if .HasDesktopFile ]]
                 echo ''
 [[- end ]]
-                echo ''
-                echo 'SRC_URI="'
-[[- range $i, $externalResource := .ExternalResources ]]
-                echo "  [[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
-[[- end ]]
-                echo '"'
-                echo ''
                 [[- if $.NeedsSrcUnpack ]]
                 echo 'src_unpack() {'
 [[- range $i, $externalResource := .ExternalResources ]]
@@ -163,7 +164,7 @@ jobs:
 [[- end ]]
                 echo '}'
                 [[- else ]]
-                echo 'src_unpack() { : }'
+                echo 'src_unpack() { :; }'
                 [[- end ]]
                 echo ''
                 echo 'src_install() {'
@@ -239,7 +240,6 @@ jobs:
                 echo '  fi'
 [[- end ]]
                 echo '}'
-                echo ""
               } > $ebuild_file
 
               # Manifest generation
