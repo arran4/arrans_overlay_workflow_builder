@@ -60,6 +60,9 @@ func (ggbtd *GenerateGithubBinaryTemplateData) MainDependencies() []string {
 	}
 	sort.Strings(deps)
 	deps = slices.CompactFunc(deps, strings.EqualFold)
+	deps = slices.DeleteFunc(deps, func(s string) bool {
+		return s == "sys-libs/glibc"
+	})
 	return deps
 }
 
@@ -73,6 +76,9 @@ func (ggbtd *GenerateGithubBinaryTemplateData) AlternativeDependencies() map[str
 		altDeps[programName] = append(altDeps[programName], prog.Dependencies...)
 		sort.Strings(altDeps[programName])
 		altDeps[programName] = slices.CompactFunc(altDeps[programName], strings.EqualFold)
+		altDeps[programName] = slices.DeleteFunc(altDeps[programName], func(s string) bool {
+			return s == "sys-libs/glibc"
+		})
 	}
 	return altDeps
 }
