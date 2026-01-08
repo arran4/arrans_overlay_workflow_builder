@@ -1,10 +1,10 @@
 package arrans_overlay_workflow_builder
 
-// TODO: The dependency `github.com/probonopd/go-appimage` uses a vulnerable version of `gopkg.in/src-d/go-git.v4`.
-// This is a transitive dependency that cannot be easily updated. The risk of this vulnerability is accepted for now,
-// as the application is not using the git functionality of `go-appimage` in a way that is exposed to the vulnerability.
-// The vulnerability is related to maliciously crafted Git server replies, and this application does not interact with
-// git servers through the `go-appimage` library.
+// TODO: The dependency `github.com/probonopd/go-appimage` uses a vulnerable version of `gopkg.in/src-d/go-git.v4`
+// (including the "Argument Injection" vulnerability). This is a transitive dependency that cannot be easily updated. The
+// risk of this vulnerability is accepted for now, as the application is not using the git functionality of
+// `go-appimage` in a way that is exposed to the vulnerability. The vulnerability is related to maliciously crafted Git
+// server replies, and this application does not interact with git servers through the `go-appimage` library.
 import (
 	"archive/tar"
 	"archive/zip"
