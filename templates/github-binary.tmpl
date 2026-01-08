@@ -72,10 +72,12 @@ jobs:
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
 <pkgmetadata>
+[[- if and .MaintainerEmail .MaintainerName ]]
 	<maintainer type="person">
-		<email>admin@example.com</email>
-		<name>Admin</name>
+		<email>[[ .MaintainerEmail ]]</email>
+		<name>[[ .MaintainerName ]]</name>
 	</maintainer>
+[[- end ]]
 	<upstream>
 		<remote-id type="github">${{ env.github_owner }}/${{ env.github_repo }}</remote-id>
 	</upstream>
