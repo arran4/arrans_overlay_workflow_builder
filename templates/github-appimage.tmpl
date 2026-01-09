@@ -69,19 +69,7 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           if [ ! -f "$metadata_file" ]; then
             cat <<EOF > "$metadata_file"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
-<pkgmetadata>
-[[- if and .MaintainerEmail .MaintainerName ]]
-	<maintainer type="person">
-		<email>[[ .MaintainerEmail ]]</email>
-		<name>[[ .MaintainerName ]]</name>
-	</maintainer>
-[[- end ]]
-	<upstream>
-		<remote-id type="github">${{ env.github_owner }}/${{ env.github_repo }}</remote-id>
-	</upstream>
-</pkgmetadata>
+[[ .DefaultMetadata ]]
 EOF
           fi
           declare -A releaseTypes=()
