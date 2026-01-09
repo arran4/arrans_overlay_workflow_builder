@@ -588,7 +588,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		pkgMd.Use = &g2.Use{}
 	}
 
-	for use, _ := range ggbtd.ReverseProgramsAsAlternatives() {
+	for use := range ggbtd.ReverseProgramsAsAlternatives() {
 		pkgMd.Use.Flags = append(pkgMd.Use.Flags, g2.Flag{
 			Name: strcase.SnakeCase(use),
 			Text: fmt.Sprintf("Install %s binary", use),
