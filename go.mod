@@ -15,6 +15,8 @@ require (
 	golang.org/x/net v0.48.0
 )
 
+require github.com/arran4/g2 v0.0.4 // indirect
+
 require (
 	github.com/CalebQ42/squashfs v1.0.4 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
@@ -42,7 +44,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect

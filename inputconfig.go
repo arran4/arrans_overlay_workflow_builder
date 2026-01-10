@@ -224,6 +224,8 @@ type InputConfig struct {
 	GithubRepo       string
 	GithubOwner      string
 	License          string
+	MaintainerEmail  string
+	MaintainerName   string
 	Workarounds      map[string]string
 	Programs         map[string]*Program
 }
@@ -274,6 +276,12 @@ func (ic *InputConfig) String() string {
 		if ic.License != "" {
 			sb.WriteString(fmt.Sprintf("License %s\n", ic.License))
 		}
+		if ic.MaintainerEmail != "" {
+			sb.WriteString(fmt.Sprintf("MaintainerEmail %s\n", ic.MaintainerEmail))
+		}
+		if ic.MaintainerName != "" {
+			sb.WriteString(fmt.Sprintf("MaintainerName %s\n", ic.MaintainerName))
+		}
 		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
 			if len(ic.Workarounds[workaround]) == 0 {
@@ -304,6 +312,12 @@ func (ic *InputConfig) String() string {
 		}
 		if ic.License != "" {
 			sb.WriteString(fmt.Sprintf("License %s\n", ic.License))
+		}
+		if ic.MaintainerEmail != "" {
+			sb.WriteString(fmt.Sprintf("MaintainerEmail %s\n", ic.MaintainerEmail))
+		}
+		if ic.MaintainerName != "" {
+			sb.WriteString(fmt.Sprintf("MaintainerName %s\n", ic.MaintainerName))
 		}
 		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
@@ -386,6 +400,8 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"Description":           nil,
 				"Homepage":              nil,
 				"License":               {DefaultLicense},
+				"MaintainerEmail":       nil,
+				"MaintainerName":        nil,
 				"ProgramName":           nil,
 				"DesktopFile":           nil,
 				"Icons":                 nil,
@@ -529,6 +545,14 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	currentConfig.License, err = emptyOrLast(parsedFields["License"])
 	if err != nil {
 		return nil, fmt.Errorf("on License: %v: %w", parsedFields["License"], err)
+	}
+	currentConfig.MaintainerEmail, err = emptyOrOnlyOrFail(parsedFields["MaintainerEmail"])
+	if err != nil {
+		return nil, fmt.Errorf("on MaintainerEmail: %v: %w", parsedFields["MaintainerEmail"], err)
+	}
+	currentConfig.MaintainerName, err = emptyOrOnlyOrFail(parsedFields["MaintainerName"])
+	if err != nil {
+		return nil, fmt.Errorf("on MaintainerName: %v: %w", parsedFields["MaintainerName"], err)
 	}
 	if currentConfig.Type == "Github AppImage Release" || currentConfig.Type == "Github Binary Release" {
 		currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)

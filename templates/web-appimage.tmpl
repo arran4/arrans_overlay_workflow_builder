@@ -74,6 +74,12 @@ jobs:
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
+          metadata_file="${ebuild_dir}/metadata.xml"
+          if [ ! -f "$metadata_file" ]; then
+            cat <<EOF > "$metadata_file"
+[[ .DefaultMetadata ]]
+EOF
+          fi
           ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
           if [ ! -f "$ebuild_file" ]; then
             {

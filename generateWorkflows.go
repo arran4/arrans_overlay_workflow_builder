@@ -3,7 +3,9 @@ package arrans_overlay_workflow_builder
 import (
 	"bytes"
 	"embed"
+	"encoding/xml"
 	"fmt"
+	"github.com/arran4/g2"
 	"github.com/stoewer/go-strcase"
 	"io/fs"
 	"log"
@@ -145,6 +147,40 @@ type GenerateGithubWorkflowBase struct {
 	Version    string
 	Now        time.Time
 	ConfigFile string
+}
+
+func (b *GenerateGithubWorkflowBase) DefaultMetadata() (string, error) {
+	pkgMd := &g2.PkgMetadata{
+		XMLName: xml.Name{
+			Local: "pkgmetadata",
+		},
+		Upstream: &g2.Upstream{
+			RemoteID: []g2.RemoteID{},
+		},
+	}
+	if b.MaintainerEmail != "" {
+		pkgMd.Maintainers = append(pkgMd.Maintainers, g2.Maintainer{
+			Email: b.MaintainerEmail,
+			Name:  b.MaintainerName,
+			Type:  "person",
+		})
+	}
+	if b.GithubOwner != "" && b.GithubRepo != "" {
+		pkgMd.Upstream.RemoteID = append(pkgMd.Upstream.RemoteID, g2.RemoteID{
+			Type: "github",
+			Text: fmt.Sprintf("%s/%s", b.GithubOwner, b.GithubRepo),
+		})
+	}
+	if len(pkgMd.Upstream.RemoteID) == 0 {
+		pkgMd.Upstream = nil
+	}
+	o, err := xml.MarshalIndent(pkgMd, "", "\t")
+	if err != nil {
+		return "", fmt.Errorf("marshalling metadata: %w", err)
+	}
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+%s`, string(o)), nil
 }
 
 func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string) error {
