@@ -3,6 +3,14 @@
 This is a generator for some of the github actions in [my gentoo overlay](https://github.com/arran4/arrans_overlay/tree/main/.github/workflows)'s
 workflow directory. - Which check for updates to various applications then generates ebuilds for them. 
 
+## Installation
+
+To install this application, run the following command:
+```bash
+go install github.com/arran4/arrans_overlay_workflow_builder@latest
+```
+This will install the `arrans_overlay_workflow_builder` binary in your `$GOPATH/bin` directory.
+
 The purpose of this application is (currently) to quickly generate binary ebuild files for 2 use cases:
 * Github repositories with AppImage binary releases
 * Github repositories with normal elf binaries releases (such as those generated with `goreleaser`)
@@ -90,7 +98,7 @@ There are 2 commands to generate the AppImage section, one outputs to STDOUT and
 You need to provide a github URL as such:
 
 ```bash
-overlay_workflow_builder_generator config view github-release-appimage -github-url https://github.com/anyproto/anytype-ts
+go run github.com/arran4/arrans_overlay_workflow_builder@latest config view github-release-appimage -github-url https://github.com/anyproto/anytype-ts
 ```
 
 #### Append to config file version
@@ -98,7 +106,7 @@ overlay_workflow_builder_generator config view github-release-appimage -github-u
 You will need to provide the GitHub URL for the target project, and optionally the input file which defaults to `input.config`
 
 ```bash
-overlay_workflow_builder_generator config add github-release-appimage -github-url https://github.com/anyproto/anytype-ts -to input.config
+go run github.com/arran4/arrans_overlay_workflow_builder@latest config add github-release-appimage -github-url https://github.com/anyproto/anytype-ts -to input.config
 ```
 
 ### Config Generation for a binary in a GitHub Release
@@ -110,7 +118,7 @@ There are 2 commands to generate the AppImage section, one outputs to STDOUT and
 You need to provide a github URL as such:
 
 ```bash
-overlay_workflow_builder_generator config view github-release-binary -github-url https://github.com/goreleaser/goreleaser
+go run github.com/arran4/arrans_overlay_workflow_builder@latest config view github-release-binary -github-url https://github.com/goreleaser/goreleaser
 ```
 
 #### Append to config file version
@@ -118,7 +126,7 @@ overlay_workflow_builder_generator config view github-release-binary -github-url
 You will need to provide the GitHub URL for the target project, and optionally the input file which defaults to `input.config`
 
 ```bash
-overlay_workflow_builder_generator config add github-release-binary -github-url https://github.com/goreleaser/goreleaser -to input.config
+go run github.com/arran4/arrans_overlay_workflow_builder@latest config add github-release-binary -github-url https://github.com/goreleaser/goreleaser -to input.config
 ```
 
 ## `ebuild` Generator GitHub Action Generator
@@ -126,7 +134,7 @@ overlay_workflow_builder_generator config add github-release-binary -github-url 
 To generate the workflows from an `input.config` file run:
 
 ```bash
-overlay_workflow_builder_generator generate workflows -input-file input.config
+go run github.com/arran4/arrans_overlay_workflow_builder@latest generate workflows -input-file input.config
 ```
 
 Look in the `output/` directory for the generated file(s) these should be copied to your github overlay's `./.github/workflows` 
@@ -180,7 +188,7 @@ Binary amd64=>ente-${TAG}-x86_64.AppImage > ente_auth.AppImage
 The flag for this is `-tag-prefix` used as such:
 
 ```bash
-overlay_workflow_builder_generator config view github-release-appimage -github-url https://github.com/anyproto/anytype-ts -tag-prefix auth-
+go run github.com/arran4/arrans_overlay_workflow_builder@latest config view github-release-appimage -github-url https://github.com/anyproto/anytype-ts -tag-prefix auth-
 ```
 
 Due to assumption in the program you WILL have to modify the `EbuildName`, `Description`, `Homepage` and `Category` at minimum.
