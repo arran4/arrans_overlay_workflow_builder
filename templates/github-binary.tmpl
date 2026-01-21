@@ -100,6 +100,14 @@ EOF
                 echo "tag / $version doesn't match regexp";
                 continue;
             fi
+            ext="tgz"
+            bdepend=""
+[[- if eq .GithubRepo "ollama" ]]
+            if dpkg --compare-versions "$originalVersion" "ge" "0.14.0"; then
+               ext="tar.zst"
+               bdepend='BDEPEND="app-arch/zstd"'
+            fi
+[[- end ]]
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
             if [[`[[ ! -v releaseTypes[${releaseType:=release}] ]]`]]; then
                 if [[`[[ -v releaseTypes[release] ]]`]]; then
@@ -122,12 +130,15 @@ EOF
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
 [[- range $i, $externalResource := .ExternalResources ]]
-                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]\${PV}[[- else ]][[- $.WorkaroundTagPrefix ]]v\${PV}[[- end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]\${PV}[[- else ]][[- $.WorkaroundTagPrefix ]]v\${PV}[[- end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace ".tgz" ".${ext}" ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted | replace ".tgz" ".${ext}" ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted | replace ".tgz" ".${ext}" ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
 [[- end ]]
                 echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
+                if [ -n "$bdepend" ]; then
+                   echo "$bdepend"
+                fi
                 echo -n 'IUSE="'
                 echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]'
                 echo -n '[[- if $.HasManualPages ]] man[[end]]'
@@ -155,7 +166,7 @@ EOF
   [[- if $externalResource.Archived ]]
     [[- $count := 0 ]]
                 echo '  if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe  ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
+                echo "    unpack \"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted | replace ".tgz" ".${ext}" ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
   [[- end ]]
 [[- end ]]
@@ -259,9 +270,9 @@ EOF
               # Manifest generation
 [[ range $i, $externalResource := .ExternalResources ]]
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace ".tgz" ".${ext}" ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted | replace ".tgz" ".${ext}" ]]" "${ebuild_dir}/Manifest"
     [[- else ]]
-              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"
+              g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | actionvardoublequoted | replace ".tgz" ".${ext}" ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted | replace ".tgz" ".${ext}" ]]" "${ebuild_dir}/Manifest"
     [[- end ]]
 
 [[- end ]]

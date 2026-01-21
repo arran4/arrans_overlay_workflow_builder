@@ -81,6 +81,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 				})
 			},
 			"quoteStr": strconv.Quote,
+			"replace":  strings.ReplaceAll,
 			"actionvardoublequoted": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {
