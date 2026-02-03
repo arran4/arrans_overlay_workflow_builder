@@ -277,7 +277,7 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 	}
 	program.Binary[keyword] = append(program.Binary[keyword], appImage.Filename)
 	program.Binary[keyword] = append(program.Binary[keyword], fmt.Sprintf("%s.AppImage", programName))
-	ai, err := NewAppImage(appImage.tempFile)
+	ai, err := util.NewAppImage(appImage.tempFile)
 	if err != nil {
 		return fmt.Errorf("reading AppImage %s %s: %w", appImage.Filename, url, err)
 	}
@@ -316,6 +316,11 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 	sort.Strings(program.Icons)
 	program.Icons = slices.Compact(program.Icons)
 
+	// Since we are not using go-appimage, we can't rely on it to extract the ELF for dependency checking if it does complex magic.
+	// But ReadDependencies takes the file path of the AppImage.
+	// The AppImage file itself is the ELF (with appended data).
+	// ReadDependencies uses debug/elf.NewFile(f).
+	// This works if the AppImage starts with ELF header, which it does.
 	unknownSymbols, err := ReadDependencies(appImage.tempFile, program)
 	if err != nil {
 		return err
