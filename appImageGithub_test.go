@@ -4,8 +4,67 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/go-github/v62/github"
+	"os"
 	"testing"
 )
+
+func TestFindSquashfsOffset(t *testing.T) {
+	tests := []struct {
+		name    string
+		content []byte
+		want    int64
+		wantErr bool
+	}{
+		{
+			name:    "found at start",
+			content: []byte{0x68, 0x73, 0x71, 0x73, 0x00},
+			want:    0,
+			wantErr: false,
+		},
+		{
+			name:    "found at offset",
+			content: append(make([]byte, 100), []byte{0x68, 0x73, 0x71, 0x73}...),
+			want:    100,
+			wantErr: false,
+		},
+		{
+			name:    "not found",
+			content: []byte{0x00, 0x01, 0x02, 0x03},
+			want:    0,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpfile, err := os.CreateTemp("", "squashfs-test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(tmpfile.Name()) // clean up
+
+			if _, err := tmpfile.Write(tt.content); err != nil {
+				tmpfile.Close()
+				t.Fatal(err)
+			}
+			if _, err := tmpfile.Seek(0, 0); err != nil {
+				tmpfile.Close()
+				t.Fatal(err)
+			}
+
+			got, err := findSquashfsOffset(tmpfile)
+			tmpfile.Close()
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("findSquashfsOffset() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != tt.want {
+				t.Errorf("findSquashfsOffset() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestCompileMeanings(t *testing.T) {
 	tests := []struct {
