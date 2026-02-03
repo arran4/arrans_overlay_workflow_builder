@@ -1,20 +1,16 @@
 package arrans_overlay_workflow_builder
 
-// TODO: The dependency `github.com/probonopd/go-appimage` uses a vulnerable version of `gopkg.in/src-d/go-git.v4`
-// (including the "Argument Injection" vulnerability). This is a transitive dependency that cannot be easily updated. The
-// risk of this vulnerability is accepted for now, as the application is not using the git functionality of
-// `go-appimage` in a way that is exposed to the vulnerability. The vulnerability is related to maliciously crafted Git
-// server replies, and this application does not interact with git servers through the `go-appimage` library.
 import (
 	"archive/tar"
 	"archive/zip"
+	"bytes"
 	"compress/bzip2"
 	"compress/gzip"
 	"fmt"
+	"github.com/CalebQ42/squashfs"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-github/v62/github"
 	"github.com/klauspost/compress/zstd"
-	"github.com/probonopd/go-appimage/src/goappimage"
 	"github.com/ulikunitz/xz"
 	"io"
 	"log"
@@ -242,6 +238,45 @@ func stringDistance(a, b string) int {
 	return dp[la][lb]
 }
 
+func findSquashfsOffset(f *os.File) (int64, error) {
+	// Magic for SquashFS (LE): hsqs -> 0x73717368
+	magic := []byte{0x68, 0x73, 0x71, 0x73}
+	// Buffer size for reading
+	bufSize := 32 * 1024
+	buf := make([]byte, bufSize)
+	stat, err := f.Stat()
+	if err != nil {
+		return 0, err
+	}
+	size := stat.Size()
+
+	var offset int64
+	for offset < size {
+		n, err := f.ReadAt(buf, offset)
+		if err != nil && err != io.EOF {
+			return 0, err
+		}
+
+		idx := bytes.Index(buf[:n], magic)
+		if idx >= 0 {
+			return offset + int64(idx), nil
+		}
+
+		if n < len(magic) {
+			break
+		}
+
+		// Overlap
+		advance := n - len(magic) + 1
+		offset += int64(advance)
+
+		if err == io.EOF {
+			break
+		}
+	}
+	return 0, fmt.Errorf("squashfs magic signature not found")
+}
+
 func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic *InputConfig) error {
 	url := appImage.ReleaseAsset.GetBrowserDownloadURL()
 	if appImage.tempFile == "" {
@@ -283,40 +318,75 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 	}
 	program.Binary[keyword] = append(program.Binary[keyword], appImage.Filename)
 	program.Binary[keyword] = append(program.Binary[keyword], fmt.Sprintf("%s.AppImage", programName))
-	ai, err := goappimage.NewAppImage(appImage.tempFile)
+
+	f, err := os.Open(appImage.tempFile)
 	if err != nil {
-		return fmt.Errorf("reading AppImage %s %s: %w", appImage.Filename, url, err)
+		return fmt.Errorf("opening AppImage %s %s: %w", appImage.Filename, url, err)
 	}
-	for _, f := range ai.ListFiles("usr/share/icons/hicolor/128x128/apps") {
-		if strings.HasSuffix(f, ".png") {
-			program.Icons = append(program.Icons, "hicolor-apps")
-			break
+	defer f.Close()
+
+	offset, err := findSquashfsOffset(f)
+	if err != nil {
+		return fmt.Errorf("finding squashfs offset for %s: %w", appImage.Filename, err)
+	}
+
+	info, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("stat file: %w", err)
+	}
+
+	sr := io.NewSectionReader(f, offset, info.Size()-offset)
+	ai, err := squashfs.NewReader(sr)
+	if err != nil {
+		return fmt.Errorf("reading AppImage squashfs %s %s: %w", appImage.Filename, url, err)
+	}
+
+	// Check icons in "usr/share/icons/hicolor/128x128/apps"
+	if entries, err := ai.ReadDir("usr/share/icons/hicolor/128x128/apps"); err == nil {
+		for _, e := range entries {
+			if strings.HasSuffix(e.Name(), ".png") {
+				program.Icons = append(program.Icons, "hicolor-apps")
+				break
+			}
 		}
 	}
-	for _, f := range ai.ListFiles("usr/share/pixmaps") {
-		if strings.HasSuffix(f, ".png") {
-			program.Icons = append(program.Icons, "pixmaps")
-			break
+
+	// Check pixmaps
+	if entries, err := ai.ReadDir("usr/share/pixmaps"); err == nil {
+		for _, e := range entries {
+			if strings.HasSuffix(e.Name(), ".png") {
+				program.Icons = append(program.Icons, "pixmaps")
+				break
+			}
 		}
 	}
+
+	// Check root
 	found := false
-	for _, f := range ai.ListFiles(".") {
-		if strings.HasSuffix(f, ".png") {
-			found = true
-			program.Icons = append(program.Icons, "root")
-		}
-		if strings.HasSuffix(f, ".desktop") {
-			program.DesktopFile = f
-			log.Printf("Found a desktop file %s", program.DesktopFile)
-		}
-		if found && program.DesktopFile != "" {
-			break
+	if entries, err := ai.ReadDir("."); err == nil {
+		for _, e := range entries {
+			if strings.HasSuffix(e.Name(), ".png") {
+				found = true
+				program.Icons = append(program.Icons, "root")
+			}
+			if strings.HasSuffix(e.Name(), ".desktop") {
+				program.DesktopFile = e.Name()
+				log.Printf("Found a desktop file %s", program.DesktopFile)
+			}
+			if found && program.DesktopFile != "" {
+				break
+			}
 		}
 	}
 
 	sort.Strings(program.Icons)
 	program.Icons = slices.Compact(program.Icons)
 
+	// Since we are not using go-appimage, we can't rely on it to extract the ELF for dependency checking if it does complex magic.
+	// But ReadDependencies takes the file path of the AppImage.
+	// The AppImage file itself is the ELF (with appended data).
+	// ReadDependencies uses debug/elf.NewFile(f).
+	// This works if the AppImage starts with ELF header, which it does.
 	unknownSymbols, err := ReadDependencies(appImage.tempFile, program)
 	if err != nil {
 		return err
