@@ -76,7 +76,7 @@ func TestFindSquashFSOffset(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			offset, err := findSquashFSOffset(f)
 
