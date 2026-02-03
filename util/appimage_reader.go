@@ -23,13 +23,13 @@ func NewAppImage(path string) (*AppImage, error) {
 
 	offset, err := findSquashFSOffset(f)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 
 	stat, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 
@@ -37,7 +37,7 @@ func NewAppImage(path string) (*AppImage, error) {
 
 	r, err := squashfs.NewReader(sr)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("failed to create squashfs reader: %w", err)
 	}
 
@@ -59,6 +59,8 @@ func (ai *AppImage) ListFiles(targetDir string) []string {
 		targetDir += "/"
 	}
 
+	// The original go-appimage ListFiles implementation seems to be recursive.
+	// We will replicate that behavior here.
 	err := fs.WalkDir(ai.r, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -66,9 +68,6 @@ func (ai *AppImage) ListFiles(targetDir string) []string {
 		if d.IsDir() {
 			return nil
 		}
-
-		// If targetDir is empty, we match everything (except maybe we want to mimic go-appimage?)
-		// But assuming we want everything.
 
 		if targetDir == "" {
 			files = append(files, path)
@@ -83,6 +82,7 @@ func (ai *AppImage) ListFiles(targetDir string) []string {
 
 	if err != nil {
 		// Log error? For now just return what we found
+		return files
 	}
 
 	return files
@@ -94,8 +94,10 @@ func findSquashFSOffset(f *os.File) (int64, error) {
 
 	buf := make([]byte, 4096)
 	var offset int64 = 0
+	// Scan up to 20MB
+	maxScan := int64(20 * 1024 * 1024)
 
-	for {
+	for offset < maxScan {
 		n, err := f.ReadAt(buf, offset)
 		if n < 4 {
 			if err != nil {
