@@ -22,13 +22,13 @@ func NewAppImage(path string) (*AppImage, error) {
 
 	offset, err := findSquashfsOffset(f)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("finding squashfs offset: %w", err)
 	}
 
 	stat, err := f.Stat()
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("getting file stat: %w", err)
 	}
 
@@ -37,7 +37,7 @@ func NewAppImage(path string) (*AppImage, error) {
 
 	r, err := squashfs.NewReader(sr)
 	if err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("initializing squashfs reader: %w", err)
 	}
 
