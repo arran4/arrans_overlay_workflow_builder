@@ -1,6 +1,7 @@
 package arrans_overlay_workflow_builder
 
 import (
+	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/go-github/v62/github"
@@ -212,6 +213,39 @@ func TestReadDependenciesWithAppendedData(t *testing.T) {
 	// Optional: verify we got some result (though it depends on what the test binary imports)
 	// Just passing without error proves debug/elf ignored the appended data.
 	t.Logf("Successfully read dependencies from AppImage-like file. Unknowns: %d, Known: %d", len(unknowns), len(program.Dependencies))
+}
+
+func TestReadDependenciesWithRealAppImage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	// Use a known stable AppImage URL (linuxdeploy is usually reliable)
+	url := "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+
+	tmpfile, err := util.DownloadUrlToTempFile(url)
+	if err != nil {
+		t.Fatalf("Failed to download test AppImage: %v", err)
+	}
+	defer func() {
+		_ = os.Remove(tmpfile)
+	}()
+
+	program := &Program{
+		Dependencies: []string{},
+	}
+
+	unknowns, err := ReadDependencies(tmpfile, program)
+	if err != nil {
+		t.Fatalf("ReadDependencies failed on real AppImage: %v", err)
+	}
+
+	t.Logf("Real AppImage dependencies: Unknowns: %d, Known: %d", len(unknowns), len(program.Dependencies))
+
+	// Linuxdeploy might be statically linked or its runtime might be.
+	// We mainly verify that processing the real file didn't crash or error out.
+	if len(program.Dependencies) == 0 && len(unknowns) == 0 {
+		t.Logf("Note: No dependencies found in linuxdeploy AppImage (likely statically linked runtime).")
+	}
 }
 
 func TestSelectPrimaryAppImage(t *testing.T) {
