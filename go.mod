@@ -49,8 +49,9 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/src-d/go-billy.v4 v4.3.2 // indirect
 	// Known issue: gopkg.in/src-d/go-git.v4 has multiple CVEs including the "Argument Injection"
-	// and "Denial of Service" vulnerabilities. However the upstream probonopd/go-appimage has
-	// not been updated in some time. Due to this the risk is being accepted as is.
+	// and "Denial of Service" vulnerabilities. However the upstream probonopd/go-appimage
+	// depends on this older version and cannot be easily updated due to breaking changes.
+	// Due to this the risk is being accepted as is.
 	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
