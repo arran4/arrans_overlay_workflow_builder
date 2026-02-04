@@ -1,9 +1,12 @@
 package arrans_overlay_workflow_builder
 
 import (
+	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/google/go-github/v62/github"
+	"io"
+	"os"
 	"testing"
 )
 
@@ -150,6 +153,98 @@ func TestCompileMeanings(t *testing.T) {
 				t.Errorf("CompileMeanings() gotOk = %v, want %v", gotOk, tt.ok)
 			}
 		})
+	}
+}
+
+func TestReadDependenciesWithAppendedData(t *testing.T) {
+	// Step 1: Create a temp file
+	tmpfile, err := os.CreateTemp("", "test_appimage_*.AppImage")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Remove(tmpfile.Name())
+	}()
+	defer func() {
+		_ = tmpfile.Close()
+	}()
+
+	// Step 2: Copy the current executable (a valid ELF) to the temp file
+	exePath, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	exeFile, err := os.Open(exePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = exeFile.Close()
+	}()
+
+	if _, err := io.Copy(tmpfile, exeFile); err != nil {
+		t.Fatal(err)
+	}
+
+	// Step 3: Append "SquashFS" data
+	// Just garbage data to simulate the appended filesystem
+	appendedData := []byte("This represents appended SquashFS data")
+	if _, err := tmpfile.Write(appendedData); err != nil {
+		t.Fatal(err)
+	}
+
+	// Ensure writes are flushed
+	_ = tmpfile.Sync()
+
+	// Step 4: Call ReadDependencies on this file
+	// We expect it to succeed in opening the ELF and reading libraries,
+	// even with the appended data.
+	program := &Program{
+		Dependencies: []string{},
+	}
+
+	// Note: ReadDependencies returns (unknownSymbols, err)
+	// We mainly care that err is nil, proving debug/elf handled the file.
+	unknowns, err := ReadDependencies(tmpfile.Name(), program)
+	if err != nil {
+		t.Fatalf("ReadDependencies failed on ELF with appended data: %v", err)
+	}
+
+	// Optional: verify we got some result (though it depends on what the test binary imports)
+	// Just passing without error proves debug/elf ignored the appended data.
+	t.Logf("Successfully read dependencies from AppImage-like file. Unknowns: %d, Known: %d", len(unknowns), len(program.Dependencies))
+}
+
+func TestReadDependenciesWithRealAppImage(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+	// Use a known stable AppImage URL (linuxdeploy is usually reliable)
+	url := "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+
+	tmpfile, err := util.DownloadUrlToTempFile(url)
+	if err != nil {
+		t.Fatalf("Failed to download test AppImage: %v", err)
+	}
+	defer func() {
+		_ = os.Remove(tmpfile)
+	}()
+
+	program := &Program{
+		Dependencies: []string{},
+	}
+
+	unknowns, err := ReadDependencies(tmpfile, program)
+	if err != nil {
+		t.Fatalf("ReadDependencies failed on real AppImage: %v", err)
+	}
+
+	t.Logf("Real AppImage dependencies: Unknowns: %d, Known: %d", len(unknowns), len(program.Dependencies))
+
+	// Linuxdeploy might be statically linked or its runtime might be.
+	// We mainly verify that processing the real file didn't crash or error out.
+	if len(program.Dependencies) == 0 && len(unknowns) == 0 {
+		t.Logf("Note: No dependencies found in linuxdeploy AppImage (likely statically linked runtime).")
 	}
 }
 
