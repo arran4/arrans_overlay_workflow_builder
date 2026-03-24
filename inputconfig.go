@@ -60,16 +60,16 @@ func (p *Program) IsArchived(arch string) bool {
 func (p *Program) String() string {
 	var sb strings.Builder
 	if p.ProgramName != "" {
-		sb.WriteString(fmt.Sprintf("ProgramName %s\n", p.ProgramName))
+		fmt.Fprintf(&sb, "ProgramName %s\n", p.ProgramName)
 	}
 	if p.DesktopFile != "" {
-		sb.WriteString(fmt.Sprintf("DesktopFile %s\n", p.DesktopFile))
+		fmt.Fprintf(&sb, "DesktopFile %s\n", p.DesktopFile)
 	}
 	if len(p.Icons) > 0 {
-		sb.WriteString(fmt.Sprintf("Icons %s\n", strings.Join(p.Icons, " ")))
+		fmt.Fprintf(&sb, "Icons %s\n", strings.Join(p.Icons, " "))
 	}
 	if len(p.Dependencies) > 0 {
-		sb.WriteString(fmt.Sprintf("Dependencies %s\n", strings.Join(p.Dependencies, " ")))
+		fmt.Fprintf(&sb, "Dependencies %s\n", strings.Join(p.Dependencies, " "))
 	}
 	MapDoubleStringer(&sb, "Document", p.Documents)
 	MapDoubleStringer(&sb, "ManualPage", p.ManualPage)
