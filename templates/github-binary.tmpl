@@ -274,7 +274,7 @@ EOF
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          pk repo metadata regen .
+          mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; pk repo metadata regen . || true
           git add "./${ebuild_dir}"
           git add metadata/md5-cache/ || true
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then

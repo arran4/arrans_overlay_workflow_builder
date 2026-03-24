@@ -244,50 +244,50 @@ func (ic *InputConfig) String() string {
 	var sb strings.Builder
 
 	if ic.Type != "" {
-		sb.WriteString(fmt.Sprintf("Type %s\n", ic.Type))
+		fmt.Fprintf(&sb, "Type %s\n", ic.Type)
 	}
 	switch ic.Type {
 	case "Github AppImage Release":
 		if ic.GithubProjectUrl != "" {
-			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", ic.GithubProjectUrl))
+			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
 		}
 	case "Web AppImage":
 		if ic.DownloadPageUrl != "" {
-			sb.WriteString(fmt.Sprintf("DownloadPageUrl %s\n", ic.DownloadPageUrl))
+			fmt.Fprintf(&sb, "DownloadPageUrl %s\n", ic.DownloadPageUrl)
 		}
 		if ic.DownloadMatch != "" {
-			sb.WriteString(fmt.Sprintf("DownloadMatch %s\n", ic.DownloadMatch))
+			fmt.Fprintf(&sb, "DownloadMatch %s\n", ic.DownloadMatch)
 		}
 	}
 	switch ic.Type {
 	case "Github AppImage Release", "Web AppImage":
 		if ic.Category != "" {
-			sb.WriteString(fmt.Sprintf("Category %s\n", ic.Category))
+			fmt.Fprintf(&sb, "Category %s\n", ic.Category)
 		}
 		if ic.EbuildName != "" {
-			sb.WriteString(fmt.Sprintf("EbuildName %s\n", ic.EbuildName))
+			fmt.Fprintf(&sb, "EbuildName %s\n", ic.EbuildName)
 		}
 		if ic.Description != "" {
-			sb.WriteString(fmt.Sprintf("Description %s\n", ic.Description))
+			fmt.Fprintf(&sb, "Description %s\n", ic.Description)
 		}
 		if ic.Homepage != "" {
-			sb.WriteString(fmt.Sprintf("Homepage %s\n", ic.Homepage))
+			fmt.Fprintf(&sb, "Homepage %s\n", ic.Homepage)
 		}
 		if ic.License != "" {
-			sb.WriteString(fmt.Sprintf("License %s\n", ic.License))
+			fmt.Fprintf(&sb, "License %s\n", ic.License)
 		}
 		if ic.MaintainerEmail != "" {
-			sb.WriteString(fmt.Sprintf("MaintainerEmail %s\n", ic.MaintainerEmail))
+			fmt.Fprintf(&sb, "MaintainerEmail %s\n", ic.MaintainerEmail)
 		}
 		if ic.MaintainerName != "" {
-			sb.WriteString(fmt.Sprintf("MaintainerName %s\n", ic.MaintainerName))
+			fmt.Fprintf(&sb, "MaintainerName %s\n", ic.MaintainerName)
 		}
 		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
 			if len(ic.Workarounds[workaround]) == 0 {
-				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
+				fmt.Fprintf(&sb, "Workaround %s\n", workaround)
 			} else {
-				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, ic.Workarounds[workaround]))
+				fmt.Fprintf(&sb, "Workaround %s => %s\n", workaround, ic.Workarounds[workaround])
 			}
 		}
 		programs := ic.ProgramsString()
@@ -296,35 +296,35 @@ func (ic *InputConfig) String() string {
 		}
 	case "Github Binary Release":
 		if ic.GithubProjectUrl != "" {
-			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", ic.GithubProjectUrl))
+			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
 		}
 		if ic.Category != "" {
-			sb.WriteString(fmt.Sprintf("Category %s\n", ic.Category))
+			fmt.Fprintf(&sb, "Category %s\n", ic.Category)
 		}
 		if ic.EbuildName != "" {
-			sb.WriteString(fmt.Sprintf("EbuildName %s\n", ic.EbuildName))
+			fmt.Fprintf(&sb, "EbuildName %s\n", ic.EbuildName)
 		}
 		if ic.Description != "" {
-			sb.WriteString(fmt.Sprintf("Description %s\n", ic.Description))
+			fmt.Fprintf(&sb, "Description %s\n", ic.Description)
 		}
 		if ic.Homepage != "" {
-			sb.WriteString(fmt.Sprintf("Homepage %s\n", ic.Homepage))
+			fmt.Fprintf(&sb, "Homepage %s\n", ic.Homepage)
 		}
 		if ic.License != "" {
-			sb.WriteString(fmt.Sprintf("License %s\n", ic.License))
+			fmt.Fprintf(&sb, "License %s\n", ic.License)
 		}
 		if ic.MaintainerEmail != "" {
-			sb.WriteString(fmt.Sprintf("MaintainerEmail %s\n", ic.MaintainerEmail))
+			fmt.Fprintf(&sb, "MaintainerEmail %s\n", ic.MaintainerEmail)
 		}
 		if ic.MaintainerName != "" {
-			sb.WriteString(fmt.Sprintf("MaintainerName %s\n", ic.MaintainerName))
+			fmt.Fprintf(&sb, "MaintainerName %s\n", ic.MaintainerName)
 		}
 		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
 			if len(ic.Workarounds[workaround]) == 0 {
-				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
+				fmt.Fprintf(&sb, "Workaround %s\n", workaround)
 			} else {
-				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, ic.Workarounds[workaround]))
+				fmt.Fprintf(&sb, "Workaround %s => %s\n", workaround, ic.Workarounds[workaround])
 			}
 		}
 		programs := ic.ProgramsString()
