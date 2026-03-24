@@ -43,7 +43,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget jq coreutils htmlq
-          curl -sL "https://github.com/pkgcraft/pkgcraft/releases/download/pkgcraft-tools-0.0.31/pkgcraft-tools-0.0.31-x86_64-unknown-linux-gnu.tar.xz" | tar xJ
+          url=$(curl -s "https://api.github.com/repos/pkgcraft/pkgcraft/releases" | jq -r '[.[] | select(.tag_name | startswith("pkgcraft-tools-"))][0].assets[] | .browser_download_url' | grep "x86_64-unknown-linux-gnu.tar.xz")
+          curl -sL $url | tar xJ
           sudo mv pk /usr/local/bin/
 
       - name: Determine latest AppImage
