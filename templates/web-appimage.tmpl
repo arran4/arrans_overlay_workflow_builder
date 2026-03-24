@@ -43,6 +43,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget jq coreutils htmlq
+          curl -sL "https://github.com/pkgcraft/pkgcraft/releases/download/pkgcraft-tools-0.0.31/pkgcraft-tools-0.0.31-x86_64-unknown-linux-gnu.tar.xz" | tar xJ
+          sudo mv pk /usr/local/bin/
 
       - name: Determine latest AppImage
         id: find_appimage
@@ -159,7 +161,9 @@ EOF
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          pk repo metadata regen .
           git add "${ebuild_dir}"
+          git add metadata/md5-cache/ || true
           if git commit -m "Add ebuild for version ${version}"; then
             git pull --rebase &&
             git push
