@@ -56,13 +56,8 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y wget jq coreutils
 
-      - name: Use g2 Action
+      - name: Install g2
         uses: arran4/g2-action@v1.2
-        with:
-          # Optional: specify an action
-          action: 'lint .'
-          # Optional: skip installation if already installed
-          mode: 'run'
 
       - name: Process each release
         id: process_releases

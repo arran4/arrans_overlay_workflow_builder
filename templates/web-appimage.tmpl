@@ -44,13 +44,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wget jq coreutils htmlq
 
-      - name: Use g2 Action
+      - name: Install g2
         uses: arran4/g2-action@v1.2
-        with:
-          # Optional: specify an action
-          action: 'lint .'
-          # Optional: skip installation if already installed
-          mode: 'run'
 
       - name: Determine latest AppImage
         id: find_appimage
