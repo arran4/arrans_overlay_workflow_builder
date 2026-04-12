@@ -46,6 +46,9 @@ jobs:
 
       - name: Install g2
         uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint .'
 
       - name: Determine latest AppImage
         id: find_appimage

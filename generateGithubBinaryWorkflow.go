@@ -590,29 +590,29 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 	}
 
 	// Add USE flags
-	if pkgMd.Use == nil {
-		pkgMd.Use = &g2.Use{}
+	if len(pkgMd.Use) == 0 {
+		pkgMd.Use = []g2.Use{{}}
 	}
 
 	for use := range ggbtd.ReverseProgramsAsAlternatives() {
-		pkgMd.Use.Flags = append(pkgMd.Use.Flags, g2.Flag{
+		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
 			Name: strcase.SnakeCase(use),
 			Text: fmt.Sprintf("Install %s binary", use),
 		})
 	}
 	for _, shell := range ggbtd.ShellCompletionShells() {
-		pkgMd.Use.Flags = append(pkgMd.Use.Flags, g2.Flag{
+		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
 			Name: strcase.SnakeCase(shell),
 			Text: fmt.Sprintf("Install %s completion", shell),
 		})
 	}
 
 	// Sort flags for determinism
-	sort.Slice(pkgMd.Use.Flags, func(i, j int) bool {
-		return pkgMd.Use.Flags[i].Name < pkgMd.Use.Flags[j].Name
+	sort.Slice(pkgMd.Use[0].Flags, func(i, j int) bool {
+		return pkgMd.Use[0].Flags[i].Name < pkgMd.Use[0].Flags[j].Name
 	})
 
-	if len(pkgMd.Use.Flags) == 0 {
+	if len(pkgMd.Use[0].Flags) == 0 {
 		pkgMd.Use = nil
 	}
 
