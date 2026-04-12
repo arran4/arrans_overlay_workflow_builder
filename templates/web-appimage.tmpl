@@ -46,9 +46,6 @@ jobs:
 
       - name: Install g2
         uses: arran4/g2-action@v1.2
-        with:
-          mode: 'run'
-          action: 'lint .'
 
       - name: Determine latest AppImage
         id: find_appimage
@@ -161,6 +158,12 @@ EOF
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
             echo "generated_tag=${version}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Lint output
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint .'
 
       - name: Commit and push changes
         run: |

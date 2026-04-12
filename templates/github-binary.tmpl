@@ -58,9 +58,6 @@ jobs:
 
       - name: Install g2
         uses: arran4/g2-action@v1.2
-        with:
-          mode: 'run'
-          action: 'lint .'
 
       - name: Process each release
         id: process_releases
@@ -264,6 +261,12 @@ EOF
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi
           done
+
+      - name: Lint output
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint .'
 
       - name: Commit and push changes
         run: |

@@ -612,7 +612,12 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		return pkgMd.Use[0].Flags[i].Name < pkgMd.Use[0].Flags[j].Name
 	})
 
-	if len(pkgMd.Use[0].Flags) == 0 {
+	for i := range pkgMd.Use {
+		if len(pkgMd.Use[i].Flags) == 0 {
+			pkgMd.Use = append(pkgMd.Use[:i], pkgMd.Use[i+1:]...)
+		}
+	}
+	if len(pkgMd.Use) == 0 {
 		pkgMd.Use = nil
 	}
 
