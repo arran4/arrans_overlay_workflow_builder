@@ -65,7 +65,7 @@ jobs:
                 sudo dpkg -i /tmp/g2.deb
                 rm /tmp/g2.deb
             fi
-            url=$(curl -s "https://api.github.com/repos/pkgcraft/pkgcraft/releases" | jq -r '[.[] | select(.tag_name | startswith("pkgcraft-tools-"))][0].assets[] | .browser_download_url' | grep "x86_64-unknown-linux-gnu.tar.xz")
+            url=$(curl -s --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/pkgcraft/pkgcraft/releases" | jq -r '[.[] | select(.tag_name | startswith("pkgcraft-tools-"))][0].assets[] | .browser_download_url' | grep "x86_64-unknown-linux-gnu.tar.xz")
             curl -sL $url | tar xJ
             sudo mv pk /usr/local/bin/
 
@@ -275,7 +275,7 @@ EOF
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; pk repo metadata regen . || true
+          mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; pk repo metadata regen .
           git add "./${ebuild_dir}"
           git add metadata/md5-cache/ || true
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
