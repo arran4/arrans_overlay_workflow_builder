@@ -391,10 +391,17 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ParseKeywordAndUseFlags(kw string
 	var mustntHave []string
 	for _, f := range flags {
 		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
 		if strings.HasPrefix(f, "+") {
-			mustHave = append(mustHave, f[1:])
+			if flag := strings.TrimSpace(f[1:]); flag != "" {
+				mustHave = append(mustHave, flag)
+			}
 		} else if strings.HasPrefix(f, "-") {
-			mustntHave = append(mustntHave, f[1:])
+			if flag := strings.TrimSpace(f[1:]); flag != "" {
+				mustntHave = append(mustntHave, flag)
+			}
 		} else {
 			mustHave = append(mustHave, f)
 		}
@@ -690,7 +697,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 	}
 
 	// Sort flags for determinism
-	sort.Slice(pkgMd.Use.Flags, func(i, j int) bool {
+	sort.SliceStable(pkgMd.Use.Flags, func(i, j int) bool {
 		return pkgMd.Use.Flags[i].Name < pkgMd.Use.Flags[j].Name
 	})
 
