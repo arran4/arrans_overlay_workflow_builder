@@ -275,6 +275,7 @@ Binary amd64=>anotherrepo-${VERSION}.AppImage > jan
 			config: &InputConfig{
 				EntryNumber:      0,
 				Type:             "Github Binary Release",
+				IUse:             nil,
 				GithubProjectUrl: "https://github.com/goreleaser/goreleaser",
 				Category:         "dev-go",
 				EbuildName:       "goreleaser-bin",
