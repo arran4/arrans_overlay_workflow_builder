@@ -704,6 +704,7 @@ func (ic *InputConfig) Validate() error {
 }
 
 //nolint:unused
+//lint:ignore U1000 This function is currently unused but kept for compatibility or future use.
 func parseMapType1(a []string) (map[string]string, error) {
 	result := make(map[string]string, len(a))
 	for i, v := range a {

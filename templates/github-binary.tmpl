@@ -55,19 +55,12 @@ jobs:
         run: |
             sudo apt-get update
             sudo apt-get install -y wget jq coreutils
-            if command -v go &> /dev/null
-            then
-                go install github.com/arran4/g2@latest
-            else
-                url="$(curl -s --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/arran4/g2/releases/latest | jq -r '.assets[].browser_download_url | select(endswith("_linux_amd64.deb"))')"
-                echo "$url"
-                wget "${url}" -O /tmp/g2.deb
-                sudo dpkg -i /tmp/g2.deb
-                rm /tmp/g2.deb
-            fi
             url=$(curl -s --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/pkgcraft/pkgcraft/releases" | jq -r '[.[] | select(.tag_name | startswith("pkgcraft-tools-"))][0].assets[] | .browser_download_url' | grep "x86_64-unknown-linux-gnu.tar.xz")
             curl -sL $url | tar xJ
             sudo mv pk /usr/local/bin/
+
+      - name: Install g2
+        uses: arran4/g2-action@v1.2
 
       - name: Process each release
         id: process_releases
@@ -271,6 +264,18 @@ EOF
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
             fi
           done
+
+      - name: Generate Overlay
+        run: |
+          mkdir -p profiles
+          echo "overlay_name" > profiles/repo_name
+          echo "8" > profiles/eapi
+
+      - name: Lint output
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint .'
 
       - name: Commit and push changes
         run: |
