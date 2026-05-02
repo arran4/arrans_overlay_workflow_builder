@@ -469,22 +469,16 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ExtractedUseFlags() []string {
 	ggbtd.inferUseFlags()
 	flagsSet := make(map[string]struct{})
 	for _, progMap := range ggbtd.MustHaveUseFlags {
-		for kwWithFlags, flags := range progMap {
-			kw, _, _ := ggbtd.ParseKeywordAndUseFlags(kwWithFlags)
+		for _, flags := range progMap {
 			for _, f := range flags {
-				if f != kw {
-					flagsSet[f] = struct{}{}
-				}
+				flagsSet[f] = struct{}{}
 			}
 		}
 	}
 	for _, progMap := range ggbtd.MustntHaveUseFlags {
-		for kwWithFlags, flags := range progMap {
-			kw, _, _ := ggbtd.ParseKeywordAndUseFlags(kwWithFlags)
+		for _, flags := range progMap {
 			for _, f := range flags {
-				if f != kw {
-					flagsSet[f] = struct{}{}
-				}
+				flagsSet[f] = struct{}{}
 			}
 		}
 	}

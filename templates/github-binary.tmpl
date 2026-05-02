@@ -140,7 +140,7 @@ EOF
                 echo -n 'REQUIRED_USE="'
                 echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]'
 [[- range $i, $ruse := $.RequiredUse]]
-                echo '[[ $ruse ]]'
+                echo '	[[ $ruse ]]'
 [[- end]]
                 echo '"'
                 echo ''
