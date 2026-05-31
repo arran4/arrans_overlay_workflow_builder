@@ -135,6 +135,8 @@ var (
 		"libX11.so.6":               "x11-libs/libX11",
 		"libX11.so.6.4":             "x11-libs/libX11",
 		"libX11.so.6.4.0":           "x11-libs/libX11",
+		// TODO: Add other Wayland libraries (libwayland-client.so, libwayland-egl.so, libwayland-server.so, etc.)
+		// mapping to dev-libs/wayland once they are tested.
 		"libwayland-cursor.so.0":    "dev-libs/wayland",
 	}
 )
