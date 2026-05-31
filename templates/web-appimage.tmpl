@@ -99,7 +99,7 @@ EOF
               echo 'KEYWORDS="${{ env.keywords }}"'
               echo 'IUSE=""'
               echo 'DEPEND=""'
-              echo 'RDEPEND="sys-fs/fuse:0 [[range $i, $dep := .Dependencies]][[$dep]] [[end]]"'
+              echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]] [[$dep]][[end]]"'
               echo 'S="${WORKDIR}"'
               echo 'RESTRICT="strip"'
               echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
