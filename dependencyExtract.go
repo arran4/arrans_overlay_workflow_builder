@@ -136,10 +136,10 @@ var (
 		"libX11.so.6.4":             "x11-libs/libX11",
 		"libX11.so.6.4.0":           "x11-libs/libX11",
 		// Under evaluation
-		"libwayland-client.so.0":    "dev-libs/wayland",
-		"libwayland-egl.so.1":       "dev-libs/wayland",
-		"libwayland-server.so.0":    "dev-libs/wayland",
-		"libwayland-cursor.so.0":    "dev-libs/wayland",
+		"libwayland-client.so.0":    "gui-libs/wayland",
+		"libwayland-egl.so.1":       "gui-libs/wayland",
+		"libwayland-server.so.0":    "gui-libs/wayland",
+		"libwayland-cursor.so.0":    "gui-libs/wayland",
 	}
 )
 
