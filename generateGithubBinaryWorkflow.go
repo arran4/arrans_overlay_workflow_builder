@@ -691,21 +691,15 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 	}
 
 	// Sort flags for determinism
-	sort.SliceStable(pkgMd.Use.Flags, func(i, j int) bool {
+	sort.Slice(pkgMd.Use.Flags, func(i, j int) bool {
 		return pkgMd.Use.Flags[i].Name < pkgMd.Use.Flags[j].Name
 	})
 
-	// Deduplicate flags
-	var uniqueFlags []g2.Flag
-	var lastFlagName string
-	for _, flag := range pkgMd.Use.Flags {
-		if flag.Name != lastFlagName {
-			uniqueFlags = append(uniqueFlags, flag)
-			lastFlagName = flag.Name
+	for i := range pkgMd.Use.Flags {
+		if len(pkgMd.Use.Flags[i].Name) == 0 {
+			pkgMd.Use.Flags = append(pkgMd.Use.Flags[:i], pkgMd.Use.Flags[i+1:]...)
 		}
 	}
-	pkgMd.Use.Flags = uniqueFlags
-
 	if len(pkgMd.Use.Flags) == 0 {
 		pkgMd.Use = nil
 	}

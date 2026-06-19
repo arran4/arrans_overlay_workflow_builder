@@ -235,7 +235,6 @@ func TestConfigString(t *testing.T) {
 			config: &InputConfig{
 				EntryNumber:      0,
 				Type:             "Github AppImage Release",
-				IUse:             nil,
 				GithubProjectUrl: "https://github.com/janhq/jan/",
 				Category:         "app-misc",
 				EbuildName:       "jan-appimage.ebuild",
