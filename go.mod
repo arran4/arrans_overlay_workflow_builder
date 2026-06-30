@@ -1,8 +1,8 @@
 module github.com/arran4/arrans_overlay_workflow_builder
 
-go 1.25
+go 1.26
 
-toolchain go1.25.3
+toolchain go1.26.0
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -14,7 +14,7 @@ require (
 	golang.org/x/net v0.48.0
 )
 
-require github.com/arran4/g2 v0.0.4
+require github.com/arran4/g2 v0.0.48
 
 require (
 	github.com/CalebQ42/squashfs v1.4.0
