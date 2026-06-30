@@ -371,6 +371,44 @@ func (ggbtd *GenerateGithubBinaryTemplateData) IsArchived(keyword string) bool {
 	return false
 }
 
+func (ggbtd *GenerateGithubBinaryTemplateData) ParseKeywordAndUseFlags(kw string) (string, []string, []string) {
+	// e.g. amd64[+onnx,-cuda]
+	start := strings.Index(kw, "[")
+	if start == -1 {
+		return kw, nil, nil
+	}
+	end := strings.LastIndex(kw, "]")
+	if end == -1 || end < start {
+		return kw, nil, nil
+	}
+	arch := kw[:start]
+	flagsPart := kw[start+1 : end]
+	if len(strings.TrimSpace(flagsPart)) == 0 {
+		return arch, nil, nil
+	}
+	flags := strings.Split(flagsPart, ",")
+	var mustHave []string
+	var mustntHave []string
+	for _, f := range flags {
+		f = strings.TrimSpace(f)
+		if f == "" {
+			continue
+		}
+		if strings.HasPrefix(f, "+") {
+			if flag := strings.TrimSpace(f[1:]); flag != "" {
+				mustHave = append(mustHave, flag)
+			}
+		} else if strings.HasPrefix(f, "-") {
+			if flag := strings.TrimSpace(f[1:]); flag != "" {
+				mustntHave = append(mustntHave, flag)
+			}
+		} else {
+			mustHave = append(mustHave, f)
+		}
+	}
+	return arch, mustHave, mustntHave
+}
+
 func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 	if ggbtd.MustHaveUseFlags != nil && ggbtd.MustntHaveUseFlags != nil {
 		return
@@ -380,19 +418,24 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 	ggbtd.MustHaveUseFlags = map[string]map[string][]string{}
 	ggbtd.MustntHaveUseFlags = map[string]map[string][]string{}
 	for programName := range ggbtd.Programs {
-		for kw := range ggbtd.Programs[programName].Binary {
+		for kwWithFlags := range ggbtd.Programs[programName].Binary {
+			kw, mustHave, mustntHave := ggbtd.ParseKeywordAndUseFlags(kwWithFlags)
 			if v, ok := ggbtd.MustHaveUseFlags[programName]; !ok || v == nil {
 				ggbtd.MustHaveUseFlags[programName] = map[string][]string{}
 			}
-			if v, ok := ggbtd.MustHaveUseFlags[programName][kw]; !ok || v == nil {
-				ggbtd.MustHaveUseFlags[programName][kw] = []string{kw}
+			if v, ok := ggbtd.MustHaveUseFlags[programName][kwWithFlags]; !ok || v == nil {
+				ggbtd.MustHaveUseFlags[programName][kwWithFlags] = []string{kw}
 			}
+			ggbtd.MustHaveUseFlags[programName][kwWithFlags] = append(ggbtd.MustHaveUseFlags[programName][kwWithFlags], mustHave...)
+
 			if v, ok := ggbtd.MustntHaveUseFlags[programName]; !ok || v == nil {
 				ggbtd.MustntHaveUseFlags[programName] = map[string][]string{}
 			}
-			if v, ok := ggbtd.MustntHaveUseFlags[programName][kw]; !ok || v == nil {
-				ggbtd.MustntHaveUseFlags[programName][kw] = []string{}
+			if v, ok := ggbtd.MustntHaveUseFlags[programName][kwWithFlags]; !ok || v == nil {
+				ggbtd.MustntHaveUseFlags[programName][kwWithFlags] = []string{}
 			}
+			ggbtd.MustntHaveUseFlags[programName][kwWithFlags] = append(ggbtd.MustntHaveUseFlags[programName][kwWithFlags], mustntHave...)
+
 			if programName == "" || programName == ggbtd.GithubRepo {
 				alts, ok := archAlts[kw]
 				if !ok || len(alts) <= 0 {
@@ -402,7 +445,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 					if alt == programName {
 						continue
 					}
-					ggbtd.MustntHaveUseFlags[programName][kw] = append(ggbtd.MustntHaveUseFlags[programName][kw], alt)
+					ggbtd.MustntHaveUseFlags[programName][kwWithFlags] = append(ggbtd.MustntHaveUseFlags[programName][kwWithFlags], alt)
 				}
 			}
 			if v, ok := progAlts[programName]; ok && len(v) > 0 {
@@ -410,16 +453,41 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 				if !ok || len(alts) <= 0 {
 					continue
 				}
-				ggbtd.MustHaveUseFlags[programName][kw] = append(ggbtd.MustHaveUseFlags[programName][kw], programName)
+				ggbtd.MustHaveUseFlags[programName][kwWithFlags] = append(ggbtd.MustHaveUseFlags[programName][kwWithFlags], programName)
 				for _, alt := range alts {
 					if alt == programName {
 						continue
 					}
-					ggbtd.MustntHaveUseFlags[programName][kw] = append(ggbtd.MustntHaveUseFlags[programName][kw], alt)
+					ggbtd.MustntHaveUseFlags[programName][kwWithFlags] = append(ggbtd.MustntHaveUseFlags[programName][kwWithFlags], alt)
 				}
 			}
 		}
 	}
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) ExtractedUseFlags() []string {
+	ggbtd.inferUseFlags()
+	flagsSet := make(map[string]struct{})
+	for _, progMap := range ggbtd.MustHaveUseFlags {
+		for _, flags := range progMap {
+			for _, f := range flags {
+				flagsSet[f] = struct{}{}
+			}
+		}
+	}
+	for _, progMap := range ggbtd.MustntHaveUseFlags {
+		for _, flags := range progMap {
+			for _, f := range flags {
+				flagsSet[f] = struct{}{}
+			}
+		}
+	}
+	var res []string
+	for f := range flagsSet {
+		res = append(res, f)
+	}
+	sort.Strings(res)
+	return res
 }
 
 type ExternalResourceKeywordExtended struct {
@@ -444,15 +512,16 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ExternalResources() []*ExternalRe
 	ggbtd.inferUseFlags()
 	m := make(map[string]*ExternalResourceKeywordExtended)
 	for programName := range ggbtd.Programs {
-		for kw, rfn := range ggbtd.Programs[programName].Binary {
+		for kwWithFlags, rfn := range ggbtd.Programs[programName].Binary {
+			kw, _, _ := ggbtd.ParseKeywordAndUseFlags(kwWithFlags)
 			e := &ExternalResourceKeywordExtended{
 				ExternalResource: &ExternalResource{
 					Keyword:         kw,
 					ReleaseFilename: rfn[0],
 					Archived:        len(rfn) > 2,
 				},
-				MustHaveUseFlags:   ggbtd.GetMustHaveUseFlags(programName, kw),
-				MustntHaveUseFlags: ggbtd.GetMustntHaveUseFlags(programName, kw),
+				MustHaveUseFlags:   ggbtd.GetMustHaveUseFlags(programName, kwWithFlags),
+				MustntHaveUseFlags: ggbtd.GetMustntHaveUseFlags(programName, kwWithFlags),
 			}
 			m[rfn[0]] = e
 		}
@@ -607,11 +676,33 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		})
 	}
 
+	for _, use := range ggbtd.IUse {
+		pkgMd.Use.Flags = append(pkgMd.Use.Flags, g2.Flag{
+			Name: strcase.SnakeCase(use),
+			Text: fmt.Sprintf("Enable %s", use),
+		})
+	}
+
+	for _, use := range ggbtd.ExtractedUseFlags() {
+		pkgMd.Use.Flags = append(pkgMd.Use.Flags, g2.Flag{
+			Name: strcase.SnakeCase(use),
+			Text: fmt.Sprintf("Enable %s", use),
+		})
+	}
+
 	// Sort flags for determinism
 	sort.Slice(pkgMd.Use[0].Flags, func(i, j int) bool {
 		return pkgMd.Use[0].Flags[i].Name < pkgMd.Use[0].Flags[j].Name
 	})
 
+	for i := range pkgMd.Use.Flags {
+		if len(pkgMd.Use.Flags[i].Name) == 0 {
+			pkgMd.Use.Flags = append(pkgMd.Use.Flags[:i], pkgMd.Use.Flags[i+1:]...)
+		}
+	}
+	if len(pkgMd.Use.Flags) == 0 {
+		pkgMd.Use.Flags = nil
+	}
 	for i := range pkgMd.Use {
 		if len(pkgMd.Use[i].Flags) == 0 {
 			pkgMd.Use = append(pkgMd.Use[:i], pkgMd.Use[i+1:]...)

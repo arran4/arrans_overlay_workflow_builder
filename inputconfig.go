@@ -228,6 +228,8 @@ type InputConfig struct {
 	MaintainerName   string
 	Workarounds      map[string]string
 	Programs         map[string]*Program
+	IUse             []string
+	RequiredUse      []string
 }
 
 func (ic *InputConfig) GetPrograms() map[string]*Program {
@@ -250,6 +252,14 @@ func (ic *InputConfig) String() string {
 	case "Github AppImage Release":
 		if ic.GithubProjectUrl != "" {
 			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
+		}
+		if len(ic.IUse) > 0 {
+			fmt.Fprintf(&sb, "IUse %s\n", strings.Join(ic.IUse, " "))
+		}
+		if len(ic.RequiredUse) > 0 {
+			for _, requiredUse := range ic.RequiredUse {
+				fmt.Fprintf(&sb, "RequiredUse %s\n", requiredUse)
+			}
 		}
 	case "Web AppImage":
 		if ic.DownloadPageUrl != "" {
@@ -411,6 +421,8 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"Dependencies":          nil,
 				"Workaround":            nil,
 				"Binary":                nil,
+				"IUse":                  nil,
+				"RequiredUse":           nil,
 			}
 			parseProgramFields = map[string]map[string][]string{}
 			lastProgramName = ""
@@ -563,6 +575,15 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	currentConfig.Workarounds, err = parseOptionalMapType1(parsedFields["Workaround"])
 	if err != nil {
 		return nil, fmt.Errorf("on Workarounds: %v: %w", parsedFields["Workaround"], err)
+	}
+	if len(parsedFields["IUse"]) > 0 {
+		currentConfig.IUse, err = emptyOrAppendStringArray(currentConfig.IUse, parsedFields["IUse"])
+		if err != nil {
+			return nil, fmt.Errorf("on IUse: %v: %w", parsedFields["IUse"], err)
+		}
+	}
+	for _, reqUse := range parsedFields["RequiredUse"] {
+		currentConfig.RequiredUse = append(currentConfig.RequiredUse, strings.TrimSpace(reqUse))
 	}
 	switch currentConfig.Type {
 	case "Github AppImage Release":

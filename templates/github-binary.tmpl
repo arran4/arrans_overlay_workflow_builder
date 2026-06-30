@@ -129,10 +129,15 @@ EOF
                 echo -n '[[- if $.HasManualPages ]] man[[end]]'
                 echo -n '[[- if $.HasDocuments ]] doc[[end]]'
                 echo -n '[[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]'
+                echo -n '[[- range $i, $use := $.IUse]] [[$use | UseFlagSafe ]][[end]]'
+                echo -n '[[- range $i, $use := $.ExtractedUseFlags]] [[$use | UseFlagSafe ]][[end]]'
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
                 echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]'
+[[- range $i, $ruse := $.RequiredUse]]
+                echo '		[[ $ruse ]]'
+[[- end]]
                 echo '"'
                 echo ''
                 echo -n 'RDEPEND="'
