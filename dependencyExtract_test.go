@@ -9,7 +9,6 @@ func TestLookupSymbolIncludesWaylandCursor(t *testing.T) {
 	}
 
 	for library, expected := range tests {
-		library := library
 		t.Run(library, func(t *testing.T) {
 			if dep, ok := lookupSymbol(library); !ok || dep != expected {
 				t.Fatalf("expected %s to map to %s, got %s (present: %t)", library, expected, dep, ok)
