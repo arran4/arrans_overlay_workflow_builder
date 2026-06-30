@@ -143,3 +143,53 @@ func TestExternalResourcesToArchivedResourceNameConsistency(t *testing.T) {
 		})
 	}
 }
+
+func TestAppImageDependenciesIncludeFuseByDefault(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{
+			name: "defaults to fuse when none provided",
+			input: "Type Github AppImage Release\nGithubProjectUrl https://github.com/example/example/\nCategory app-misc\n" +
+				"EbuildName example-appimage\nDescription Example appimage\nHomepage https://example.com\nLicense MIT\nProgramName example\n" +
+				"Binary amd64=>example-${TAG}.AppImage > example.AppImage\n",
+			expected: []string{"sys-fs/fuse:0"},
+		},
+		{
+			name: "deduplicates fuse when supplied",
+			input: "Type Github AppImage Release\nGithubProjectUrl https://github.com/example/example/\nCategory app-misc\n" +
+				"EbuildName example-appimage\nDescription Example appimage\nHomepage https://example.com\nLicense MIT\nProgramName example\n" +
+				"Dependencies sys-fs/fuse:0 sys-libs/zlib\n" +
+				"Binary amd64=>example-${TAG}.AppImage > example.AppImage\n",
+			expected: []string{"sys-fs/fuse:0", "sys-libs/zlib"},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			configs, err := ParseInputConfigReader(bytes.NewReader([]byte(tc.input)))
+			if err != nil {
+				t.Fatalf("ParseInputConfigReader() error = %v", err)
+			}
+			if len(configs) != 1 {
+				t.Fatalf("expected 1 config, got %d", len(configs))
+			}
+
+			data := &GenerateGithubAppImageTemplateData{
+				GenerateGithubWorkflowBase: &GenerateGithubWorkflowBase{InputConfig: configs[0]},
+			}
+
+			deps := data.Dependencies()
+			if diff := cmp.Diff(tc.expected, deps); diff != "" {
+				t.Fatalf("Dependencies() mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

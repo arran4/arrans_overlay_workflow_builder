@@ -27,12 +27,12 @@ func (ggaitd *GenerateGithubAppImageTemplateData) KeywordList() []string {
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) Dependencies() []string {
-	keywords := make([]string, 0)
-	for programName := range ggaitd.Programs {
-		keywords = append(keywords, ggaitd.Programs[programName].Dependencies...)
+	deps := []string{"sys-fs/fuse:0"}
+	for _, program := range ggaitd.Programs {
+		deps = append(deps, program.Dependencies...)
 	}
-	sort.Strings(keywords)
-	return keywords
+	sort.Strings(deps)
+	return slices.Compact(deps)
 }
 
 func (ggaitd *GenerateGithubAppImageTemplateData) Keywords() string {
