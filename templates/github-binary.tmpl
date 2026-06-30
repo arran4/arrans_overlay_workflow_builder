@@ -55,19 +55,27 @@ jobs:
         run: |
             sudo apt-get update
             sudo apt-get install -y wget jq coreutils
-            url="$(curl -s --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/arran4/g2/releases/latest | jq -r '.assets[].browser_download_url | select(endswith("_linux_amd64.deb"))')"
-            echo "$url"
-            wget "${url}" -O /tmp/g2.deb
-            sudo dpkg -i /tmp/g2.deb
-            rm /tmp/g2.deb
+            url=$(curl -s --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/pkgcraft/pkgcraft/releases" | jq -r '[.[] | select(.tag_name | startswith("pkgcraft-tools-"))][0].assets[] | .browser_download_url' | grep "x86_64-unknown-linux-gnu.tar.xz")
+            curl -sL $url | tar xJ
+            sudo mv pk /usr/local/bin/
+
+      - name: Install g2
+        uses: arran4/g2-action@v1.2
 
       - name: Process each release
         id: process_releases
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p $ebuild_dir
+          mkdir -p "$ebuild_dir"
+          metadata_file="${ebuild_dir}/metadata.xml"
+          if [ ! -f "$metadata_file" ]; then
+            cat <<EOF > "$metadata_file"
+[[ .Metadata ]]
+EOF
+          fi
           declare -A releaseTypes=()
           tags=$(curl -s  --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
+          # shellcheck disable=SC2086
 [[- if .WorkaroundSemanticVersionWithoutV ]]
           for tag in $tags; do
             version="${tag}"
@@ -79,11 +87,12 @@ jobs:
                 continue
             fi
 [[- end ]]
+            # shellcheck disable=SC2034
             originalVersion="${version}"
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)[0-9]*\)$/\1_\5\3/')"
 [[- end ]]
-            if ! echo "${version}" | egrep '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "tag / $version doesn't match regexp";
                 continue;
             fi
@@ -101,39 +110,41 @@ jobs:
             ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
             if [ ! -f "$ebuild_file" ]; then
 
+              # shellcheck disable=SC2016
               {
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo 'SRC_URI="'
+[[- range $i, $externalResource := .ExternalResources ]]
+                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]\${PV}[[- else ]][[- $.WorkaroundTagPrefix ]]v\${PV}[[- end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+[[- end ]]
+                echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
-                echo 'IUSE="[[- `` -]]
-                        [[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]
-                        [[- if $.HasManualPages ]] man[[end]]
-                        [[- if $.HasDocuments ]] doc[[end]]
-                        [[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]
-                    [[- `` -]]"'
-                echo 'REQUIRED_USE="[[- `` -]]
-                    [[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]
-                    [[- `` -]]"'
-                echo 'DEPEND=""'
-                echo 'RDEPEND="[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]
-[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]
-                     "'
+                echo -n 'IUSE="'
+                echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]'
+                echo -n '[[- if $.HasManualPages ]] man[[end]]'
+                echo -n '[[- if $.HasDocuments ]] doc[[end]]'
+                echo -n '[[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]'
+                echo '"'
+                echo ''
+                echo -n 'REQUIRED_USE="'
+                echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]'
+                echo '"'
+                echo ''
+                echo -n 'RDEPEND="'
+                echo -n '[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]'
+                echo -n '[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]'
+                echo '"'
+                echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
 [[- if .HasDesktopFile ]]
                 echo ''
 [[- end ]]
-                echo ''
-                echo 'SRC_URI="'
-[[- range $i, $externalResource := .ExternalResources ]]
-                echo "  [[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
-[[- end ]]
-                echo '"'
-                echo ''
                 [[- if $.NeedsSrcUnpack ]]
                 echo 'src_unpack() {'
 [[- range $i, $externalResource := .ExternalResources ]]
@@ -163,7 +174,7 @@ jobs:
 [[- end ]]
                 echo '}'
                 [[- else ]]
-                echo 'src_unpack() { : }'
+                echo 'src_unpack() { :; }'
                 [[- end ]]
                 echo ''
                 echo 'src_install() {'
@@ -239,7 +250,6 @@ jobs:
                 echo '  fi'
 [[- end ]]
                 echo '}'
-                echo ""
               } > $ebuild_file
 
               # Manifest generation
@@ -255,11 +265,26 @@ jobs:
             fi
           done
 
+      - name: Generate Overlay
+        run: |
+          mkdir -p profiles
+          echo "overlay_name" > profiles/repo_name
+          echo "8" > profiles/eapi
+
+      - name: Lint output
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint .'
+
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          git add ./${ebuild_dir}
-          git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}" &&
-          git pull --rebase &&
-          git push || true
+          mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; pk repo metadata regen .
+          git add "./${ebuild_dir}"
+          git add metadata/md5-cache/ || true
+          if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
+            git pull --rebase &&
+            git push
+          fi || true
         if: steps.process_releases.outputs.generated_tag

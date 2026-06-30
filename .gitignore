@@ -1,8 +1,9 @@
-/output
-/output/*
-/dist
-/.idea
-/*.iml
-/input.config
-/todo.config
-/test.config
+bin/
+dist/
+.idea/
+.vscode/
+*.log
+*.out
+*.tmp
+g2.deb
+g2_extract/

@@ -55,19 +55,27 @@ jobs:
         run: |
             sudo apt-get update
             sudo apt-get install -y wget jq coreutils
-            url="$(curl -s --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/arran4/g2/releases/latest | jq -r '.assets[].browser_download_url | select(endswith("_linux_amd64.deb"))')"
-            echo "$url"
-            wget "${url}" -O /tmp/g2.deb
-            sudo dpkg -i /tmp/g2.deb
-            rm /tmp/g2.deb
+            url=$(curl -s --header "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/pkgcraft/pkgcraft/releases" | jq -r '[.[] | select(.tag_name | startswith("pkgcraft-tools-"))][0].assets[] | .browser_download_url' | grep "x86_64-unknown-linux-gnu.tar.xz")
+            curl -sL $url | tar xJ
+            sudo mv pk /usr/local/bin/
+
+      - name: Install g2
+        uses: arran4/g2-action@v1.2
 
       - name: Process each release
         id: process_releases
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p $ebuild_dir
+          mkdir -p "$ebuild_dir"
+          metadata_file="${ebuild_dir}/metadata.xml"
+          if [ ! -f "$metadata_file" ]; then
+            cat <<EOF > "$metadata_file"
+[[ .DefaultMetadata ]]
+EOF
+          fi
           declare -A releaseTypes=()
             tags=$(curl -s  --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
+          # shellcheck disable=SC2086
 [[- if .WorkaroundSemanticVersionWithoutV ]]
           for tag in $tags; do
             version="${tag}"
@@ -79,11 +87,12 @@ jobs:
                 continue
             fi
 [[- end ]]
+            # shellcheck disable=SC2034
             originalVersion="${version}"
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)\(\|\.\?\([0-9]\+\)\)\)$/\1_\5\3\7/')"
 [[- end ]]
-            if ! echo "${version}" | egrep '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "version: $version doesn't match regexp";
                 continue;
             fi
@@ -97,6 +106,7 @@ jobs:
             ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
             if [ ! -f "$ebuild_file" ]; then
 
+              # shellcheck disable=SC2016
               {
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
@@ -107,7 +117,7 @@ jobs:
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo 'IUSE=""'
                 echo 'DEPEND=""'
-                echo 'RDEPEND="[[range $i, $dep := .Dependencies]][[$dep]] [[end]]"'
+                echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]] [[$dep]][[end]]"'
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
 [[- if .HasDesktopFile ]]
@@ -234,11 +244,26 @@ jobs:
             fi
           done
 
+      - name: Generate Overlay
+        run: |
+          mkdir -p profiles
+          echo "overlay_name" > profiles/repo_name
+          echo "8" > profiles/eapi
+
+      - name: Lint output
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint .'
+
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          git add ./${ebuild_dir}
-          git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}" &&
-          git pull --rebase &&
-          git push || true
+          mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; pk repo metadata regen .
+          git add "./${ebuild_dir}"
+          git add metadata/md5-cache/ || true
+          if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
+            git pull --rebase &&
+            git push
+          fi || true
         if: steps.process_releases.outputs.generated_tag

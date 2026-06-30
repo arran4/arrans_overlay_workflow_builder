@@ -248,11 +248,6 @@ func GenerateBinaryGithubReleaseConfigEntry(gitRepo, tagOverride, prefix string)
 }
 
 func (brfi *BinaryReleaseFileInfo) SearchArchiveForFiles() ([]*BinaryReleaseFileInfo, error) {
-	switch strings.ToLower(strings.Join(brfi.Containers, ".")) {
-	case "deb", "rpm":
-		// Skip repo archives for the moment.
-		return nil, nil
-	}
 	url, err := brfi.FetchContent()
 	if err != nil {
 		return nil, err
@@ -560,7 +555,7 @@ func (bases BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenameP
 		switch {
 		case slices.ContainsFunc(compiled.Containers, func(s string) bool {
 			switch strings.ToLower(s) {
-			case "tar", "zip":
+			case "tar", "zip", "deb", "rpm":
 				return true
 			default:
 				return false
@@ -594,7 +589,30 @@ func (bases BinaryReleaseFiles) FindFiles(wordMap map[string][]*GroupedFilenameP
 			continue
 		}
 	}
+	sort.Slice(result.CompressedArchives, func(i, j int) bool {
+		a := result.CompressedArchives[i]
+		b := result.CompressedArchives[j]
+		aTar := slices.Contains(a.Containers, "tar") && a.hasExecutable()
+		bTar := slices.Contains(b.Containers, "tar") && b.hasExecutable()
+		if aTar && !bTar {
+			return true
+		}
+		if !aTar && bTar {
+			return false
+		}
+		return a.Filename < b.Filename
+	})
 	return result
+}
+
+func (brfi *BinaryReleaseFileInfo) hasExecutable() bool {
+	if brfi.container == nil || brfi.container.CompressedArchiveContent == nil {
+		return false
+	}
+	if cac, ok := brfi.container.CompressedArchiveContent[brfi.Filename]; ok {
+		return cac.CountBinaries() > 0
+	}
+	return false
 }
 
 func (brfi *BinaryReleaseFileInfo) CompileMeanings(input []*FilenamePartMeaning, container *FileTypes) (*BinaryReleaseFileInfo, bool) {

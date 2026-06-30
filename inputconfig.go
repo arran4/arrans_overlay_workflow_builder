@@ -60,16 +60,16 @@ func (p *Program) IsArchived(arch string) bool {
 func (p *Program) String() string {
 	var sb strings.Builder
 	if p.ProgramName != "" {
-		sb.WriteString(fmt.Sprintf("ProgramName %s\n", p.ProgramName))
+		fmt.Fprintf(&sb, "ProgramName %s\n", p.ProgramName)
 	}
 	if p.DesktopFile != "" {
-		sb.WriteString(fmt.Sprintf("DesktopFile %s\n", p.DesktopFile))
+		fmt.Fprintf(&sb, "DesktopFile %s\n", p.DesktopFile)
 	}
 	if len(p.Icons) > 0 {
-		sb.WriteString(fmt.Sprintf("Icons %s\n", strings.Join(p.Icons, " ")))
+		fmt.Fprintf(&sb, "Icons %s\n", strings.Join(p.Icons, " "))
 	}
 	if len(p.Dependencies) > 0 {
-		sb.WriteString(fmt.Sprintf("Dependencies %s\n", strings.Join(p.Dependencies, " ")))
+		fmt.Fprintf(&sb, "Dependencies %s\n", strings.Join(p.Dependencies, " "))
 	}
 	MapDoubleStringer(&sb, "Document", p.Documents)
 	MapDoubleStringer(&sb, "ManualPage", p.ManualPage)
@@ -224,6 +224,8 @@ type InputConfig struct {
 	GithubRepo       string
 	GithubOwner      string
 	License          string
+	MaintainerEmail  string
+	MaintainerName   string
 	Workarounds      map[string]string
 	Programs         map[string]*Program
 }
@@ -242,44 +244,50 @@ func (ic *InputConfig) String() string {
 	var sb strings.Builder
 
 	if ic.Type != "" {
-		sb.WriteString(fmt.Sprintf("Type %s\n", ic.Type))
+		fmt.Fprintf(&sb, "Type %s\n", ic.Type)
 	}
 	switch ic.Type {
 	case "Github AppImage Release":
 		if ic.GithubProjectUrl != "" {
-			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", ic.GithubProjectUrl))
+			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
 		}
 	case "Web AppImage":
 		if ic.DownloadPageUrl != "" {
-			sb.WriteString(fmt.Sprintf("DownloadPageUrl %s\n", ic.DownloadPageUrl))
+			fmt.Fprintf(&sb, "DownloadPageUrl %s\n", ic.DownloadPageUrl)
 		}
 		if ic.DownloadMatch != "" {
-			sb.WriteString(fmt.Sprintf("DownloadMatch %s\n", ic.DownloadMatch))
+			fmt.Fprintf(&sb, "DownloadMatch %s\n", ic.DownloadMatch)
 		}
 	}
 	switch ic.Type {
 	case "Github AppImage Release", "Web AppImage":
 		if ic.Category != "" {
-			sb.WriteString(fmt.Sprintf("Category %s\n", ic.Category))
+			fmt.Fprintf(&sb, "Category %s\n", ic.Category)
 		}
 		if ic.EbuildName != "" {
-			sb.WriteString(fmt.Sprintf("EbuildName %s\n", ic.EbuildName))
+			fmt.Fprintf(&sb, "EbuildName %s\n", ic.EbuildName)
 		}
 		if ic.Description != "" {
-			sb.WriteString(fmt.Sprintf("Description %s\n", ic.Description))
+			fmt.Fprintf(&sb, "Description %s\n", ic.Description)
 		}
 		if ic.Homepage != "" {
-			sb.WriteString(fmt.Sprintf("Homepage %s\n", ic.Homepage))
+			fmt.Fprintf(&sb, "Homepage %s\n", ic.Homepage)
 		}
 		if ic.License != "" {
-			sb.WriteString(fmt.Sprintf("License %s\n", ic.License))
+			fmt.Fprintf(&sb, "License %s\n", ic.License)
+		}
+		if ic.MaintainerEmail != "" {
+			fmt.Fprintf(&sb, "MaintainerEmail %s\n", ic.MaintainerEmail)
+		}
+		if ic.MaintainerName != "" {
+			fmt.Fprintf(&sb, "MaintainerName %s\n", ic.MaintainerName)
 		}
 		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
 			if len(ic.Workarounds[workaround]) == 0 {
-				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
+				fmt.Fprintf(&sb, "Workaround %s\n", workaround)
 			} else {
-				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, ic.Workarounds[workaround]))
+				fmt.Fprintf(&sb, "Workaround %s => %s\n", workaround, ic.Workarounds[workaround])
 			}
 		}
 		programs := ic.ProgramsString()
@@ -288,29 +296,35 @@ func (ic *InputConfig) String() string {
 		}
 	case "Github Binary Release":
 		if ic.GithubProjectUrl != "" {
-			sb.WriteString(fmt.Sprintf("GithubProjectUrl %s\n", ic.GithubProjectUrl))
+			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
 		}
 		if ic.Category != "" {
-			sb.WriteString(fmt.Sprintf("Category %s\n", ic.Category))
+			fmt.Fprintf(&sb, "Category %s\n", ic.Category)
 		}
 		if ic.EbuildName != "" {
-			sb.WriteString(fmt.Sprintf("EbuildName %s\n", ic.EbuildName))
+			fmt.Fprintf(&sb, "EbuildName %s\n", ic.EbuildName)
 		}
 		if ic.Description != "" {
-			sb.WriteString(fmt.Sprintf("Description %s\n", ic.Description))
+			fmt.Fprintf(&sb, "Description %s\n", ic.Description)
 		}
 		if ic.Homepage != "" {
-			sb.WriteString(fmt.Sprintf("Homepage %s\n", ic.Homepage))
+			fmt.Fprintf(&sb, "Homepage %s\n", ic.Homepage)
 		}
 		if ic.License != "" {
-			sb.WriteString(fmt.Sprintf("License %s\n", ic.License))
+			fmt.Fprintf(&sb, "License %s\n", ic.License)
+		}
+		if ic.MaintainerEmail != "" {
+			fmt.Fprintf(&sb, "MaintainerEmail %s\n", ic.MaintainerEmail)
+		}
+		if ic.MaintainerName != "" {
+			fmt.Fprintf(&sb, "MaintainerName %s\n", ic.MaintainerName)
 		}
 		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
 			if len(ic.Workarounds[workaround]) == 0 {
-				sb.WriteString(fmt.Sprintf("Workaround %s\n", workaround))
+				fmt.Fprintf(&sb, "Workaround %s\n", workaround)
 			} else {
-				sb.WriteString(fmt.Sprintf("Workaround %s => %s\n", workaround, ic.Workarounds[workaround]))
+				fmt.Fprintf(&sb, "Workaround %s => %s\n", workaround, ic.Workarounds[workaround])
 			}
 		}
 		programs := ic.ProgramsString()
@@ -386,6 +400,8 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"Description":           nil,
 				"Homepage":              nil,
 				"License":               {DefaultLicense},
+				"MaintainerEmail":       nil,
+				"MaintainerName":        nil,
 				"ProgramName":           nil,
 				"DesktopFile":           nil,
 				"Icons":                 nil,
@@ -529,6 +545,14 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	currentConfig.License, err = emptyOrLast(parsedFields["License"])
 	if err != nil {
 		return nil, fmt.Errorf("on License: %v: %w", parsedFields["License"], err)
+	}
+	currentConfig.MaintainerEmail, err = emptyOrOnlyOrFail(parsedFields["MaintainerEmail"])
+	if err != nil {
+		return nil, fmt.Errorf("on MaintainerEmail: %v: %w", parsedFields["MaintainerEmail"], err)
+	}
+	currentConfig.MaintainerName, err = emptyOrOnlyOrFail(parsedFields["MaintainerName"])
+	if err != nil {
+		return nil, fmt.Errorf("on MaintainerName: %v: %w", parsedFields["MaintainerName"], err)
 	}
 	if currentConfig.Type == "Github AppImage Release" || currentConfig.Type == "Github Binary Release" {
 		currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
@@ -680,6 +704,7 @@ func (ic *InputConfig) Validate() error {
 }
 
 //nolint:unused
+//lint:ignore U1000 This function is currently unused but kept for compatibility or future use.
 func parseMapType1(a []string) (map[string]string, error) {
 	result := make(map[string]string, len(a))
 	for i, v := range a {

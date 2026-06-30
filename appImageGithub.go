@@ -1,10 +1,5 @@
 package arrans_overlay_workflow_builder
 
-// TODO: The dependency `github.com/probonopd/go-appimage` uses a vulnerable version of `gopkg.in/src-d/go-git.v4`.
-// This is a transitive dependency that cannot be easily updated. The risk of this vulnerability is accepted for now,
-// as the application is not using the git functionality of `go-appimage` in a way that is exposed to the vulnerability.
-// The vulnerability is related to maliciously crafted Git server replies, and this application does not interact with
-// git servers through the `go-appimage` library.
 import (
 	"archive/tar"
 	"archive/zip"
@@ -14,7 +9,6 @@ import (
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/google/go-github/v62/github"
 	"github.com/klauspost/compress/zstd"
-	"github.com/probonopd/go-appimage/src/goappimage"
 	"github.com/ulikunitz/xz"
 	"io"
 	"log"
@@ -283,10 +277,15 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 	}
 	program.Binary[keyword] = append(program.Binary[keyword], appImage.Filename)
 	program.Binary[keyword] = append(program.Binary[keyword], fmt.Sprintf("%s.AppImage", programName))
-	ai, err := goappimage.NewAppImage(appImage.tempFile)
+	ai, err := util.NewAppImage(appImage.tempFile)
 	if err != nil {
 		return fmt.Errorf("reading AppImage %s %s: %w", appImage.Filename, url, err)
 	}
+	defer func() {
+		if err := ai.Close(); err != nil {
+			log.Printf("Error closing app image: %s", err)
+		}
+	}()
 	for _, f := range ai.ListFiles("usr/share/icons/hicolor/128x128/apps") {
 		if strings.HasSuffix(f, ".png") {
 			program.Icons = append(program.Icons, "hicolor-apps")
@@ -317,6 +316,11 @@ func (appImage *AppImageFileInfo) GetInformationFromAppImage(repoName string, ic
 	sort.Strings(program.Icons)
 	program.Icons = slices.Compact(program.Icons)
 
+	// Since we are not using go-appimage, we can't rely on it to extract the ELF for dependency checking if it does complex magic.
+	// But ReadDependencies takes the file path of the AppImage.
+	// The AppImage file itself is the ELF (with appended data).
+	// ReadDependencies uses debug/elf.NewFile(f).
+	// This works if the AppImage starts with ELF header, which it does.
 	unknownSymbols, err := ReadDependencies(appImage.tempFile, program)
 	if err != nil {
 		return err

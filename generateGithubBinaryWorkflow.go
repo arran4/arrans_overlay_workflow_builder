@@ -1,7 +1,10 @@
 package arrans_overlay_workflow_builder
 
 import (
+	"encoding/xml"
 	"fmt"
+	"github.com/arran4/g2"
+	"github.com/stoewer/go-strcase"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -60,6 +63,9 @@ func (ggbtd *GenerateGithubBinaryTemplateData) MainDependencies() []string {
 	}
 	sort.Strings(deps)
 	deps = slices.CompactFunc(deps, strings.EqualFold)
+	deps = slices.DeleteFunc(deps, func(s string) bool {
+		return s == "sys-libs/glibc"
+	})
 	return deps
 }
 
@@ -73,6 +79,9 @@ func (ggbtd *GenerateGithubBinaryTemplateData) AlternativeDependencies() map[str
 		altDeps[programName] = append(altDeps[programName], prog.Dependencies...)
 		sort.Strings(altDeps[programName])
 		altDeps[programName] = slices.CompactFunc(altDeps[programName], strings.EqualFold)
+		altDeps[programName] = slices.DeleteFunc(altDeps[programName], func(s string) bool {
+			return s == "sys-libs/glibc"
+		})
 	}
 	return altDeps
 }
@@ -541,4 +550,82 @@ func (ggbtd *GenerateGithubBinaryTemplateData) NeedsSrcUnpack() bool {
 		}
 	}
 	return ggbtd.HasCompressedManualPages()
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
+	// Since DefaultMetadata returns string with header, we strip it or parse carefully
+	// g2.ParseMetadataBytes expects just the XML
+	// But DefaultMetadata constructs the struct, we should probably refactor DefaultMetadata to return the struct
+	// For now, let's construct a new struct populating it similarly or use a new method that returns the struct.
+	// Actually, easier to duplicate the struct construction logic or refactor base.
+
+	// Refactoring base: I can't easily change base method signature without affecting other callers if I didn't verify them.
+	// But I just added DefaultMetadata in previous step.
+	// Let's copy-paste the struct construction for now to avoid breaking changes in the middle of a thought process,
+	// or better, implement a `DefaultMetadataStruct` in base.
+
+	pkgMd := &g2.PkgMetadata{
+		XMLName: xml.Name{
+			Local: "pkgmetadata",
+		},
+		Upstream: &g2.Upstream{
+			RemoteID: []g2.RemoteID{},
+		},
+	}
+	if ggbtd.MaintainerEmail != "" {
+		pkgMd.Maintainers = append(pkgMd.Maintainers, g2.Maintainer{
+			Email: ggbtd.MaintainerEmail,
+			Name:  ggbtd.MaintainerName,
+			Type:  "person",
+		})
+	}
+	if ggbtd.GithubOwner != "" && ggbtd.GithubRepo != "" {
+		pkgMd.Upstream.RemoteID = append(pkgMd.Upstream.RemoteID, g2.RemoteID{
+			Type: "github",
+			Text: fmt.Sprintf("%s/%s", ggbtd.GithubOwner, ggbtd.GithubRepo),
+		})
+	}
+	if len(pkgMd.Upstream.RemoteID) == 0 {
+		pkgMd.Upstream = nil
+	}
+
+	// Add USE flags
+	if len(pkgMd.Use) == 0 {
+		pkgMd.Use = []g2.Use{{}}
+	}
+
+	for use := range ggbtd.ReverseProgramsAsAlternatives() {
+		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
+			Name: strcase.SnakeCase(use),
+			Text: fmt.Sprintf("Install %s binary", use),
+		})
+	}
+	for _, shell := range ggbtd.ShellCompletionShells() {
+		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
+			Name: strcase.SnakeCase(shell),
+			Text: fmt.Sprintf("Install %s completion", shell),
+		})
+	}
+
+	// Sort flags for determinism
+	sort.Slice(pkgMd.Use[0].Flags, func(i, j int) bool {
+		return pkgMd.Use[0].Flags[i].Name < pkgMd.Use[0].Flags[j].Name
+	})
+
+	for i := range pkgMd.Use {
+		if len(pkgMd.Use[i].Flags) == 0 {
+			pkgMd.Use = append(pkgMd.Use[:i], pkgMd.Use[i+1:]...)
+		}
+	}
+	if len(pkgMd.Use) == 0 {
+		pkgMd.Use = nil
+	}
+
+	o, err := xml.MarshalIndent(pkgMd, "", "\t")
+	if err != nil {
+		return "", fmt.Errorf("marshalling metadata: %w", err)
+	}
+	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+%s`, string(o)), nil
 }
