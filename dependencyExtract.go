@@ -141,7 +141,6 @@ var (
 		"libwayland-client.so.0":    "dev-libs/wayland",
 		"libwayland-egl.so.1":       "dev-libs/wayland",
 		"libwayland-server.so.0":    "dev-libs/wayland",
-		"libwayland-cursor.so.0":    "dev-libs/wayland",
 	}
 )
 

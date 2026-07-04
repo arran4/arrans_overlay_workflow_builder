@@ -677,14 +677,14 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 	}
 
 	for _, use := range ggbtd.IUse {
-		pkgMd.Use.Flags = append(pkgMd.Use.Flags, g2.Flag{
+		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
 			Name: strcase.SnakeCase(use),
 			Text: fmt.Sprintf("Enable %s", use),
 		})
 	}
 
 	for _, use := range ggbtd.ExtractedUseFlags() {
-		pkgMd.Use.Flags = append(pkgMd.Use.Flags, g2.Flag{
+		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
 			Name: strcase.SnakeCase(use),
 			Text: fmt.Sprintf("Enable %s", use),
 		})
@@ -695,19 +695,26 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		return pkgMd.Use[0].Flags[i].Name < pkgMd.Use[0].Flags[j].Name
 	})
 
-	for i := range pkgMd.Use.Flags {
-		if len(pkgMd.Use.Flags[i].Name) == 0 {
-			pkgMd.Use.Flags = append(pkgMd.Use.Flags[:i], pkgMd.Use.Flags[i+1:]...)
-		}
-	}
-	if len(pkgMd.Use.Flags) == 0 {
-		pkgMd.Use.Flags = nil
-	}
 	for i := range pkgMd.Use {
+		var newFlags []g2.Flag
+		for _, f := range pkgMd.Use[i].Flags {
+			if len(f.Name) > 0 {
+				newFlags = append(newFlags, f)
+			}
+		}
+		pkgMd.Use[i].Flags = newFlags
 		if len(pkgMd.Use[i].Flags) == 0 {
-			pkgMd.Use = append(pkgMd.Use[:i], pkgMd.Use[i+1:]...)
+			pkgMd.Use[i].Flags = nil
 		}
 	}
+
+	var newUses []g2.Use
+	for _, u := range pkgMd.Use {
+		if len(u.Flags) > 0 {
+			newUses = append(newUses, u)
+		}
+	}
+	pkgMd.Use = newUses
 	if len(pkgMd.Use) == 0 {
 		pkgMd.Use = nil
 	}
