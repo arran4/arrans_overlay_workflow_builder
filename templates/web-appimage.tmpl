@@ -82,9 +82,7 @@ jobs:
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
           if [ ! -f "$metadata_file" ]; then
-            cat <<EOF > "$metadata_file"
-[[ .DefaultMetadata ]]
-EOF
+            g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           fi
           ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
           if [ ! -f "$ebuild_file" ]; then

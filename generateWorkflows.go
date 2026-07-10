@@ -183,6 +183,19 @@ func (b *GenerateGithubWorkflowBase) DefaultMetadata() (string, error) {
 %s`, string(o)), nil
 }
 
+func (b *GenerateGithubWorkflowBase) G2MetadataArgs() string {
+	args := ""
+	if b.MaintainerEmail != "" {
+		args += fmt.Sprintf(`-m "%s:%s:person" `, b.MaintainerEmail, b.MaintainerName)
+	} else {
+		args += `-m "gentoo@arran4.com:Arran Ubels:person" `
+	}
+	if b.GithubOwner != "" && b.GithubRepo != "" {
+		args += fmt.Sprintf(`-u "github:%s/%s" `, b.GithubOwner, b.GithubRepo)
+	}
+	return strings.TrimSpace(args)
+}
+
 func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string) error {
 	if err := ic.Validate(); err != nil {
 		return fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)

@@ -727,3 +727,47 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
 %s`, string(o)), nil
 }
+
+func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
+	args := ggbtd.GenerateGithubWorkflowBase.G2MetadataArgs() + " "
+
+	var uses []g2.Flag
+	for _, u := range ggbtd.IUse {
+		uses = append(uses, g2.Flag{Name: u})
+	}
+	for _, u := range ggbtd.RequiredUse {
+		uses = append(uses, g2.Flag{Name: u})
+	}
+
+	for pName, progs := range ggbtd.Programs {
+		for keyword := range progs.Binary {
+			for _, mhu := range ggbtd.GetMustHaveUseFlags(pName, keyword) {
+				uses = append(uses, g2.Flag{Name: mhu})
+			}
+			for _, mhu := range ggbtd.GetMustntHaveUseFlags(pName, keyword) {
+				uses = append(uses, g2.Flag{Name: mhu})
+			}
+		}
+	}
+
+	// Filter unique flags
+	seen := make(map[string]bool)
+	var finalUses []g2.Flag
+	for _, f := range uses {
+		cleaned := strcase.SnakeCase(f.Name)
+		if cleaned != "" && !seen[cleaned] {
+			seen[cleaned] = true
+			finalUses = append(finalUses, g2.Flag{Name: cleaned, Text: fmt.Sprintf("Enable %s", cleaned)})
+		}
+	}
+
+	// Sort flags for determinism
+	sort.Slice(finalUses, func(i, j int) bool {
+		return finalUses[i].Name < finalUses[j].Name
+	})
+
+	for _, f := range finalUses {
+		args += fmt.Sprintf(`--use-add "%s:%s" `, f.Name, f.Text)
+	}
+	return strings.TrimSpace(args)
+}
