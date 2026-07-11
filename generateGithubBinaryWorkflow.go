@@ -729,36 +729,38 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
+	if ggbtd == nil || ggbtd.GenerateGithubWorkflowBase == nil {
+		return ""
+	}
 	args := ggbtd.GenerateGithubWorkflowBase.G2MetadataArgs() + " "
 
-	var uses []g2.Flag
-	for _, u := range ggbtd.IUse {
-		uses = append(uses, g2.Flag{Name: u})
-	}
-	for _, u := range ggbtd.RequiredUse {
-		uses = append(uses, g2.Flag{Name: u})
-	}
-
-	for pName, progs := range ggbtd.Programs {
-		for keyword := range progs.Binary {
-			for _, mhu := range ggbtd.GetMustHaveUseFlags(pName, keyword) {
-				uses = append(uses, g2.Flag{Name: mhu})
-			}
-			for _, mhu := range ggbtd.GetMustntHaveUseFlags(pName, keyword) {
-				uses = append(uses, g2.Flag{Name: mhu})
-			}
-		}
-	}
-
-	// Filter unique flags
 	seen := make(map[string]bool)
-	var finalUses []g2.Flag
-	for _, f := range uses {
-		cleaned := strcase.SnakeCase(f.Name)
+
+	type flag struct {
+		Name string
+		Text string
+	}
+	var finalUses []flag
+
+	addFlag := func(name, text string) {
+		cleaned := strcase.SnakeCase(name)
 		if cleaned != "" && !seen[cleaned] {
 			seen[cleaned] = true
-			finalUses = append(finalUses, g2.Flag{Name: cleaned, Text: fmt.Sprintf("Enable %s", cleaned)})
+			finalUses = append(finalUses, flag{Name: cleaned, Text: text})
 		}
+	}
+
+	for use := range ggbtd.ReverseProgramsAsAlternatives() {
+		addFlag(use, fmt.Sprintf("Install %s binary", use))
+	}
+	for _, shell := range ggbtd.ShellCompletionShells() {
+		addFlag(shell, fmt.Sprintf("Install %s completion", shell))
+	}
+	for _, use := range ggbtd.IUse {
+		addFlag(use, fmt.Sprintf("Enable %s", use))
+	}
+	for _, use := range ggbtd.ExtractedUseFlags() {
+		addFlag(use, fmt.Sprintf("Enable %s", use))
 	}
 
 	// Sort flags for determinism
@@ -767,7 +769,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
 	})
 
 	for _, f := range finalUses {
-		args += fmt.Sprintf(`--use-add "%s:%s" `, f.Name, f.Text)
+		args += fmt.Sprintf("--use-add \"%s:%s\" ", f.Name, f.Text)
 	}
 	return strings.TrimSpace(args)
 }

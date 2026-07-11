@@ -184,14 +184,21 @@ func (b *GenerateGithubWorkflowBase) DefaultMetadata() (string, error) {
 }
 
 func (b *GenerateGithubWorkflowBase) G2MetadataArgs() string {
+	if b == nil {
+		return ""
+	}
 	args := ""
 	if b.MaintainerEmail != "" {
-		args += fmt.Sprintf(`-m "%s:%s:person" `, b.MaintainerEmail, b.MaintainerName)
+		email := strings.ReplaceAll(strings.ReplaceAll(b.MaintainerEmail, "\\", "\\\\"), "\"", "\\\"")
+		name := strings.ReplaceAll(strings.ReplaceAll(b.MaintainerName, "\\", "\\\\"), "\"", "\\\"")
+		args += fmt.Sprintf("-m \"%s:%s:person\" ", email, name)
 	} else {
-		args += `-m "gentoo@arran4.com:Arran Ubels:person" `
+		args += "-m \"gentoo@arran4.com:Arran Ubels:person\" "
 	}
 	if b.GithubOwner != "" && b.GithubRepo != "" {
-		args += fmt.Sprintf(`-u "github:%s/%s" `, b.GithubOwner, b.GithubRepo)
+		owner := strings.ReplaceAll(strings.ReplaceAll(b.GithubOwner, "\\", "\\\\"), "\"", "\\\"")
+		repo := strings.ReplaceAll(strings.ReplaceAll(b.GithubRepo, "\\", "\\\\"), "\"", "\\\"")
+		args += fmt.Sprintf("-u \"github:%s/%s\" ", owner, repo)
 	}
 	return strings.TrimSpace(args)
 }
