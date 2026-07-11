@@ -727,3 +727,49 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
 %s`, string(o)), nil
 }
+
+func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
+	if ggbtd == nil || ggbtd.GenerateGithubWorkflowBase == nil {
+		return ""
+	}
+	args := ggbtd.GenerateGithubWorkflowBase.G2MetadataArgs() + " "
+
+	seen := make(map[string]bool)
+
+	type flag struct {
+		Name string
+		Text string
+	}
+	var finalUses []flag
+
+	addFlag := func(name, text string) {
+		cleaned := strcase.SnakeCase(name)
+		if cleaned != "" && !seen[cleaned] {
+			seen[cleaned] = true
+			finalUses = append(finalUses, flag{Name: cleaned, Text: text})
+		}
+	}
+
+	for use := range ggbtd.ReverseProgramsAsAlternatives() {
+		addFlag(use, fmt.Sprintf("Install %s binary", use))
+	}
+	for _, shell := range ggbtd.ShellCompletionShells() {
+		addFlag(shell, fmt.Sprintf("Install %s completion", shell))
+	}
+	for _, use := range ggbtd.IUse {
+		addFlag(use, fmt.Sprintf("Enable %s", use))
+	}
+	for _, use := range ggbtd.ExtractedUseFlags() {
+		addFlag(use, fmt.Sprintf("Enable %s", use))
+	}
+
+	// Sort flags for determinism
+	sort.Slice(finalUses, func(i, j int) bool {
+		return finalUses[i].Name < finalUses[j].Name
+	})
+
+	for _, f := range finalUses {
+		args += fmt.Sprintf("--use-add \"%s:%s\" ", f.Name, f.Text)
+	}
+	return strings.TrimSpace(args)
+}
