@@ -68,9 +68,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          if [ ! -f "$metadata_file" ]; then
-            g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
-          fi
+          g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
             tags=$(curl -s  --header "Accept: application/vnd.github+json" --header "Authorization: Bearer ${{secrets.GITHUB_TOKEN}}" https://api.github.com/repos/${{ env.github_owner }}/${{ env.github_repo }}/releases | jq -r '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
