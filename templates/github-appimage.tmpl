@@ -66,7 +66,13 @@ jobs:
           # shellcheck disable=SC2086
 [[- if .WorkaroundSemanticVersionWithoutV ]]
           for tag in $tags; do
-            version="${tag}"
+            version="${tag#[[- .WorkaroundTagPrefix ]]}"
+            [[- if .WorkaroundTagPrefix ]]
+            if [ "${version}" = "${tag}" ]; then
+                echo "$version == $tag so there is no [[ .WorkaroundTagPrefix ]] removed skipping"
+                continue
+            fi
+            [[- end ]]
 [[- else ]]
           for tag in $tags; do
             version="${tag#[[- .WorkaroundTagPrefix ]]v}"
