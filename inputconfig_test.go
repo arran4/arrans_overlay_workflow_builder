@@ -174,7 +174,7 @@ func TestParseConfigFile(t *testing.T) {
 			GithubOwner:      "goreleaser",
 			License:          "MIT License",
 			Workarounds:      map[string]string{},
-			IUse: nil,
+			IUse:             nil,
 			Programs: map[string]*Program{
 				"": {
 					Binary: map[string][]string{
