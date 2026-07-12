@@ -216,6 +216,7 @@ type InputConfig struct {
 	Type             string
 	GithubProjectUrl string
 	DownloadPageUrl  string
+	DownloadRedirect string
 	DownloadMatch    string
 	Category         string
 	EbuildName       string
@@ -264,6 +265,9 @@ func (ic *InputConfig) String() string {
 	case "Web AppImage":
 		if ic.DownloadPageUrl != "" {
 			fmt.Fprintf(&sb, "DownloadPageUrl %s\n", ic.DownloadPageUrl)
+		}
+		if ic.DownloadRedirect != "" {
+			fmt.Fprintf(&sb, "DownloadRedirect %s\n", ic.DownloadRedirect)
 		}
 		if ic.DownloadMatch != "" {
 			fmt.Fprintf(&sb, "DownloadMatch %s\n", ic.DownloadMatch)
@@ -404,6 +408,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"Type":                  nil,
 				"GithubProjectUrl":      nil,
 				"DownloadPageUrl":       nil,
+				"DownloadRedirect":      nil,
 				"DownloadMatch":         nil,
 				"Category":              {DefaultCategory},
 				"EbuildName":            nil,
@@ -524,9 +529,15 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	}
 	switch currentConfig.Type {
 	case "Web AppImage":
-		currentConfig.DownloadPageUrl, err = onlyOrFail(parsedFields["DownloadPageUrl"])
+		currentConfig.DownloadRedirect, err = emptyOrOnlyOrFail(parsedFields["DownloadRedirect"])
 		if err != nil {
-			return nil, fmt.Errorf("on DownloadPageUrl: %v: %w", parsedFields["DownloadPageUrl"], err)
+			return nil, fmt.Errorf("on DownloadRedirect: %v: %w", parsedFields["DownloadRedirect"], err)
+		}
+		if currentConfig.DownloadRedirect == "" {
+			currentConfig.DownloadPageUrl, err = onlyOrFail(parsedFields["DownloadPageUrl"])
+			if err != nil {
+				return nil, fmt.Errorf("on DownloadPageUrl: %v: %w", parsedFields["DownloadPageUrl"], err)
+			}
 		}
 		currentConfig.DownloadMatch, err = emptyOrOnlyOrFail(parsedFields["DownloadMatch"])
 		if err != nil {
