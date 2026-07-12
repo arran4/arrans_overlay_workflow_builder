@@ -13,7 +13,7 @@ import (
 	"golang.org/x/tools/txtar"
 )
 
-//go:embed testdata/txtar/*.txtar
+//go:embed testdata/txtar/**/*.txtar
 var testdataFS embed.FS
 
 func TestWorkflowTemplates(t *testing.T) {
