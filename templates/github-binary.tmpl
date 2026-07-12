@@ -29,15 +29,15 @@ env:
   [[- range $pname, $prog := .Programs ]]
   [[- if $prog.HasDesktopFile ]]
   [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: '[[ $prog.DesktopFile ]]'
-  [[- end ]]
+  [[ end ]]
   [[ join (filterEmpty $pname "binary_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
   [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
   [[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
-  [[- end ]]
+  [[ end ]]
   [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | ebuildvardoublequoted ]]'
-  [[- end ]]
-  [[- end ]]
+  [[ end ]]
+  [[ end ]]
 
 jobs:
   check-and-create-ebuild:
@@ -62,11 +62,11 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
-          [[- if .TagsCommand ]]
+          [[ if .TagsCommand ]]
           tags=$([[ .TagsCommand ]])
-          [[- else ]]
+          [[ else ]]
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
-          [[- end ]]
+          [[ end ]]
           # shellcheck disable=SC2086
 [[- if .WorkaroundSemanticVersionWithoutV ]]
           for tag in $tags; do
@@ -76,22 +76,22 @@ jobs:
                 echo "$version == $tag so there is no [[ .WorkaroundTagPrefix ]] removed skipping"
                 continue
             fi
-            [[- else ]]
+            [[ else ]]
             version="${tag}"
-            [[- end ]]
-[[- else ]]
+            [[ end ]]
+[[ else ]]
           for tag in $tags; do
             version="${tag#[[- .WorkaroundTagPrefix ]]v}"
             if [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no [[- .WorkaroundTagPrefix ]] v removed skipping"
                 continue
             fi
-[[- end ]]
+[[ end ]]
             # shellcheck disable=SC2034
             originalVersion="${version}"
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)[0-9]*\)$/\1_\5\3/')"
-[[- end ]]
+[[ end ]]
             if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "tag / $version doesn't match regexp";
                 continue;
@@ -118,8 +118,8 @@ jobs:
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
 [[- range $i, $externalResource := .ExternalResources ]]
-                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]\${PV}[[- else ]][[- $.WorkaroundTagPrefix ]]v\${PV}[[- end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
-[[- end ]]
+                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]\${PV}[[ else ]][[- $.WorkaroundTagPrefix ]]v\${PV}[[ end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+[[ end ]]
                 echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
@@ -149,7 +149,7 @@ jobs:
                 echo ''
 [[- if .HasDesktopFile ]]
                 echo ''
-[[- end ]]
+[[ end ]]
                 [[- if $.NeedsSrcUnpack ]]
                 echo 'src_unpack() {'
 [[- range $i, $externalResource := .ExternalResources ]]
@@ -158,8 +158,8 @@ jobs:
                 echo '  if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe  ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
-  [[- end ]]
-[[- end ]]
+  [[ end ]]
+[[ end ]]
 [[- if $.HasCompressedManualPages ]]
                 echo '  if use man; then'
     [[- range $i, $mans := $.CompressedManualPages ]]
@@ -167,20 +167,20 @@ jobs:
                 echo '    if use [[ $mans.Keyword ]]; then'
             [[- range $i, $man := $mans.Grouped ]]
                 echo '      [[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
-            [[- end ]]
+            [[ end ]]
                 echo '    fi'
-        [[- else ]]
+        [[ else ]]
             [[- range $i, $man := $mans.Grouped ]]
                 echo '    [[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
-            [[- end ]]
-        [[- end ]]
-    [[- end ]]
+            [[ end ]]
+        [[ end ]]
+    [[ end ]]
                 echo '  fi'
-[[- end ]]
+[[ end ]]
                 echo '}'
-                [[- else ]]
+                [[ else ]]
                 echo 'src_unpack() { :; }'
-                [[- end ]]
+                [[ end ]]
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
@@ -192,14 +192,14 @@ jobs:
                 echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
                 echo '    newexe "${{ env.[[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
                 echo '  fi'
-    [[- else ]]
+    [[ else ]]
         [[- $count := 0 ]]
                 echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
                 echo '    newexe "${DISTDIR}/${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
                 echo '  fi'
-    [[- end ]]
-  [[- end ]]
-[[- end ]]
+    [[ end ]]
+  [[ end ]]
+[[ end ]]
 
 
 [[- range $i, $shell := $.ShellCompletionShells]]
@@ -210,16 +210,16 @@ jobs:
                 echo '    if use [[ $files.Keyword ]]; then'
             [[- range $i, $file := $files.Grouped ]]
                 echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
-            [[- end ]]
+            [[ end ]]
                 echo '    fi'
-        [[- else ]]
+        [[ else ]]
             [[- range $i, $file := $files.Grouped ]]
                 echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
-            [[- end ]]
-        [[- end ]]
-    [[- end ]]
+            [[ end ]]
+        [[ end ]]
+    [[ end ]]
                 echo '  fi'
-[[- end ]]
+[[ end ]]
 [[- if $.HasManualPages ]]
                 echo '  if use man; then'
     [[- range $i, $mans := $.ManualPages ]]
@@ -227,16 +227,16 @@ jobs:
                 echo '    if use [[ $mans.Keyword ]]; then'
             [[- range $i, $man := $mans.Grouped ]]
                 echo '      newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
-            [[- end ]]
+            [[ end ]]
                 echo '    fi'
-        [[- else ]]
+        [[ else ]]
             [[- range $i, $man := $mans.Grouped ]]
                 echo '    newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
-            [[- end ]]
-        [[- end ]]
-    [[- end ]]
+            [[ end ]]
+        [[ end ]]
+    [[ end ]]
                 echo '  fi'
-[[- end ]]
+[[ end ]]
 [[- if $.HasDocuments ]]
                 echo '  if use doc; then'
     [[- range $i, $docs := $.Documents ]]
@@ -244,16 +244,16 @@ jobs:
                 echo '    if use [[ $docs.Keyword ]]; then'
             [[- range $ii, $doc := $docs.Grouped ]]
                 echo '      newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
-            [[- end ]]
+            [[ end ]]
                 echo '    fi'
-        [[- else ]]
+        [[ else ]]
             [[- range $ii, $doc := $docs.Grouped ]]
                 echo '    newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
-            [[- end ]]
-        [[- end ]]
-    [[- end ]]
+            [[ end ]]
+        [[ end ]]
+    [[ end ]]
                 echo '  fi'
-[[- end ]]
+[[ end ]]
                 echo '}'
               } > $ebuild_file
 
@@ -262,11 +262,11 @@ jobs:
 [[ range $i, $externalResource := .ExternalResources ]]
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
-    [[- else ]]
+    [[ else ]]
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
-    [[- end ]]
+    [[ end ]]
 
-[[- end ]]
+[[ end ]]
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

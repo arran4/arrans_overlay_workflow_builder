@@ -29,15 +29,15 @@ env:
   [[- range $pname, $prog := .Programs ]]
   [[- if $prog.HasDesktopFile ]]
   [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: '[[ $prog.DesktopFile ]]'
-  [[- end ]]
+  [[ end ]]
   [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
   [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
   [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
-  [[- end ]]
+  [[ end ]]
   [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | ebuildvardoublequoted ]]'
-  [[- end ]]
-  [[- end ]]
+  [[ end ]]
+  [[ end ]]
 
 jobs:
   check-and-create-ebuild:
@@ -62,11 +62,11 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
-          [[- if .TagsCommand ]]
+          [[ if .TagsCommand ]]
           tags=$([[ .TagsCommand ]])
-          [[- else ]]
+          [[ else ]]
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
-          [[- end ]]
+          [[ end ]]
           # shellcheck disable=SC2086
 [[- if .WorkaroundSemanticVersionWithoutV ]]
           for tag in $tags; do
@@ -76,22 +76,22 @@ jobs:
                 echo "$version == $tag so there is no [[ .WorkaroundTagPrefix ]] removed skipping"
                 continue
             fi
-            [[- else ]]
+            [[ else ]]
             version="${tag}"
-            [[- end ]]
-[[- else ]]
+            [[ end ]]
+[[ else ]]
           for tag in $tags; do
             version="${tag#[[- .WorkaroundTagPrefix ]]v}"
             if [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no [[ .WorkaroundTagPrefix ]]v removed skipping"
                 continue
             fi
-[[- end ]]
+[[ end ]]
             # shellcheck disable=SC2034
             originalVersion="${version}"
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)\(\|\.\?\([0-9]\+\)\)\)$/\1_\5\3\7/')"
-[[- end ]]
+[[ end ]]
             if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "version: $version doesn't match regexp";
                 continue;
@@ -123,16 +123,16 @@ jobs:
 [[- if .HasDesktopFile ]]
                 echo ''
                 echo "inherit xdg-utils"
-[[- end ]]
+[[ end ]]
                 echo ''
                 echo 'SRC_URI="'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
                 echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
-    [[- else ]]
+    [[ else ]]
                 echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
-    [[- end ]]
-[[- end ]]
+    [[ end ]]
+[[ end ]]
                 echo '"'
                 echo ''
                 [[- if $.NeedsSrcUnpack ]]
@@ -142,57 +142,57 @@ jobs:
                 echo '  if use [[ $externalResource.Keyword ]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
-  [[- end ]]
-[[- end ]]
+  [[ end ]]
+[[ end ]]
 [[- range $pname, $prog := .Programs ]]
 [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
                 echo '  if use [[ $keyword ]]; then'
                 echo "    mv \"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't move archived file\""
                 echo '  fi'
-  [[- else ]]
+  [[ else ]]
                 echo '  if use [[ $keyword ]]; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
-  [[- end ]]
-[[- end ]]
+  [[ end ]]
+[[ end ]]
                 echo '  chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
 [[- if $prog.HasDesktopFile ]]
                 echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
-[[- end ]]
+[[ end ]]
 [[- range $i, $icon := $prog.Icons ]]
   [[- if eq $icon "hicolor-apps" ]]
                 echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
-  [[- end ]]
+  [[ end ]]
   [[- if eq $icon "pixmaps" ]]
                 echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "usr/share/pixmaps" || die "Failed to extract pixmaps icons from app image"'
-  [[- end ]]
+  [[ end ]]
   [[- if eq $icon "root" ]]
                 echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
-  [[- end ]]
-[[- end ]]
-[[- end ]]
+  [[ end ]]
+[[ end ]]
+[[ end ]]
                 echo '}'
-                [[- else ]]
+                [[ else ]]
                 echo 'src_unpack() { : }'
-                [[- end ]]
+                [[ end ]]
                 echo ''
                 echo 'src_prepare() {'
 [[- if .HasDesktopFile ]]
   [[- range $pname, $prog := .Programs ]]
     [[- if $prog.HasDesktopFile ]]
                 echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}:' 'squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}'"
-    [[- end ]]
-  [[- end ]]
-[[- end ]]
+    [[ end ]]
+  [[ end ]]
+[[ end ]]
 [[- range $pname, $prog := .Programs ]]
   [[- range $i, $icon := $prog.Icons ]]
     [[- if eq $icon "hicolor-apps" ]]
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
                 echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
-    [[- end ]]
-  [[- end ]]
-[[- end ]]
+    [[ end ]]
+  [[ end ]]
+[[ end ]]
                 echo '  eapply_user'
                 echo '}'
                 echo ''
@@ -200,13 +200,13 @@ jobs:
                 echo '  exeinto /opt/bin'
 [[- range $pname, $prog := .Programs ]]
                 echo '  doexe "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
-[[- end ]]
+[[ end ]]
 [[- if .HasDesktopFile ]]
                 echo '  insinto /usr/share/applications'
   [[- range $pname, $prog := .Programs ]]
                 echo '  doins "squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to install desktop file"'
-  [[- end ]]
-[[- end ]]
+  [[ end ]]
+[[ end ]]
 [[- range $pname, $prog := .Programs ]]
   [[- range $i, $icon := $prog.Icons ]]
     [[- if eq $icon "hicolor-apps" ]]
@@ -218,9 +218,9 @@ jobs:
     [[- else if eq $icon "root" ]]
                 echo '  insinto /usr/share/pixmaps'
                 echo '  doins squashfs-root/*.png || die "Failed to install icons"'
-    [[- end ]]
-  [[- end ]]
-[[- end ]]
+    [[ end ]]
+  [[ end ]]
+[[ end ]]
                 echo '}'
                 echo ""
 [[- if .HasDesktopFile ]]
@@ -228,7 +228,7 @@ jobs:
                 echo "  xdg_desktop_database_update"
                 echo "}"
                 echo ""
-[[- end ]]
+[[ end ]]
               } > $ebuild_file
 
               # Manifest generation
@@ -236,11 +236,11 @@ jobs:
 [[ range $releaseFilename, $externalResource := .ExternalResources ]] 
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
-    [[- else ]]
+    [[ else ]]
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
-    [[- end ]]
+    [[ end ]]
 
-[[- end ]]
+[[ end ]]
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
