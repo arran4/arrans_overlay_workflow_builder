@@ -51,9 +51,11 @@ func TestWorkflowTemplates(t *testing.T) {
 			var expectedYamlStr string
 
 			for _, f := range ar.Files {
-				if f.Name == "input.config" {
+				switch f.Name {
+				case "input.config":
 					inputConfigStr = string(f.Data)
-				} else if f.Name == "expected.yaml" {
+
+				case "expected.yaml":
 					expectedYamlStr = string(f.Data)
 				}
 			}
