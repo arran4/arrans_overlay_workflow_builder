@@ -14,7 +14,10 @@ require (
 	golang.org/x/net v0.55.0
 )
 
-require github.com/arran4/g2 v0.0.48
+require (
+	github.com/arran4/g2 v0.0.48
+	golang.org/x/tools v0.40.0
+)
 
 require (
 	github.com/CalebQ42/squashfs v1.4.0
