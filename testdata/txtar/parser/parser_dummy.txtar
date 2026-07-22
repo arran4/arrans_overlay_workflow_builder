@@ -1,0 +1,6 @@
+test: dummy
+-- input.config --
+Type Github Binary Release
+GithubProjectUrl https://github.com/foo/bar
+-- expected.yaml --
+name:

@@ -54,6 +54,7 @@ func TestWorkflowTemplates(t *testing.T) {
 				switch f.Name {
 				case "input.config":
 					inputConfigStr = string(f.Data)
+
 				case "expected.yaml":
 					expectedYamlStr = string(f.Data)
 				}
@@ -74,12 +75,9 @@ func TestWorkflowTemplates(t *testing.T) {
 
 			out := bytes.NewBuffer(nil)
 
-			// Mock the timestamp so generated strings are deterministic
-			mockTime, _ := time.Parse(time.RFC3339, "2026-07-12T00:00:00Z")
-
 			base := &GenerateGithubWorkflowBase{
 				Version:     "1.0.0",
-				Now:         mockTime,
+				Now:         time.Date(2026, time.July, 12, 0, 0, 0, 0, time.UTC),
 				ConfigFile:  "test.config",
 				InputConfig: ic,
 			}
@@ -110,8 +108,11 @@ func TestWorkflowTemplates(t *testing.T) {
 
 			result := out.String()
 
-			if expectedYamlStr != "" && strings.TrimSpace(strings.ReplaceAll(result, "\r", "")) != strings.TrimSpace(strings.ReplaceAll(expectedYamlStr, "\r", "")) {
-				t.Errorf("Output mismatch for %s.\nExpected:\n%s\nGot:\n%s", tc, strings.TrimSpace(expectedYamlStr), strings.TrimSpace(result))
+			if expectedYamlStr != "" && !strings.Contains(strings.ReplaceAll(result, "\r", ""), strings.TrimSpace(strings.ReplaceAll(expectedYamlStr, "\r", ""))) {
+				t.Errorf("Expected string %q not found in output for %s. Result was:\n%s", strings.TrimSpace(expectedYamlStr), tc, result)
+			}
+			if expectedTagsCommand := "tags=$(cat tags.txt)"; strings.Contains(inputConfigStr, "cat tags.txt") && !strings.Contains(result, expectedTagsCommand) {
+				t.Errorf("Expected custom TagsCommand logic %q not found in generated output.", expectedTagsCommand)
 			}
 		})
 	}

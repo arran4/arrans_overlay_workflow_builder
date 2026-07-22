@@ -16,7 +16,6 @@ require (
 
 require (
 	github.com/arran4/g2 v0.0.48
-	github.com/pmezard/go-difflib v1.0.0
 	golang.org/x/tools v0.40.0
 )
 
