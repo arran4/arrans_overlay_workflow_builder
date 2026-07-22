@@ -13,4 +13,3 @@ EbuildName jan-appimage
 ProgramName jan
 
 -- expected.yaml --
-name: app-misc/jan-appimage update
