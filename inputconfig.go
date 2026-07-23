@@ -218,6 +218,7 @@ type InputConfig struct {
 	DownloadPageUrl  string
 	DownloadRedirect string
 	DownloadMatch    string
+	TagsCommand      string
 	Category         string
 	EbuildName       string
 	Description      string
@@ -254,6 +255,9 @@ func (ic *InputConfig) String() string {
 		if ic.GithubProjectUrl != "" {
 			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
 		}
+		if ic.TagsCommand != "" {
+			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
+		}
 		if len(ic.IUse) > 0 {
 			fmt.Fprintf(&sb, "IUse %s\n", strings.Join(ic.IUse, " "))
 		}
@@ -271,6 +275,9 @@ func (ic *InputConfig) String() string {
 		}
 		if ic.DownloadMatch != "" {
 			fmt.Fprintf(&sb, "DownloadMatch %s\n", ic.DownloadMatch)
+		}
+		if ic.TagsCommand != "" {
+			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
 		}
 	}
 	switch ic.Type {
@@ -311,6 +318,9 @@ func (ic *InputConfig) String() string {
 	case "Github Binary Release":
 		if ic.GithubProjectUrl != "" {
 			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
+		}
+		if ic.TagsCommand != "" {
+			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
 		}
 		if ic.Category != "" {
 			fmt.Fprintf(&sb, "Category %s\n", ic.Category)
@@ -410,6 +420,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"DownloadPageUrl":       nil,
 				"DownloadRedirect":      nil,
 				"DownloadMatch":         nil,
+				"TagsCommand":           nil,
 				"Category":              {DefaultCategory},
 				"EbuildName":            nil,
 				"Description":           nil,
@@ -572,6 +583,10 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	currentConfig.MaintainerEmail, err = emptyOrOnlyOrFail(parsedFields["MaintainerEmail"])
 	if err != nil {
 		return nil, fmt.Errorf("on MaintainerEmail: %v: %w", parsedFields["MaintainerEmail"], err)
+	}
+	currentConfig.TagsCommand, err = emptyOrOnlyOrFail(parsedFields["TagsCommand"])
+	if err != nil {
+		return nil, fmt.Errorf("on TagsCommand: %v: %w", parsedFields["TagsCommand"], err)
 	}
 	currentConfig.MaintainerName, err = emptyOrOnlyOrFail(parsedFields["MaintainerName"])
 	if err != nil {

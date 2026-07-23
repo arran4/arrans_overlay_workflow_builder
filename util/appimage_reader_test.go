@@ -7,10 +7,10 @@ import (
 
 func TestFindSquashFSOffset(t *testing.T) {
 	tests := []struct {
-		name          string
-		data          []byte
+		name           string
+		data           []byte
 		expectedOffset int64
-		expectError   bool
+		expectError    bool
 	}{
 		{
 			name:           "Magic hsqs at 0",

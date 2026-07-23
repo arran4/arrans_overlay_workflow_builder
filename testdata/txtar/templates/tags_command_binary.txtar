@@ -1,0 +1,13 @@
+test: tags command in github-binary template
+Ensures TagsCommand correctly overrides tag fetching in binary template.
+
+-- input.config --
+Type Github Binary Release
+GithubProjectUrl https://github.com/JetBrains/junie
+TagsCommand curl -s https://raw.githubusercontent.com/JetBrains/junie/main/update-info.jsonl | jq -r '.version' | sort -u -V -r
+Category dev-util
+EbuildName junie-bin
+ProgramName junie
+
+-- expected.yaml --
+name: dev-util/junie-bin update

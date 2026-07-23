@@ -11,6 +11,7 @@ const testConfigData = `
 # Example config
 Type Github AppImage Release
 GithubProjectUrl https://github.com/janhq/jan/
+TagsCommand cat tags.txt
 DesktopFile jan
 Category app-misc
 EbuildName jan-appimage
@@ -78,6 +79,7 @@ func TestParseConfigFile(t *testing.T) {
 			EntryNumber:      0,
 			Type:             "Github AppImage Release",
 			GithubProjectUrl: "https://github.com/janhq/jan/",
+			TagsCommand:      "cat tags.txt",
 			Category:         "app-misc",
 			EbuildName:       "jan-appimage.ebuild",
 			Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
@@ -174,7 +176,7 @@ func TestParseConfigFile(t *testing.T) {
 			GithubOwner:      "goreleaser",
 			License:          "MIT License",
 			Workarounds:      map[string]string{},
-			IUse: nil,
+			IUse:             nil,
 			Programs: map[string]*Program{
 				"": {
 					Binary: map[string][]string{
@@ -236,6 +238,7 @@ func TestConfigString(t *testing.T) {
 				EntryNumber:      0,
 				Type:             "Github AppImage Release",
 				GithubProjectUrl: "https://github.com/janhq/jan/",
+				TagsCommand:      "cat tags.txt",
 				Category:         "app-misc",
 				EbuildName:       "jan-appimage.ebuild",
 				Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
@@ -258,6 +261,7 @@ func TestConfigString(t *testing.T) {
 			},
 			want: `Type Github AppImage Release
 GithubProjectUrl https://github.com/janhq/jan/
+TagsCommand cat tags.txt
 Category app-misc
 EbuildName jan-appimage.ebuild
 Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
