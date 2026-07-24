@@ -315,7 +315,7 @@ func (ic *InputConfig) String() string {
 		for _, programName := range programs {
 			sb.WriteString(ic.Programs[programName].String())
 		}
-	case "Github Binary Release":
+	case "Github Binary Release", "Github Cmake Release":
 		if ic.GithubProjectUrl != "" {
 			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
 		}
@@ -592,7 +592,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	if err != nil {
 		return nil, fmt.Errorf("on MaintainerName: %v: %w", parsedFields["MaintainerName"], err)
 	}
-	if currentConfig.Type == "Github AppImage Release" || currentConfig.Type == "Github Binary Release" {
+	if currentConfig.Type == "Github AppImage Release" || currentConfig.Type == "Github Binary Release" || currentConfig.Type == "Github Cmake Release" {
 		currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
 		if err != nil {
 			return nil, fmt.Errorf("github url parser: %w", err)
@@ -628,11 +628,15 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 		if currentConfig.Programs == nil {
 			currentConfig.Programs = map[string]*Program{}
 		}
-	case "Github Binary Release":
+	case "Github Binary Release", "Github Cmake Release":
 		if currentConfig.EbuildName == "" {
 			currentConfig.EbuildName = currentConfig.GithubRepo
 		}
-		currentConfig.EbuildName = util.TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-bin") + "-bin.ebuild"
+		if currentConfig.Type == "Github Binary Release" {
+			currentConfig.EbuildName = util.TrimSuffixes(strings.TrimSuffix(currentConfig.EbuildName, ".ebuild"), "-bin") + "-bin.ebuild"
+		} else {
+			currentConfig.EbuildName = util.TrimSuffixes(currentConfig.EbuildName, ".ebuild") + ".ebuild"
+		}
 		if currentConfig.Programs == nil {
 			currentConfig.Programs = map[string]*Program{}
 		}
@@ -692,7 +696,7 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 		if program.DesktopFile != "" {
 			program.DesktopFile = util.TrimSuffixes(program.DesktopFile, ".desktop") + ".desktop"
 		}
-	case "Github Binary Release":
+	case "Github Binary Release", "Github Cmake Release":
 		program.Documents, err = parseMapDoubleStringListType1(programFields["Document"])
 		if err != nil {
 			return nil, fmt.Errorf("on Document: %v: %w", programFields["Document"], err)

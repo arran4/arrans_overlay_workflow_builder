@@ -184,6 +184,10 @@ func (mac *CmdConfigArgConfig) cmdConfigAdd(args []string) error {
 		if err := config.cmdConfigAddBinaryGithubReleases(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config add: %w", err)
 		}
+	case "github-cmake-source":
+		if err := config.cmdConfigAddCmakeSourceGithubReleases(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config add: %w", err)
+		}
 	case "web-appimage":
 		if err := config.cmdConfigAddWebAppImage(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config add: %w", err)
@@ -328,6 +332,10 @@ func (mac *CmdConfigArgConfig) cmdConfigView(args []string) error {
 		if err := config.cmdConfigViewBinaryGithubReleases(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config view: %w", err)
 		}
+	case "github-cmake-source":
+		if err := config.cmdConfigViewCmakeSourceGithubReleases(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("config view: %w", err)
+		}
 	case "web-appimage":
 		if err := config.cmdConfigViewWebAppImage(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("config view: %w", err)
@@ -453,6 +461,10 @@ func (mac *MainArgConfig) cmdOneshot(args []string) error {
 		if err := config.cmdOneshotGithubReleaseBinary(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("github binary: %w", err)
 		}
+	case "github-cmake-source":
+		if err := config.cmdOneshotGithubReleaseCmakeSource(fs.Args()[1:]); err != nil {
+			return fmt.Errorf("github cmake source: %w", err)
+		}
 	case "web-appimage":
 		if err := config.cmdOneshotWebAppImage(fs.Args()[1:]); err != nil {
 			return fmt.Errorf("web appimage: %w", err)
@@ -560,6 +572,108 @@ func (mac *CmdOneshotArgConfig) cmdOneshotWebAppImage(args []string) error {
 			return fmt.Errorf("url missing")
 		}
 		return arrans_overlay_workflow_builder.CmdOneshotWebAppImage(*config.PageUrl, *config.MatchExpr, valueOrDefault(config.Extension), *config.OutputDir, config.Version)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdConfigAddCmakeSourceGithubReleasesArgConfig struct {
+	*CmdConfigAddArgConfig
+	GithubUrl          *string
+	ConfigFile         *string
+	SelectedVersionTag *string
+	TagPrefix          *string
+}
+
+func (mac *CmdConfigAddArgConfig) cmdConfigAddCmakeSourceGithubReleases(args []string) error {
+	config := &CmdConfigAddCmakeSourceGithubReleasesArgConfig{
+		CmdConfigAddArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.ConfigFile = fs.String("to", "input.config", "The input with config")
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to add")
+	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.ConfigFile == nil || *config.ConfigFile == "" {
+			return fmt.Errorf("config file to modify argument missing")
+		}
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to add is missing")
+		}
+		return arrans_overlay_workflow_builder.ConfigAddCmakeSourceGithubReleases(*config.ConfigFile, *config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "github-cmake-source", "Adds an configuration to a configuration file.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdConfigViewCmakeSourceGithubReleasesArgConfig struct {
+	*CmdConfigViewArgConfig
+	GithubUrl          *string
+	SelectedVersionTag *string
+	TagPrefix          *string
+}
+
+func (mac *CmdConfigViewArgConfig) cmdConfigViewCmakeSourceGithubReleases(args []string) error {
+	config := &CmdConfigViewCmakeSourceGithubReleasesArgConfig{
+		CmdConfigViewArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
+	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to view is missing")
+		}
+		return arrans_overlay_workflow_builder.ConfigViewCmakeSourceGithubReleases(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix)
+	default:
+		log.Printf("Unknown command %s", fs.Arg(0))
+		log.Printf("Try %s for %s", "github-cmake-source", "Views an addition to a configuration file for a particular query.")
+		os.Exit(-1)
+	}
+	return nil
+}
+
+type CmdOneshotGithubReleaseCmakeSourceArgConfig struct {
+	*CmdOneshotArgConfig
+	GithubUrl          *string
+	SelectedVersionTag *string
+	TagPrefix          *string
+	OutputDir          *string
+}
+
+func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseCmakeSource(args []string) error {
+	config := &CmdOneshotGithubReleaseCmakeSourceArgConfig{
+		CmdOneshotArgConfig: mac,
+	}
+	fs := flag.NewFlagSet("", flag.ExitOnError)
+	config.GithubUrl = fs.String("github-url", "https://github.com/owner/repo/", "The github URL to view")
+	config.SelectedVersionTag = fs.String("version-tag", "", "Version / tag override")
+	config.TagPrefix = fs.String("tag-prefix", "", "Tag prefix for app to select on and remove")
+	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
+	if err := fs.Parse(args); err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
+	switch fs.Arg(0) {
+	case "":
+		if config.GithubUrl == nil || *config.GithubUrl == "" {
+			return fmt.Errorf("github URL to view is missing")
+		}
+		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseCmakeSource(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)

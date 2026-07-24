@@ -234,6 +234,10 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		data = &GenerateGithubBinaryTemplateData{
 			GenerateGithubWorkflowBase: base,
 		}
+	case "Github Cmake Release":
+		data = &GenerateGithubCmakeTemplateData{
+			GenerateGithubWorkflowBase: base,
+		}
 	default:
 		return fmt.Errorf("unknown type %s", ic.Type)
 	}
