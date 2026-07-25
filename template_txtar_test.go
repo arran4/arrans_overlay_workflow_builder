@@ -91,6 +91,9 @@ func TestWorkflowTemplates(t *testing.T) {
 			case "Github Binary Release":
 				data = &GenerateGithubBinaryTemplateData{GenerateGithubWorkflowBase: base}
 				templateName = "github-binary.tmpl"
+			case "Github Cmake Release":
+				data = &GenerateGithubCmakeTemplateData{GenerateGithubWorkflowBase: base}
+				templateName = "github-cmake.tmpl"
 			case "Web AppImage":
 				data = &GenerateWebAppImageTemplateData{
 					GenerateGithubAppImageTemplateData: &GenerateGithubAppImageTemplateData{
