@@ -284,9 +284,6 @@ func (ic *InputConfig) String() string {
 		if ic.DownloadBaseUrl != "" {
 			fmt.Fprintf(&sb, "DownloadBaseUrl %s\n", ic.DownloadBaseUrl)
 		}
-		if ic.TagsCommand != "" {
-			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
-		}
 	}
 	switch ic.Type {
 	case "Github AppImage Release", "Web AppImage":

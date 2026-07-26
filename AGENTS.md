@@ -1,1 +1,2 @@
 Ensure `templates/github-binary.tmpl` properly uses `echo` with tabs.
+The generator supports a `Web Binary` configuration type (using `generateWebBinaryWorkflow.go` and `web-binary.tmpl`) for handling non-GitHub releases. It relies on the `DownloadBaseUrl` field to construct the `SRC_URI` and strictly requires `TagsCommand` to fetch version tags (e.g., using a custom `curl` command to parse HTML release notes).

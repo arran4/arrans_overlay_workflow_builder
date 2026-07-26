@@ -121,7 +121,7 @@ jobs:
                 echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ $.DownloadBaseUrl ]][[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
 [[ end ]]
                 echo '"'
-                echo 'LICENSE="MIT"'
+                echo 'LICENSE="[[ .License ]]"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
