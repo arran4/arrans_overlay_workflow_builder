@@ -82,7 +82,9 @@ jobs:
 [[ else ]]
           for tag in $tags; do
             version="${tag#[[- .WorkaroundTagPrefix ]]v}"
-            if [ "${version}" = "${tag}" ]; then
+            if echo "$tag" | grep -qE '^v?[0-9]'; then
+                version="${tag#v}"
+            elif [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no [[- .WorkaroundTagPrefix ]] v removed skipping"
                 continue
             fi

@@ -101,6 +101,13 @@ func TestWorkflowTemplates(t *testing.T) {
 					},
 				}
 				templateName = "web-appimage.tmpl"
+			case "Web Binary":
+				data = &GenerateWebBinaryTemplateData{
+					GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
+						GenerateGithubWorkflowBase: base,
+					},
+				}
+				templateName = "web-binary.tmpl"
 			default:
 				t.Fatalf("Unknown type: %s", ic.Type)
 			}

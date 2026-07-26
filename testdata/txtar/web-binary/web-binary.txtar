@@ -12,7 +12,7 @@ Binary amd64=>google-cloud-cli-${VERSION}-linux-x86_64.tar.gz > gcloud > gcloud
 Binary x86=>google-cloud-cli-${VERSION}-linux-x86.tar.gz > gcloud > gcloud
 Binary arm64=>google-cloud-cli-${VERSION}-linux-arm.tar.gz > gcloud > gcloud
 -- expected.yaml --
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web Binary testdata/txtar/web-binary.txtar/input.config 2006-01-02 15:04:05.999999999 -0700 MST
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web Binary testdata/txtar/web-binary/web-binary.txtar/input.config 2006-01-02 15:04:05.999999999 -0700 MST
 
 name: app-admin/google-cloud-sdk update
 
@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Git
         run: |
@@ -71,7 +71,7 @@ jobs:
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
           if [ ! -f "$metadata_file" ]; then
-            cat <<-"EOF_METADATA" > "$metadata_file"
+            cat <<-"EOF_XML" > "$metadata_file"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
 <pkgmetadata>
@@ -80,19 +80,21 @@ jobs:
 		<name>Arran Ubels</name>
 	</maintainer>
 </pkgmetadata>
-EOF_METADATA
+EOF_XML
           fi
           g2 metadata -m "gentoo@arran4.com:Arran Ubels:person"  "$metadata_file"
           declare -A releaseTypes=()
           if [ -z "curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text=\"[0-9]+\.[0-9]+\.[0-9]+' | cut -d '\"' -f 2" ]; then
              echo "TagsCommand is required for Web Binary configurations" >&2
-             e\xit 1
+             exit 1
           fi
           tags=$(curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text="[0-9]+\.[0-9]+\.[0-9]+' | cut -d '"' -f 2)
           # shellcheck disable=SC2086
           for tag in $tags; do
             version="${tag#v}"
-            if [ "${version}" = "${tag}" ]; then
+            if echo "$tag" | grep -qE '^v?[0-9]'; then
+                version="${tag#v}"
+            elif [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no  v removed skipping"
                 continue
             fi
@@ -103,8 +105,8 @@ EOF_METADATA
                 continue;
             fi
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
-            if [[`[[ ! -v releaseTypes[${releaseType:=release}] ]]`]]; then
-                if [[`[[ -v releaseTypes[release] ]]`]]; then
+            if [[ ! -v releaseTypes[${releaseType:=release}] ]]; then
+                if [[ -v releaseTypes[release] ]]; then
                   echo "Already have a newer main release: ${releaseTypes[release]}"
                   continue
                 fi
@@ -132,13 +134,22 @@ EOF_METADATA
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
-                echo -n '"'
+                echo -n ''
+                echo -n ''
+                echo -n ''
+                echo -n ''
+                echo -n ''
+                echo -n ' amd64 arm64 x86'
+                echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
+                echo -n ''
                 echo '"'
                 echo ''
                 echo -n 'RDEPEND="'
-                echo -n '"'
+                echo -n ''
+                echo -n ''
+                echo '"'
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
@@ -202,7 +213,7 @@ EOF_METADATA
           git add "./${ebuild_dir}"
           git add metadata/md5-cache/ || true
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
-            git p\ull --rebase &&
-            git p\ush
+            git pull --rebase &&
+            git push
           fi || true
         if: steps.process_releases.outputs.generated_tag

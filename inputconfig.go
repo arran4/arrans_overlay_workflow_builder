@@ -561,7 +561,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
 		}
 	case "Web Binary":
-		currentConfig.DownloadBaseUrl, err = emptyOrOnlyOrFail(parsedFields["DownloadBaseUrl"])
+		currentConfig.DownloadBaseUrl, err = onlyOrFail(parsedFields["DownloadBaseUrl"])
 		if err != nil {
 			return nil, fmt.Errorf("on DownloadBaseUrl: %v: %w", parsedFields["DownloadBaseUrl"], err)
 		}
