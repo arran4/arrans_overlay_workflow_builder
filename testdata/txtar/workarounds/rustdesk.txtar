@@ -1,43 +1,41 @@
-test: tags command in github-binary template
-Ensures TagsCommand correctly overrides tag fetching in binary template.
-
 -- input.config --
 Type Github Binary Release
-GithubProjectUrl https://github.com/JetBrains/junie
-TagsCommand curl -s https://raw.githubusercontent.com/JetBrains/junie/main/update-info.jsonl | jq -r '.version' | sort -u -V -r
-Category dev-util
-EbuildName junie-bin
-ProgramName junie
-
+Category net-misc
+EbuildName rustdesk
+GithubProjectUrl https://github.com/rustdesk/rustdesk
+MaintainerEmail gentoo@arran4.com
+MaintainerName Arran Ubels
+Workaround Semantic Version Prerelease Hack 1
+Workaround Semantic Version Without V
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC
 
-name: dev-util/junie-bin update
+name: net-misc/rustdesk-bin update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '59 8 * * *'
+    - cron: '45 14 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/dev-util-junie-bin-update.yaml'
+      - '.github/workflows/net-misc-rustdesk-bin-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  ecn: dev-util
-  epn: junie-bin
+  ecn: net-misc
+  epn: rustdesk-bin
   description: ""
   homepage: ""
-  github_owner: JetBrains
-  github_repo: junie
+  github_owner: rustdesk
+  github_repo: rustdesk
   keywords:
-  workflow_filename: dev-util-junie-bin-update.yaml
+  workflow_filename: net-misc-rustdesk-bin-update.yaml
 
 jobs:
   check-and-create-ebuild:
@@ -60,21 +58,20 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:JetBrains/junie" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:rustdesk/rustdesk" "$metadata_file"
           declare -A releaseTypes=()
 
-          tags=$(curl -s https://raw.githubusercontent.com/JetBrains/junie/main/update-info.jsonl | jq -r '.version' | sort -u -V -r)
+          tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
 
           # shellcheck disable=SC2086
           for tag in $tags; do
-            version="${tag#v}"
-            if [ "${version}" = "${tag}" ]; then
-                echo "$version == $tag so there is no v removed skipping"
-                continue
-            fi
+            version="${tag}"
+
 
             # shellcheck disable=SC2034
             originalVersion="${version}"
+            version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)[0-9]*\)$/\1_\5\3/')"
+
             if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "tag / $version doesn't match regexp";
                 continue;

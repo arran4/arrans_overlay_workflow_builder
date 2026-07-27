@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/xml"
 	"fmt"
+	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/arran4/g2"
 	"github.com/stoewer/go-strcase"
 	"io/fs"
@@ -29,8 +30,19 @@ type ExternalResource struct {
 	Archived        bool
 }
 
-func GenerateGithubWorkflows(file, outputDir, version string) error {
-	b, err := os.ReadFile(file)
+type NextGenerate func(file string, outputDir string, version string, ops ...any) error
+
+func GenerateGithubWorkflows(file, outputDir, version string, ops ...any) error {
+	var fsys util.FileSystem = util.OSFS{}
+
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case util.FileSystem:
+			fsys = o
+		}
+	}
+
+	b, err := fsys.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("reading %s: %w", file, err)
 	}
@@ -38,10 +50,10 @@ func GenerateGithubWorkflows(file, outputDir, version string) error {
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", file, err)
 	}
-	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, outputDir, version)
+	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, outputDir, version, ops...)
 }
 
-func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, outputDir, version string) error {
+func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, outputDir, version string, ops ...any) error {
 	missing := false
 	for _, inputConfig := range inputConfigs {
 		if inputConfig.Category == "" {
@@ -56,10 +68,21 @@ func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputC
 	if err != nil {
 		return err
 	}
+
 	now := time.Now()
-	_ = os.MkdirAll(outputDir, 0755)
+	var fsys util.FileSystem = util.OSFS{}
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case util.FileSystem:
+			fsys = o
+		case time.Time:
+			now = o
+		}
+	}
+
+	_ = fsys.MkdirAll(outputDir, 0755)
 	for _, inputConfig := range inputConfigs {
-		if err := inputConfig.GenerateGithubWorkflow(file, now, templates, outputDir, version); err != nil {
+		if err := inputConfig.GenerateGithubWorkflow(file, now, templates, outputDir, version, ops...); err != nil {
 			return err
 		}
 	}
@@ -203,7 +226,7 @@ func (b *GenerateGithubWorkflowBase) G2MetadataArgs() string {
 	return strings.TrimSpace(args)
 }
 
-func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string) error {
+func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) error {
 	if err := ic.Validate(); err != nil {
 		return fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
 	}
@@ -238,6 +261,12 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		data = &GenerateGithubCmakeTemplateData{
 			GenerateGithubWorkflowBase: base,
 		}
+	case "Web Binary":
+		data = &GenerateWebBinaryTemplateData{
+			GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
+				GenerateGithubWorkflowBase: base,
+			},
+		}
 	default:
 		return fmt.Errorf("unknown type %s", ic.Type)
 	}
@@ -246,7 +275,16 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 	}
 	workflowName = data.WorkflowFileName()
 	n := filepath.Join(outputDir, workflowName)
-	if err := os.WriteFile(n, out.Bytes(), 0644); err != nil {
+
+	var fsys util.FileSystem = util.OSFS{}
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case util.FileSystem:
+			fsys = o
+		}
+	}
+
+	if err := fsys.WriteFile(n, out.Bytes(), 0644); err != nil {
 		return fmt.Errorf("writing %s: %w", n, err)
 	}
 	fmt.Printf("Written: %s\n", n)

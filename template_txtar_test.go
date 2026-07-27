@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"io/fs"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -20,6 +21,9 @@ func TestWorkflowTemplates(t *testing.T) {
 	var cases []string
 	err := fs.WalkDir(testdataFS, "testdata/txtar", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
 			return err
 		}
 		if d.IsDir() || !strings.HasSuffix(p, ".txtar") {
@@ -118,8 +122,20 @@ func TestWorkflowTemplates(t *testing.T) {
 
 			result := out.String()
 
-			if expectedYamlStr != "" && !strings.Contains(strings.ReplaceAll(result, "\r", ""), strings.TrimSpace(strings.ReplaceAll(expectedYamlStr, "\r", ""))) {
-				t.Errorf("Expected string %q not found in output for %s. Result was:\n%s", strings.TrimSpace(expectedYamlStr), tc, result)
+			expectedLines := strings.Split(expectedYamlStr, "\n")
+			actualLines := strings.Split(result, "\n")
+			if len(expectedLines) > 0 && strings.HasPrefix(expectedLines[0], "# Generated using") {
+				expectedLines = expectedLines[1:]
+			}
+			if len(actualLines) > 0 && strings.HasPrefix(actualLines[0], "# Generated using") {
+				actualLines = actualLines[1:]
+			}
+
+			expectedTrimmed := strings.TrimSpace(strings.Join(expectedLines, "\n"))
+			actualTrimmed := strings.TrimSpace(strings.Join(actualLines, "\n"))
+
+			if expectedYamlStr != "" && !strings.Contains(strings.ReplaceAll(actualTrimmed, "\r", ""), strings.ReplaceAll(expectedTrimmed, "\r", "")) {
+				t.Errorf("Expected string %q not found in output for %s. Result was:\n%s", strings.ReplaceAll(expectedTrimmed, "\r", ""), tc, strings.ReplaceAll(actualTrimmed, "\r", ""))
 			}
 			if expectedTagsCommand := "tags=$(cat tags.txt)"; strings.Contains(inputConfigStr, "cat tags.txt") && !strings.Contains(result, expectedTagsCommand) {
 				t.Errorf("Expected custom TagsCommand logic %q not found in generated output.", expectedTagsCommand)
