@@ -263,3 +263,7 @@ func (ic *InputConfig) Cron() string {
 	hour := i % 24
 	return fmt.Sprintf("%d %d * * *", minute, hour)
 }
+
+func (b *GenerateGithubWorkflowBase) WorkaroundGentooVersionRegularExpression() string {
+	return b.InputConfig.WorkaroundGentooVersionRegularExpression()
+}

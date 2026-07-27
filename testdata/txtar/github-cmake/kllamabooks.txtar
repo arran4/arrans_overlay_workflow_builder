@@ -7,7 +7,7 @@ Description A testing client
 Homepage https://github.com/arran4/kjules
 License MIT
 -- expected.yaml --
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Cmake Release testdata/txtar/github-cmake/kllamabooks.txtar/input.config 2006-01-02 15:04:05.999999999 -0700 MST
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Cmake Release test.config 2026-07-12 00:00:00 +0000 UTC
 
 name: app-misc/kjules update
 
@@ -69,10 +69,6 @@ jobs:
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
 <pkgmetadata>
-	<maintainer type="person">
-		<email>gentoo@arran4.com</email>
-		<name>Arran Ubels</name>
-	</maintainer>
 	<upstream>
 		<remote-id type="github">arran4/kjules</remote-id>
 	</upstream>
@@ -183,7 +179,7 @@ METADATA_EOF
           git add "./${ebuild_dir}"
           git add metadata/md5-cache/ || true
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
-            git p\ull --rebase &&
-            git p\ush
+            git pull --rebase &&
+            git push
           fi || true
         if: steps.process_releases.outputs.generated_tag
