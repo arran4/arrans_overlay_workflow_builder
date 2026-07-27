@@ -64,17 +64,6 @@ jobs:
           mkdir -p "$ebuild_dir"
 
           metadata_file="${ebuild_dir}/metadata.xml"
-          if [ ! -f "$metadata_file" ]; then
-            cat <<-"METADATA_EOF" > "$metadata_file"
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
-<pkgmetadata>
-	<upstream>
-		<remote-id type="github">arran4/kjules</remote-id>
-	</upstream>
-</pkgmetadata>
-METADATA_EOF
-          fi
           g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:arran4/kjules" "$metadata_file"
 
           tags=$(gh api repos/${{ env.github_owner }}/${{ env.github_repo }}/releases --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')

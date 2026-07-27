@@ -1,3 +1,6 @@
+test: Workarounds rustdesk
+This tests the workarounds Semantic Version Prerelease Hack 1 and Semantic Version Without V against a stripped back binary release.
+
 -- input.config --
 Type Github Binary Release
 Category net-misc
