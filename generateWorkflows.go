@@ -34,10 +34,27 @@ type NextGenerate func(file string, outputDir string, version string, ops ...any
 
 func normalizeGeneratedWorkflow(output []byte) []byte {
 	lines := bytes.Split(output, []byte("\n"))
+	normalized := make([][]byte, 0, len(lines))
 	for i := range lines {
 		lines[i] = bytes.TrimRight(lines[i], " \t")
+		if len(lines[i]) == 0 && len(normalized) > 0 && len(normalized[len(normalized)-1]) == 0 {
+			continue
+		}
+		normalized = append(normalized, lines[i])
 	}
-	return bytes.Join(lines, []byte("\n"))
+
+	compacted := make([][]byte, 0, len(normalized))
+	for i := range normalized {
+		if len(normalized[i]) == 0 && i > 0 && i+1 < len(normalized) {
+			previousIndent := len(normalized[i-1]) - len(bytes.TrimLeft(normalized[i-1], " "))
+			nextIndent := len(normalized[i+1]) - len(bytes.TrimLeft(normalized[i+1], " "))
+			if previousIndent > 0 && previousIndent == nextIndent {
+				continue
+			}
+		}
+		compacted = append(compacted, normalized[i])
+	}
+	return bytes.Join(compacted, []byte("\n"))
 }
 
 func GenerateGithubWorkflows(file, outputDir, version string, ops ...any) error {

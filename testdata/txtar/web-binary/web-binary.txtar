@@ -46,18 +46,11 @@ env:
   workflow_filename: app-admin-google-cloud-sdk-bin-update.yaml
   google-cloud-cli_binary_installed_name: 'gcloud'
   google-cloud-cli_binary_archived_name_amd64: 'gcloud'
-
   google-cloud-cli_release_name_amd64: 'google-cloud-cli-\${PV}-linux-x86_64.tar.gz'
-
   google-cloud-cli_binary_archived_name_arm64: 'gcloud'
-
   google-cloud-cli_release_name_arm64: 'google-cloud-cli-\${PV}-linux-arm.tar.gz'
-
   google-cloud-cli_binary_archived_name_x86: 'gcloud'
-
   google-cloud-cli_release_name_x86: 'google-cloud-cli-\${PV}-linux-x86.tar.gz'
-
-
 
 jobs:
   check-and-create-ebuild:
@@ -96,7 +89,6 @@ jobs:
                 echo "$version == $tag so there is no v removed skipping"
                 continue
             fi
-
             # shellcheck disable=SC2034
             originalVersion="${version}"
             if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
@@ -125,11 +117,8 @@ jobs:
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
                 echo "	amd64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-\${PV}-linux-x86_64.tar.gz -> \${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz  )  "
-
                 echo "	arm64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-\${PV}-linux-arm.tar.gz -> \${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz  )  "
-
                 echo "	x86? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-\${PV}-linux-x86.tar.gz -> \${P}-google-cloud-cli-\${PV}-linux-x86.tar.gz  )  "
-
                 echo '"'
                 echo 'LICENSE="Apache-2.0"'
                 echo 'SLOT="0"'
@@ -158,57 +147,32 @@ jobs:
                 echo '  if use amd64; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz\" || die \"Can't unpack archive file\""
                 echo '  fi'
-
-
                 echo '  if use arm64; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz\" || die \"Can't unpack archive file\""
                 echo '  fi'
-
-
                 echo '  if use x86; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-x86.tar.gz\" || die \"Can't unpack archive file\""
                 echo '  fi'
-
-
                 echo '}'
-
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
                 echo '  if use amd64; then'
                 echo '    newexe "${{ env.google-cloud-cli_binary_archived_name_amd64 }}" "${{ env.google-cloud-cli_binary_installed_name }}" || die "Failed to install Binary"'
                 echo '  fi'
-
-
                 echo '  if use arm64; then'
                 echo '    newexe "${{ env.google-cloud-cli_binary_archived_name_arm64 }}" "${{ env.google-cloud-cli_binary_installed_name }}" || die "Failed to install Binary"'
                 echo '  fi'
-
-
                 echo '  if use x86; then'
                 echo '    newexe "${{ env.google-cloud-cli_binary_archived_name_x86 }}" "${{ env.google-cloud-cli_binary_installed_name }}" || die "Failed to install Binary"'
                 echo '  fi'
-
-
-
                 echo '}'
               } > $ebuild_file
-
               # Manifest generation
               failed=0
-
               if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86_64.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-
-
-
               if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-arm.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-arm.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-
-
-
               if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-
-
-
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

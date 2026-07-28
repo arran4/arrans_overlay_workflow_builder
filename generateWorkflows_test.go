@@ -9,6 +9,15 @@ import (
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 )
 
+func TestNormalizeGeneratedWorkflow(t *testing.T) {
+	input := []byte("top:  \n  first  \n\t\n\n  second\t\n\nnext:\n  child\n")
+	expected := "top:\n  first\n  second\n\nnext:\n  child\n"
+
+	if actual := string(normalizeGeneratedWorkflow(input)); actual != expected {
+		t.Fatalf("normalizeGeneratedWorkflow() = %q, want %q", actual, expected)
+	}
+}
+
 func TestGenerateGithubWorkflows_MockFS(t *testing.T) {
 	mockFS := util.NewMockFS()
 
