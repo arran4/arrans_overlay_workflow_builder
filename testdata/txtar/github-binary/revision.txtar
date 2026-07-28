@@ -1,27 +1,23 @@
-This fixture isolates Semantic Version Prerelease Hack 1 and Semantic Version Without V.
-The release data is fully repository-owned; no live RustDesk response is read by the test.
-The binary fields make the rendered ebuild structurally complete enough to exercise SRC_URI,
-unpack, install, and manifest generation rather than treating the workflow as a full RustDesk model.
+This fixture evaluates the new `-r#` revisioning logic in the github binary workflow generator.
+The bash script output within expected.yaml should contain the `-r#` bump shell commands.
 
 -- input.config --
 Type Github Binary Release
-Category net-misc
-EbuildName rustdesk
-Description Remote desktop software
-Homepage https://rustdesk.com/
-License AGPL-3
-GithubProjectUrl https://github.com/rustdesk/rustdesk
-MaintainerEmail gentoo@arran4.com
-MaintainerName Arran Ubels
-ProgramName rustdesk
-Binary amd64=>rustdesk-${VERSION}-x86_64.tar.gz > rustdesk > rustdesk
-Workaround Semantic Version Prerelease Hack 1
-Workaround Semantic Version Without V
+GithubProjectUrl https://github.com/example/tool/
+Category app-misc
+EbuildName tool-bin
+Description An example tool for testing
+Homepage https://example.com/
+License MIT
+MaintainerEmail test@example.com
+MaintainerName Test Maintainer
+ProgramName tool
+Binary amd64=>tool-${TAG}-amd64 > tool
 
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC
 
-name: net-misc/rustdesk-bin update
+name: app-misc/tool-bin update
 
 permissions:
   contents: write
@@ -32,24 +28,23 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/net-misc-rustdesk-bin-update.yaml'
+      - '.github/workflows/app-misc-tool-bin-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  ecn: net-misc
-  epn: rustdesk-bin
-  description: "Remote desktop software"
-  homepage: "https://rustdesk.com/"
-  github_owner: rustdesk
-  github_repo: rustdesk
+  ecn: app-misc
+  epn: tool-bin
+  description: "An example tool for testing"
+  homepage: "https://example.com/"
+  github_owner: example
+  github_repo: tool
   keywords: ~amd64
-  workflow_filename: net-misc-rustdesk-bin-update.yaml
-  rustdesk_binary_installed_name: 'rustdesk'
-  rustdesk_binary_archived_name_amd64: 'rustdesk'
-  rustdesk_release_name_amd64: 'rustdesk-\${PV}-x86_64.tar.gz'
+  workflow_filename: app-misc-tool-bin-update.yaml
+  tool_binary_installed_name: 'tool'
+  tool_release_name_amd64: 'tool-${tag}-amd64'
 
 jobs:
   check-and-create-ebuild:
@@ -72,15 +67,18 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:rustdesk/rustdesk" --use-add "amd64:Enable amd64" "$metadata_file"
+          g2 metadata -m "test@example.com:Test Maintainer:person" -u "github:example/tool" --use-add "amd64:Enable amd64" "$metadata_file"
           declare -A releaseTypes=()
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
           for tag in $tags; do
-            version="${tag}"
+            version="${tag#v}"
+            if [ "${version}" = "${tag}" ]; then
+                echo "$version == $tag so there is no v removed skipping"
+                continue
+            fi
             # shellcheck disable=SC2034
             originalVersion="${version}"
-            version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)[0-9]*\)$/\1_\5\3/')"
             if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "tag / $version doesn't match regexp";
                 continue;
@@ -106,9 +104,9 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/\${PV}/rustdesk-${originalVersion}-x86_64.tar.gz -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
+                echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/v\${PV}/tool-${tag}-amd64 -> \${P}-tool-${tag}-amd64  )  "
                 echo '"'
-                echo 'LICENSE="AGPL-3"'
+                echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
@@ -123,16 +121,12 @@ jobs:
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
-                echo 'src_unpack() {'
-                echo '  if use amd64; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-rustdesk-\${PV}-x86_64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '}'
+                echo 'src_unpack() { :; }'
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
                 echo '  if use amd64; then'
-                echo '    newexe "${{ env.rustdesk_binary_archived_name_amd64 }}" "${{ env.rustdesk_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '    newexe "${DISTDIR}/${P}-${{ env.tool_release_name_amd64 }}" "${{ env.tool_binary_installed_name }}" || die "Failed to install Binary"'
                 echo '  fi'
                 echo '}'
               } > "$tmp_ebuild_file"
@@ -160,7 +154,7 @@ jobs:
               fi
               # Manifest generation
               failed=0
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz" "${{ env.epn }}-${version}-rustdesk-${version}-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/tool-${tag}-amd64" "${{ env.epn }}-${version}-tool-${tag}-amd64" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

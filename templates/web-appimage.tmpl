@@ -86,8 +86,8 @@ jobs:
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
-          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
-          if [ ! -f "$ebuild_file" ]; then
+          tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            {
             # shellcheck disable=SC2016
             {
               echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
@@ -156,7 +156,30 @@ jobs:
               echo '  xdg_desktop_database_update'
               echo '}'
 [[ end ]]
-            } > "$ebuild_file"
+            } > "$tmp_ebuild_file"
+
+              existing_ebuild=$(ls -v "${ebuild_dir}/${{ env.epn }}-${version}".ebuild "${ebuild_dir}/${{ env.epn }}-${version}"-r*.ebuild 2>/dev/null | tail -n 1)
+              if test -n "$existing_ebuild"; then
+                  if diff -I '^#.*' -q "$existing_ebuild" "$tmp_ebuild_file" >/dev/null; then
+                      echo "Matches existing ebuild $existing_ebuild. Skipping."
+                      rm -f "$tmp_ebuild_file"
+                      continue
+                  else
+                      echo "Content changed for $version. Bumping revision."
+                      if echo "$existing_ebuild" | grep -qE -- '-r[0-9]+\.ebuild$'; then
+                          rev=$(echo "$existing_ebuild" | sed -E 's/.*-r([0-9]+)\.ebuild$/\1/')
+                          next_rev=$((rev + 1))
+                          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}-r${next_rev}.ebuild"
+                      else
+                          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}-r1.ebuild"
+                      fi
+                      mv "$tmp_ebuild_file" "$ebuild_file"
+                      rm -f "$existing_ebuild"
+                  fi
+              else
+                  ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
+                  mv "$tmp_ebuild_file" "$ebuild_file"
+              fi
 
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
             echo "generated_tag=${version}" >> $GITHUB_OUTPUT

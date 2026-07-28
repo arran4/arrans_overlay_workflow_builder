@@ -106,8 +106,8 @@ jobs:
                 echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
             fi
-            ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
-            if [ ! -f "$ebuild_file" ]; then
+            tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            {
 
               # shellcheck disable=SC2016
               {
@@ -159,7 +159,29 @@ jobs:
                 echo '    newexe "${{ env.google-cloud-cli_binary_archived_name_x86 }}" "${{ env.google-cloud-cli_binary_installed_name }}" || die "Failed to install Binary"'
                 echo '  fi'
                 echo '}'
-              } > $ebuild_file
+              } > "$tmp_ebuild_file"
+              existing_ebuild=$(ls -v "${ebuild_dir}/${{ env.epn }}-${version}".ebuild "${ebuild_dir}/${{ env.epn }}-${version}"-r*.ebuild 2>/dev/null | tail -n 1)
+              if test -n "$existing_ebuild"; then
+                  if diff -I '^#.*' -q "$existing_ebuild" "$tmp_ebuild_file" >/dev/null; then
+                      echo "Matches existing ebuild $existing_ebuild. Skipping."
+                      rm -f "$tmp_ebuild_file"
+                      continue
+                  else
+                      echo "Content changed for $version. Bumping revision."
+                      if echo "$existing_ebuild" | grep -qE -- '-r[0-9]+\.ebuild$'; then
+                          rev=$(echo "$existing_ebuild" | sed -E 's/.*-r([0-9]+)\.ebuild$/\1/')
+                          next_rev=$((rev + 1))
+                          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}-r${next_rev}.ebuild"
+                      else
+                          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}-r1.ebuild"
+                      fi
+                      mv "$tmp_ebuild_file" "$ebuild_file"
+                      rm -f "$existing_ebuild"
+                  fi
+              else
+                  ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
+                  mv "$tmp_ebuild_file" "$ebuild_file"
+              fi
               # Manifest generation
               failed=0
               if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86_64.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
@@ -171,7 +193,6 @@ jobs:
                   continue
               fi
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
-            fi
           done
 
       - name: Generate Overlay
