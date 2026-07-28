@@ -3,6 +3,7 @@ package arrans_overlay_workflow_builder
 import (
 	"bytes"
 	"embed"
+	"flag"
 	"io/fs"
 	"os"
 	"path"
@@ -13,6 +14,8 @@ import (
 
 	"golang.org/x/tools/txtar"
 )
+
+var updateTxtar = flag.Bool("update-txtar", false, "update txtar expected.yaml files")
 
 //go:embed testdata/txtar/**/*.txtar
 var testdataFS embed.FS
@@ -120,22 +123,28 @@ func TestWorkflowTemplates(t *testing.T) {
 				t.Fatalf("ExecuteTemplate() error = %v", err)
 			}
 
-			result := out.String()
+			result := string(normalizeGeneratedWorkflow(out.Bytes()))
 
-			expectedLines := strings.Split(expectedYamlStr, "\n")
-			actualLines := strings.Split(result, "\n")
-			if len(expectedLines) > 0 && strings.HasPrefix(expectedLines[0], "# Generated using") {
-				expectedLines = expectedLines[1:]
+			if *updateTxtar {
+				for i := range ar.Files {
+					if ar.Files[i].Name == "expected.yaml" {
+						ar.Files[i].Data = []byte(result)
+						if err := os.WriteFile(tc, txtar.Format(ar), 0644); err != nil {
+							t.Fatalf("update testcase %s: %v", tc, err)
+						}
+						return
+					}
+				}
+				t.Fatalf("Missing expected.yaml in %s", tc)
 			}
-			if len(actualLines) > 0 && strings.HasPrefix(actualLines[0], "# Generated using") {
-				actualLines = actualLines[1:]
+
+			if expectedYamlStr == "" {
+				t.Fatalf("Missing expected.yaml output in %s", tc)
 			}
-
-			expectedTrimmed := strings.TrimSpace(strings.Join(expectedLines, "\n"))
-			actualTrimmed := strings.TrimSpace(strings.Join(actualLines, "\n"))
-
-			if expectedYamlStr != "" && !strings.Contains(strings.ReplaceAll(actualTrimmed, "\r", ""), strings.ReplaceAll(expectedTrimmed, "\r", "")) {
-				t.Errorf("Expected string %q not found in output for %s. Result was:\n%s", strings.ReplaceAll(expectedTrimmed, "\r", ""), tc, strings.ReplaceAll(actualTrimmed, "\r", ""))
+			expected := strings.ReplaceAll(expectedYamlStr, "\r\n", "\n")
+			actual := strings.ReplaceAll(result, "\r\n", "\n")
+			if actual != expected {
+				t.Errorf("generated workflow does not match full expected output for %s\nexpected:\n%s\nactual:\n%s", tc, expected, actual)
 			}
 			if expectedTagsCommand := "tags=$(cat tags.txt)"; strings.Contains(inputConfigStr, "cat tags.txt") && !strings.Contains(result, expectedTagsCommand) {
 				t.Errorf("Expected custom TagsCommand logic %q not found in generated output.", expectedTagsCommand)

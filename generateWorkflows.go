@@ -32,6 +32,14 @@ type ExternalResource struct {
 
 type NextGenerate func(file string, outputDir string, version string, ops ...any) error
 
+func normalizeGeneratedWorkflow(output []byte) []byte {
+	lines := bytes.Split(output, []byte("\n"))
+	for i := range lines {
+		lines[i] = bytes.TrimRight(lines[i], " \t")
+	}
+	return bytes.Join(lines, []byte("\n"))
+}
+
 func GenerateGithubWorkflows(file, outputDir, version string, ops ...any) error {
 	var fsys util.FileSystem = util.OSFS{}
 
@@ -273,6 +281,7 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 	if err := templates.ExecuteTemplate(out, data.TemplateFileName(), data); err != nil {
 		return fmt.Errorf("for %s excuting template: %w", ic.EbuildName, err)
 	}
+	rendered := normalizeGeneratedWorkflow(out.Bytes())
 	workflowName = data.WorkflowFileName()
 	n := filepath.Join(outputDir, workflowName)
 
@@ -284,7 +293,7 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		}
 	}
 
-	if err := fsys.WriteFile(n, out.Bytes(), 0644); err != nil {
+	if err := fsys.WriteFile(n, rendered, 0644); err != nil {
 		return fmt.Errorf("writing %s: %w", n, err)
 	}
 	fmt.Printf("Written: %s\n", n)
