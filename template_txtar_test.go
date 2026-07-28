@@ -89,6 +89,7 @@ func TestWorkflowTemplates(t *testing.T) {
 				Version:     "1.0.0",
 				Now:         time.Date(2026, time.July, 12, 0, 0, 0, 0, time.UTC),
 				ConfigFile:  "test.config",
+				Schedule:    "24 2 * * *",
 				InputConfig: ic,
 			}
 

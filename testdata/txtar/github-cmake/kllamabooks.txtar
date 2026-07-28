@@ -19,7 +19,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '54 10 * * *'
+    - cron: '24 2 * * *'
   workflow_dispatch:
   push:
     paths:
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

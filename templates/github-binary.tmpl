@@ -44,7 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
 
       - name: Set up Git
         run: |
@@ -121,28 +121,46 @@ jobs:
                 echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]\${PV}[[ else ]][[- $.WorkaroundTagPrefix ]]v\${PV}[[ end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[- end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
 [[ end ]]
                 echo '"'
-                echo 'LICENSE="MIT"'
+                echo 'LICENSE="[[ .License ]]"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
+[[ if $.ReverseProgramsAsAlternatives ]]
                 echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]'
-                echo -n '[[- if $.HasManualPages ]] man[[end]]'
-                echo -n '[[- if $.HasDocuments ]] doc[[end]]'
+[[ end ]]
+[[ if $.HasManualPages ]]
+                echo -n ' man'
+[[ end ]]
+[[ if $.HasDocuments ]]
+                echo -n ' doc'
+[[ end ]]
+[[ if $.ShellCompletionShells ]]
                 echo -n '[[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]'
+[[ end ]]
+[[ if $.IUse ]]
                 echo -n '[[- range $i, $use := $.IUse]] [[$use | UseFlagSafe ]][[end]]'
+[[ end ]]
+[[ if $.ExtractedUseFlags ]]
                 echo -n '[[- range $i, $use := $.ExtractedUseFlags]] [[$use | UseFlagSafe ]][[end]]'
+[[ end ]]
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
+[[ if $.ReverseProgramsAsAlternatives ]]
                 echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]'
+[[ end ]]
 [[- range $i, $ruse := $.RequiredUse]]
                 echo '		[[ $ruse ]]'
 [[- end]]
                 echo '"'
                 echo ''
                 echo -n 'RDEPEND="'
+[[ if .MainDependencies ]]
                 echo -n '[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]'
+[[ end ]]
+[[ if .AlternativeDependencies ]]
                 echo -n '[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]'
+[[ end ]]
                 echo '"'
                 echo ''
                 echo 'S="${WORKDIR}"'

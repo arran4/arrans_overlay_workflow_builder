@@ -18,6 +18,16 @@ func TestNormalizeGeneratedWorkflow(t *testing.T) {
 	}
 }
 
+func TestGenerateGithubWorkflowBaseCron(t *testing.T) {
+	base := &GenerateGithubWorkflowBase{
+		InputConfig: &InputConfig{GithubRepo: "changes-do-not-affect-the-test-schedule"},
+		Schedule:    "24 2 * * *",
+	}
+	if actual := base.Cron(); actual != "24 2 * * *" {
+		t.Fatalf("Cron() = %q, want %q", actual, "24 2 * * *")
+	}
+}
+
 func TestGenerateGithubWorkflows_MockFS(t *testing.T) {
 	mockFS := util.NewMockFS()
 

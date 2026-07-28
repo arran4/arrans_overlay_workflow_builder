@@ -195,6 +195,14 @@ type GenerateGithubWorkflowBase struct {
 	Version    string
 	Now        time.Time
 	ConfigFile string
+	Schedule   string
+}
+
+func (b *GenerateGithubWorkflowBase) Cron() string {
+	if b.Schedule != "" {
+		return b.Schedule
+	}
+	return b.InputConfig.Cron()
 }
 
 func (b *GenerateGithubWorkflowBase) DefaultMetadata() (string, error) {

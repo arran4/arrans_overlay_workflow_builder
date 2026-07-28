@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v7
 
       - name: Set up Git
         run: |
@@ -94,7 +94,7 @@ jobs:
               echo 'EAPI=8'
               echo "DESCRIPTION=\"${{ env.description }}\""
               echo "HOMEPAGE=\"${{ env.homepage }}\""
-              echo 'LICENSE="MIT"'
+              echo 'LICENSE="[[ .License ]]"'
               echo 'SLOT="0"'
               echo 'KEYWORDS="${{ env.keywords }}"'
               echo 'IUSE=""'
