@@ -34,9 +34,9 @@ env:
   [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
   [[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
-  [[- end ]]
+  [[ end ]]
   [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | ebuildvardoublequoted ]]'
-  [[- end ]]
+  [[ end ]]
   [[ end ]]
 
 jobs:
@@ -125,42 +125,24 @@ jobs:
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
-[[- if $.ReverseProgramsAsAlternatives -]]
                 echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]'
-[[- end -]]
-[[- if $.HasManualPages ]]
-                echo -n ' man'
-[[- end ]]
-[[- if $.HasDocuments ]]
-                echo -n ' doc'
-[[- end ]]
-[[- if $.ShellCompletionShells ]]
+                echo -n '[[- if $.HasManualPages ]] man[[end]]'
+                echo -n '[[- if $.HasDocuments ]] doc[[end]]'
                 echo -n '[[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]'
-[[- end ]]
-[[- if $.IUse ]]
                 echo -n '[[- range $i, $use := $.IUse]] [[$use | UseFlagSafe ]][[end]]'
-[[- end ]]
-[[- if $.ExtractedUseFlags ]]
                 echo -n '[[- range $i, $use := $.ExtractedUseFlags]] [[$use | UseFlagSafe ]][[end]]'
-[[- end ]]
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
-[[- if $.ReverseProgramsAsAlternatives ]]
                 echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]'
-[[- end ]]
 [[- range $i, $ruse := $.RequiredUse]]
                 echo '		[[ $ruse ]]'
 [[- end]]
                 echo '"'
                 echo ''
                 echo -n 'RDEPEND="'
-[[- if .MainDependencies ]]
                 echo -n '[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]'
-[[- end ]]
-[[- if .AlternativeDependencies ]]
                 echo -n '[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]'
-[[- end ]]
                 echo '"'
                 echo ''
                 echo 'S="${WORKDIR}"'
