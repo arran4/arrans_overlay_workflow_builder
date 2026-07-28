@@ -3,7 +3,9 @@ package arrans_overlay_workflow_builder
 import (
 	"bytes"
 	"embed"
+	"flag"
 	"io/fs"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -13,6 +15,8 @@ import (
 	"golang.org/x/tools/txtar"
 )
 
+var updateTxtar = flag.Bool("update-txtar", false, "update txtar expected.yaml files")
+
 //go:embed testdata/txtar/**/*.txtar
 var testdataFS embed.FS
 
@@ -20,6 +24,9 @@ func TestWorkflowTemplates(t *testing.T) {
 	var cases []string
 	err := fs.WalkDir(testdataFS, "testdata/txtar", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
 			return err
 		}
 		if d.IsDir() || !strings.HasSuffix(p, ".txtar") {
@@ -46,6 +53,9 @@ func TestWorkflowTemplates(t *testing.T) {
 				t.Fatalf("read testcase %s: %v", tc, err)
 			}
 			ar := txtar.Parse(raw)
+			if strings.TrimSpace(string(ar.Comment)) == "" {
+				t.Fatalf("Missing txtar description in %s", tc)
+			}
 
 			var inputConfigStr string
 			var expectedYamlStr string
@@ -79,6 +89,7 @@ func TestWorkflowTemplates(t *testing.T) {
 				Version:     "1.0.0",
 				Now:         time.Date(2026, time.July, 12, 0, 0, 0, 0, time.UTC),
 				ConfigFile:  "test.config",
+				Schedule:    "24 2 * * *",
 				InputConfig: ic,
 			}
 
@@ -116,13 +127,28 @@ func TestWorkflowTemplates(t *testing.T) {
 				t.Fatalf("ExecuteTemplate() error = %v", err)
 			}
 
-			result := out.String()
+			result := string(normalizeGeneratedWorkflow(out.Bytes()))
 
-			if expectedYamlStr != "" && !strings.Contains(strings.ReplaceAll(result, "\r", ""), strings.TrimSpace(strings.ReplaceAll(expectedYamlStr, "\r", ""))) {
-				t.Errorf("Expected string %q not found in output for %s. Result was:\n%s", strings.TrimSpace(expectedYamlStr), tc, result)
+			if *updateTxtar {
+				for i := range ar.Files {
+					if ar.Files[i].Name == "expected.yaml" {
+						ar.Files[i].Data = []byte(result)
+						if err := os.WriteFile(tc, txtar.Format(ar), 0644); err != nil {
+							t.Fatalf("update testcase %s: %v", tc, err)
+						}
+						return
+					}
+				}
+				t.Fatalf("Missing expected.yaml in %s", tc)
 			}
-			if expectedTagsCommand := "tags=$(cat tags.txt)"; strings.Contains(inputConfigStr, "cat tags.txt") && !strings.Contains(result, expectedTagsCommand) {
-				t.Errorf("Expected custom TagsCommand logic %q not found in generated output.", expectedTagsCommand)
+
+			if expectedYamlStr == "" {
+				t.Fatalf("Missing expected.yaml output in %s", tc)
+			}
+			expected := strings.ReplaceAll(expectedYamlStr, "\r\n", "\n")
+			actual := strings.ReplaceAll(result, "\r\n", "\n")
+			if actual != expected {
+				t.Errorf("generated workflow does not match full expected output for %s\nexpected:\n%s\nactual:\n%s", tc, expected, actual)
 			}
 		})
 	}
