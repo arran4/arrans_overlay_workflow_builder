@@ -135,27 +135,15 @@ jobs:
 
             } > "$tmp_ebuild_file"
 
-              existing_ebuild=$(ls -v "${ebuild_dir}/${{ env.epn }}-${version}".ebuild "${ebuild_dir}/${{ env.epn }}-${version}"-r*.ebuild 2>/dev/null | tail -n 1)
-              if test -n "$existing_ebuild"; then
-                  if diff -I '^#.*' -q "$existing_ebuild" "$tmp_ebuild_file" >/dev/null; then
-                      echo "Matches existing ebuild $existing_ebuild. Skipping."
-                      rm -f "$tmp_ebuild_file"
-                      continue
-                  else
-                      echo "Content changed for $version. Bumping revision."
-                      if echo "$existing_ebuild" | grep -qE -- '-r[0-9]+\.ebuild$'; then
-                          rev=$(echo "$existing_ebuild" | sed -E 's/.*-r([0-9]+)\.ebuild$/\1/')
-                          next_rev=$((rev + 1))
-                          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}-r${next_rev}.ebuild"
-                      else
-                          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}-r1.ebuild"
-                      fi
-                      mv "$tmp_ebuild_file" "$ebuild_file"
-                      rm -f "$existing_ebuild"
-                  fi
+              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              if [ $? -eq 0 ]; then
+                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
+                  mv "$tmp_ebuild_file" "$next_ebuild_file"
+                  ebuild_file="$next_ebuild_file"
               else
-                  ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
-                  mv "$tmp_ebuild_file" "$ebuild_file"
+                  echo "Matches existing ebuild. Skipping."
+                  rm -f "$tmp_ebuild_file"
+                  continue
               fi
 
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
