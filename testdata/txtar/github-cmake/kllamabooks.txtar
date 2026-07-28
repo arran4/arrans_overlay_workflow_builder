@@ -1,3 +1,6 @@
+This fixture evaluates the complete GitHub CMake workflow, including metadata upsert,
+dependency discovery, ebuild generation, manifest creation, linting, and commit steps.
+
 -- input.config --
 Type Github Cmake Release
 GithubProjectUrl https://github.com/arran4/kjules

@@ -53,6 +53,9 @@ func TestWorkflowTemplates(t *testing.T) {
 				t.Fatalf("read testcase %s: %v", tc, err)
 			}
 			ar := txtar.Parse(raw)
+			if strings.TrimSpace(string(ar.Comment)) == "" {
+				t.Fatalf("Missing txtar description in %s", tc)
+			}
 
 			var inputConfigStr string
 			var expectedYamlStr string
@@ -145,9 +148,6 @@ func TestWorkflowTemplates(t *testing.T) {
 			actual := strings.ReplaceAll(result, "\r\n", "\n")
 			if actual != expected {
 				t.Errorf("generated workflow does not match full expected output for %s\nexpected:\n%s\nactual:\n%s", tc, expected, actual)
-			}
-			if expectedTagsCommand := "tags=$(cat tags.txt)"; strings.Contains(inputConfigStr, "cat tags.txt") && !strings.Contains(result, expectedTagsCommand) {
-				t.Errorf("Expected custom TagsCommand logic %q not found in generated output.", expectedTagsCommand)
 			}
 		})
 	}
