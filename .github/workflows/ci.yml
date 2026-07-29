@@ -133,7 +133,7 @@ jobs:
       release_tag: ${{ steps.tag.outputs.release_tag }}
       next_version: ${{ steps.tag.outputs.next_version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Setup git-tag-inc
@@ -223,7 +223,7 @@ jobs:
         }}
       has_packaging: ${{ steps.detect.outputs.has_packaging }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - id: detect
         shell: bash
         run: "set -euo pipefail\n# Keep this minimal: most language choices should\
@@ -256,7 +256,7 @@ jobs:
       == 'true' || needs.route.outputs.is_monthly == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v3
@@ -271,8 +271,8 @@ jobs:
       == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: golangci-lint
@@ -294,8 +294,8 @@ jobs:
         os:
           - ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
@@ -310,8 +310,8 @@ jobs:
       == 'true' && needs.discover.outputs.profile == 'public' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
@@ -325,8 +325,8 @@ jobs:
       && inputs.mode == 'lint-fix' && inputs.allow_prs == true }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: Run go fmt
@@ -350,15 +350,15 @@ jobs:
       && inputs.allow_prs == true }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - name: Setup Go (if needed)
         if: ${{ needs.discover.outputs.has_go == 'true' }}
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: Setup Node (if needed)
         if: ${{ needs.discover.outputs.has_node == 'true' }}
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
@@ -397,7 +397,7 @@ jobs:
     if: ${{ needs.route.outputs.run_cleanup == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PARENT_PR: ${{ github.event.pull_request.number }}
@@ -421,10 +421,10 @@ jobs:
       }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
       - name: Tag commit for release (workflow_dispatch)
@@ -432,7 +432,7 @@ jobs:
           'release-') }}
         run: git tag ${{ needs.prepare-release-tag.outputs.release_tag }}
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v7
+        uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: ~> v2
@@ -453,11 +453,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Collect artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           path: dist-release
       - name: Publish draft GitHub release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: dist-release/**
