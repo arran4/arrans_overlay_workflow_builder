@@ -96,8 +96,8 @@ jobs:
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata -m "maintainer@example.com:Example Maintainer:person" "$metadata_file"
-          ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
-          if [ ! -f "$ebuild_file" ]; then
+          tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            {
             # shellcheck disable=SC2016
             {
               echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
@@ -133,7 +133,19 @@ jobs:
               echo '  xdg_desktop_database_update'
               echo '}'
 
-            } > "$ebuild_file"
+            } > "$tmp_ebuild_file"
+
+              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              if [ $? -eq 0 ]; then
+                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
+                  mv "$tmp_ebuild_file" "$next_ebuild_file"
+                  ebuild_file="$next_ebuild_file"
+              else
+                  echo "Matches existing ebuild. Skipping."
+                  rm -f "$tmp_ebuild_file"
+                  continue
+              fi
+
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
             echo "generated_tag=${version}" >> $GITHUB_OUTPUT
           fi

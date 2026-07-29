@@ -77,8 +77,8 @@ jobs:
               echo "$tag / $version doesn't match gentoo version regexp; skipping"
               continue
             fi
-            ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
-            if [ ! -f "$ebuild_file" ]; then
+            tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            {
               cmake_content=$(curl -sL "https://raw.githubusercontent.com/${{ env.github_owner }}/${{ env.github_repo }}/${tag}/CMakeLists.txt")
               qt6_components=$(echo "$cmake_content" | grep -i "find_package(Qt6" | tr '()' '  ' | sed 's/find_package  *Qt6//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED|COMPONENTS|CONFIG' | sort -u || true)
               kf6_packages=$(echo "$cmake_content" | grep -i "find_package(KF6" | tr '()' '  ' | grep -iv COMPONENTS | awk '{print $2}' | grep -i "^KF6" | sed 's/KF6//i' | sort -u || true)
@@ -128,7 +128,17 @@ jobs:
                 echo -e "$BDEPEND"
                 echo "\""
                 echo ""
-              } > "$ebuild_file"
+              } > "$tmp_ebuild_file"
+              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              if [ $? -eq 0 ]; then
+                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
+                  mv "$tmp_ebuild_file" "$next_ebuild_file"
+                  ebuild_file="$next_ebuild_file"
+              else
+                  echo "Matches existing ebuild. Skipping."
+                  rm -f "$tmp_ebuild_file"
+                  continue
+              fi
               failed=0
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz" "${{ env.epn }}-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
@@ -137,7 +147,6 @@ jobs:
                   continue
               fi
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
-            fi
           done
 
       - name: Generate Overlay

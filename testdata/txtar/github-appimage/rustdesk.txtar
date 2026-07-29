@@ -96,8 +96,8 @@ jobs:
                 echo "Already have a newier ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
             fi
-            ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild"
-            if [ ! -f "$ebuild_file" ]; then
+            tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            {
 
               # shellcheck disable=SC2016
               {
@@ -154,7 +154,17 @@ jobs:
                 echo "}"
                 echo ""
 
-              } > $ebuild_file
+              } > "$tmp_ebuild_file"
+              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              if [ $? -eq 0 ]; then
+                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
+                  mv "$tmp_ebuild_file" "$next_ebuild_file"
+                  ebuild_file="$next_ebuild_file"
+              else
+                  echo "Matches existing ebuild. Skipping."
+                  rm -f "$tmp_ebuild_file"
+                  continue
+              fi
               # Manifest generation
               failed=0
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-aarch64.AppImage" "${{ env.epn }}-${version}-rustdesk-${tag}-aarch64.AppImage" "${ebuild_dir}/Manifest"; then failed=1; fi
@@ -165,7 +175,6 @@ jobs:
                   continue
               fi
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
-            fi
           done
 
       - name: Generate Overlay
