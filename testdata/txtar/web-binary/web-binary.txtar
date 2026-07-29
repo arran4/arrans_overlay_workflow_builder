@@ -114,7 +114,7 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"https://cloud.google.com/sdk/\""
                 echo 'SRC_URI="'
                 echo "	amd64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-\${PV}-linux-x86_64.tar.gz -> \${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz  )  "
                 echo "	arm64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-\${PV}-linux-arm.tar.gz -> \${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz  )  "

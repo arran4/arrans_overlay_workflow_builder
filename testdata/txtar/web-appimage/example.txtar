@@ -103,7 +103,7 @@ jobs:
               echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
               echo 'EAPI=8'
               echo "DESCRIPTION=\"${{ env.description }}\""
-              echo "HOMEPAGE=\"${{ env.homepage }}\""
+              echo "HOMEPAGE=\"https://www.example.com/\""
               echo 'LICENSE="MIT"'
               echo 'SLOT="0"'
               echo 'KEYWORDS="${{ env.keywords }}"'

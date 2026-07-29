@@ -104,7 +104,7 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"https://rustdesk.com/\""
                 echo 'SRC_URI="'
                 echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/\${PV}/rustdesk-${originalVersion}-x86_64.tar.gz -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
                 echo '"'
