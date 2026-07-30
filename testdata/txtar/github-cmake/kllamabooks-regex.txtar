@@ -1,0 +1,173 @@
+This fixture evaluates the complete GitHub CMake workflow with regular expression workarounds.
+
+-- input.config --
+Type Github Cmake Release
+GithubProjectUrl https://github.com/arran4/kjules
+Category app-misc
+EbuildName kjules
+Description A testing client
+Homepage https://github.com/arran4/kjules
+License MIT
+Workaround Gentoo Version Regular Expression ^([0-9]+)\.([0-9]+)$
+-- expected.yaml --
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Cmake Release test.config 2026-07-12 00:00:00 +0000 UTC
+
+name: app-misc/kjules update
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '24 2 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/app-misc-kjules-update.yaml'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  ecn: app-misc
+  epn: kjules
+  description: "A testing client"
+  homepage: "https://github.com/arran4/kjules"
+  github_owner: arran4
+  github_repo: kjules
+
+jobs:
+  check-and-create-ebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Install required tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget jq coreutils curl
+
+      - name: Install g2
+        uses: arran4/g2-action@v1.2
+
+      - name: Process each release
+        id: process_releases
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p "$ebuild_dir"
+          metadata_file="${ebuild_dir}/metadata.xml"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:arran4/kjules" "$metadata_file"
+          tags=$(gh api repos/${{ env.github_owner }}/${{ env.github_repo }}/releases --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
+          for tag in $tags; do
+            originalVersion="${tag#v}"
+            # shellcheck disable=SC2034
+            version="${tag#v}"
+            # Semantic Version format check (skip invalid tags)
+            if ! echo "$version" | egrep -q '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+              echo "$tag / $version doesn't match gentoo version regexp; skipping"
+              continue
+            fi
+            tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+              cmake_content=$(curl -sL "https://raw.githubusercontent.com/${{ env.github_owner }}/${{ env.github_repo }}/${tag}/CMakeLists.txt")
+              qt6_components=$(echo "$cmake_content" | grep -i "find_package(Qt6" | tr '()' '  ' | sed 's/find_package  *Qt6//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED|COMPONENTS|CONFIG' | sort -u || true)
+              kf6_packages=$(echo "$cmake_content" | grep -i "find_package(KF6" | tr '()' '  ' | grep -iv COMPONENTS | awk '{print $2}' | grep -i "^KF6" | sed 's/KF6//i' | sort -u || true)
+              kf6_components=$(echo "$cmake_content" | grep -i "find_package(KF6" | grep -i COMPONENTS | tr '()' '  ' | sed 's/.*COMPONENTS//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED' | sort -u || true)
+              DEPEND=""
+              if [ -n "$qt6_components" ]; then
+                qt6_flags=$(echo "$qt6_components" | grep -ivE 'Test|Svg' | tr '\n' ',' | sed 's/,$//' | tr '[:upper:]' '[:lower:]')
+                if [ -n "$qt6_flags" ]; then
+                  DEPEND="$DEPEND\n\tdev-qt/qtbase:6[$qt6_flags]"
+                else
+                  DEPEND="$DEPEND\n\tdev-qt/qtbase:6"
+                fi
+                # Handling qt6 components that map to different Gentoo packages if needed
+                if echo "$qt6_components" | grep -iq "Svg"; then DEPEND="$DEPEND\n\tdev-qt/qtsvg:6"; fi
+              fi
+              BDEPEND="virtual/pkgconfig\n\tkde-frameworks/extra-cmake-modules:0"
+              if echo "$qt6_components" | grep -iq "Test"; then
+                 BDEPEND="$BDEPEND\n\tdev-qt/qttools:6[linguist]"
+              fi
+              for pkg in $kf6_packages $kf6_components; do
+                 # Basic mapping logic for KF6
+                 mapped=$(echo "$pkg" | tr '[:upper:]' '[:lower:]')
+                 DEPEND="$DEPEND\n\tkde-frameworks/k${mapped}:6"
+              done
+              {
+                echo "# Copyright $(date +%Y) Gentoo Authors"
+                echo "# Distributed under the terms of the GNU General Public License v2"
+                echo ""
+                echo "EAPI=8"
+                echo ""
+                echo "inherit cmake xdg"
+                echo ""
+                echo "DESCRIPTION=\"${{ env.description }}\""
+                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "SRC_URI=\"https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz -> \${P}.tar.gz\""
+                echo ""
+                echo "LICENSE=\"MIT\""
+                echo "SLOT=\"0\""
+                echo "KEYWORDS=\"~amd64\""
+                echo "IUSE=\"debug\""
+                echo ""
+                echo "DEPEND=\""
+                echo -e "$DEPEND"
+                echo "\""
+                echo "RDEPEND=\"\${DEPEND}\""
+                echo "BDEPEND=\""
+                echo -e "$BDEPEND"
+                echo "\""
+                echo ""
+              } > "$tmp_ebuild_file"
+              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              if [ $? -eq 0 ]; then
+                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
+                  mv "$tmp_ebuild_file" "$next_ebuild_file"
+                  ebuild_file="$next_ebuild_file"
+              else
+                  echo "Matches existing ebuild. Skipping."
+                  rm -f "$tmp_ebuild_file"
+                  continue
+              fi
+              failed=0
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz" "${{ env.epn }}-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if [ "$failed" -eq 1 ]; then
+                  echo "Failed to generate manifest for $tag. Skipping..."
+                  rm -f "$ebuild_file"
+                  continue
+              fi
+              echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
+          done
+
+      - name: Generate Overlay
+        run: |
+          mkdir -p profiles
+          echo "overlay_name" > profiles/repo_name
+          echo "8" > profiles/eapi
+
+      - name: Lint output
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint . ${{ env.ecn }}/${{ env.epn }}'
+
+      - name: Commit and push changes
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          git add "./${ebuild_dir}"
+          git add metadata/md5-cache/ || true
+          if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
+            git pull --rebase &&
+            git push
+          fi || true
+        if: steps.process_releases.outputs.generated_tag
