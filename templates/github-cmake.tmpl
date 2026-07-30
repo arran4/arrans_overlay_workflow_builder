@@ -76,7 +76,6 @@ jobs:
             fi
 
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
-            {
               cmake_content=$(curl -sL "https://raw.githubusercontent.com/${{ env.github_owner }}/${{ env.github_repo }}/${tag}/CMakeLists.txt")
 
               qt6_components=$(echo "$cmake_content" | grep -i "find_package(Qt6" | tr '()' '  ' | sed 's/find_package  *Qt6//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED|COMPONENTS|CONFIG' | sort -u || true)

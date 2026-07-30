@@ -95,7 +95,6 @@ jobs:
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
-            {
 
               # shellcheck disable=SC2016
               {

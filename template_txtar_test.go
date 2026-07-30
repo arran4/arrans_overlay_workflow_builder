@@ -6,6 +6,7 @@ import (
 	"flag"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"sort"
 	"strings"
@@ -128,6 +129,7 @@ func TestWorkflowTemplates(t *testing.T) {
 			}
 
 			result := string(normalizeGeneratedWorkflow(out.Bytes()))
+			validateWorkflowStepScripts(t, result)
 
 			if *updateTxtar {
 				for i := range ar.Files {
@@ -151,5 +153,58 @@ func TestWorkflowTemplates(t *testing.T) {
 				t.Errorf("generated workflow does not match full expected output for %s\nexpected:\n%s\nactual:\n%s", tc, expected, actual)
 			}
 		})
+	}
+}
+
+func validateWorkflowStepScripts(t *testing.T, yamlContent string) {
+	t.Helper()
+	lines := strings.Split(yamlContent, "\n")
+	var currentScript []string
+	var capturing bool
+	var scriptIndent int
+
+	checkScript := func(scriptLines []string) {
+		if len(scriptLines) == 0 {
+			return
+		}
+		script := strings.Join(scriptLines, "\n")
+		cmd := exec.Command("bash", "-n")
+		cmd.Stdin = strings.NewReader(script)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Errorf("step script failed bash syntax check (bash -n): %v\noutput:\n%s\nscript:\n%s", err, string(out), script)
+		}
+	}
+
+	for _, line := range lines {
+		if capturing {
+			trimmed := strings.TrimLeft(line, " ")
+			indent := len(line) - len(trimmed)
+			if line == "" {
+				currentScript = append(currentScript, "")
+				continue
+			}
+			if indent >= scriptIndent {
+				if len(line) >= scriptIndent {
+					currentScript = append(currentScript, line[scriptIndent:])
+				} else {
+					currentScript = append(currentScript, strings.TrimLeft(line, " "))
+				}
+				continue
+			} else {
+				checkScript(currentScript)
+				currentScript = nil
+				capturing = false
+			}
+		}
+
+		if idx := strings.Index(line, "run: |"); idx != -1 {
+			capturing = true
+			scriptIndent = idx + 8 // e.g., '        run: |' -> indent of script lines is 10 spaces
+			currentScript = nil
+		}
+	}
+	if capturing {
+		checkScript(currentScript)
 	}
 }
