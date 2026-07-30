@@ -164,7 +164,7 @@ func TestParseConfigFile(t *testing.T) {
 			},
 			IUse: nil,
 		},
-		&InputConfig{
+		{
 			EntryNumber:      0,
 			Type:             "Github Binary Release",
 			GithubProjectUrl: "https://github.com/goreleaser/goreleaser",
