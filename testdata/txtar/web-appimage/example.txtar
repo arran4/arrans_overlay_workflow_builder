@@ -142,7 +142,7 @@ jobs:
               else
                   echo "Matches existing ebuild. Skipping."
                   rm -f "$tmp_ebuild_file"
-                  continue
+                  exit 0
               fi
 
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
