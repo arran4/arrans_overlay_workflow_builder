@@ -62,7 +62,9 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
-          [[ if .TagsCommand ]]
+          [[ if .CustomVersionSource ]]
+          tags=$([[ .CustomVersionSource ]])
+          [[ else if .TagsCommand ]]
           tags=$([[ .TagsCommand ]])
           [[ else ]]
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
@@ -130,9 +132,9 @@ jobs:
                 echo 'SRC_URI="'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
+                echo "  [[ $externalResource.Keyword ]]? ( [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]][[ end ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
     [[ else ]]
-                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
+                echo "  [[ $externalResource.Keyword ]]? ( [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]][[ end ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
     [[ end ]]
 [[ end ]]
                 echo '"'
@@ -283,9 +285,9 @@ jobs:
               failed=0
 [[ range $releaseFilename, $externalResource := .ExternalResources ]] 
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
     [[ else ]]
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
     [[ end ]]
 
 [[ end ]]
@@ -294,6 +296,9 @@ jobs:
                   rm -f "$ebuild_file"
                   continue
               fi
+[[ if .CustomBuildSteps ]]
+              [[ .CustomBuildSteps ]]
+[[ end ]]
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
           done
 

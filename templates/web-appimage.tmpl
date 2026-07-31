@@ -54,7 +54,12 @@ jobs:
         id: find_appimage
         run: |
           set -euo pipefail
-          [[- if .DownloadRedirect ]]
+          [[- if .CustomVersionSource ]]
+          version=$([[ .CustomVersionSource ]])
+          [[- end ]]
+          [[- if .CustomDownloadUrl ]]
+          appimage_url="[[ .CustomDownloadUrl ]]"
+          [[- else if .DownloadRedirect ]]
           appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' '[[ .DownloadRedirect ]]')"
           [[- else ]]
           source_url="$(curl -sL '[[ .DownloadPageUrl ]]' | htmlq -a href 'a' | grep -iE '[[ if .DownloadMatch ]][[ .DownloadMatch ]][[ else ]]\.AppImage$[[ end ]]' | sort -V | tail -n1)"
@@ -74,8 +79,10 @@ jobs:
             echo "unable to determine artifact extension from $fname" >&2
             exit 1
           fi
+          [[- if not .CustomVersionSource ]]
           base_name="${fname%.*}"
           version="${base_name##*-}"
+          [[- end ]]
           echo "appimage_url=$appimage_url" >> "$GITHUB_ENV"
           echo "appimage_extension=$artifact_ext" >> "$GITHUB_ENV"
           echo "version=$version" >> "$GITHUB_ENV"
@@ -195,6 +202,9 @@ jobs:
               fi
 
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
+[[ if .CustomBuildSteps ]]
+            [[ .CustomBuildSteps ]]
+[[ end ]]
             echo "generated_tag=${version}" >> $GITHUB_OUTPUT
           fi
 

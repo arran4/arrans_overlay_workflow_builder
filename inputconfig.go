@@ -214,13 +214,16 @@ func (p *Program) ShellCompletion(shell string) (result []*KeywordedFilenameRefe
 type InputConfig struct {
 	EntryNumber      int
 	Type             string
-	GithubProjectUrl string
-	DownloadPageUrl  string
-	DownloadRedirect string
-	DownloadBaseUrl  string
-	DownloadMatch    string
-	TagsCommand      string
-	Category         string
+	GithubProjectUrl    string
+	DownloadPageUrl     string
+	DownloadRedirect    string
+	DownloadBaseUrl     string
+	DownloadMatch       string
+	TagsCommand         string
+	CustomDownloadUrl   string
+	CustomVersionSource string
+	CustomBuildSteps    string
+	Category            string
 	EbuildName       string
 	Description      string
 	Homepage         string
@@ -256,6 +259,15 @@ func (ic *InputConfig) String() string {
 		if ic.GithubProjectUrl != "" {
 			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
 		}
+		if ic.CustomDownloadUrl != "" {
+			fmt.Fprintf(&sb, "CustomDownloadUrl %s\n", ic.CustomDownloadUrl)
+		}
+		if ic.CustomVersionSource != "" {
+			fmt.Fprintf(&sb, "CustomVersionSource %s\n", ic.CustomVersionSource)
+		}
+		if ic.CustomBuildSteps != "" {
+			fmt.Fprintf(&sb, "CustomBuildSteps %s\n", ic.CustomBuildSteps)
+		}
 		if ic.TagsCommand != "" {
 			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
 		}
@@ -276,6 +288,15 @@ func (ic *InputConfig) String() string {
 		}
 		if ic.DownloadMatch != "" {
 			fmt.Fprintf(&sb, "DownloadMatch %s\n", ic.DownloadMatch)
+		}
+		if ic.CustomDownloadUrl != "" {
+			fmt.Fprintf(&sb, "CustomDownloadUrl %s\n", ic.CustomDownloadUrl)
+		}
+		if ic.CustomVersionSource != "" {
+			fmt.Fprintf(&sb, "CustomVersionSource %s\n", ic.CustomVersionSource)
+		}
+		if ic.CustomBuildSteps != "" {
+			fmt.Fprintf(&sb, "CustomBuildSteps %s\n", ic.CustomBuildSteps)
 		}
 		if ic.TagsCommand != "" {
 			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
@@ -323,6 +344,15 @@ func (ic *InputConfig) String() string {
 	case "Github Binary Release", "Github Cmake Release", "Web Binary":
 		if ic.GithubProjectUrl != "" {
 			fmt.Fprintf(&sb, "GithubProjectUrl %s\n", ic.GithubProjectUrl)
+		}
+		if ic.CustomDownloadUrl != "" {
+			fmt.Fprintf(&sb, "CustomDownloadUrl %s\n", ic.CustomDownloadUrl)
+		}
+		if ic.CustomVersionSource != "" {
+			fmt.Fprintf(&sb, "CustomVersionSource %s\n", ic.CustomVersionSource)
+		}
+		if ic.CustomBuildSteps != "" {
+			fmt.Fprintf(&sb, "CustomBuildSteps %s\n", ic.CustomBuildSteps)
 		}
 		if ic.TagsCommand != "" {
 			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
@@ -426,6 +456,9 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"DownloadRedirect":      nil,
 				"DownloadBaseUrl":       nil,
 				"DownloadMatch":         nil,
+				"CustomDownloadUrl":     nil,
+				"CustomVersionSource":   nil,
+				"CustomBuildSteps":      nil,
 				"TagsCommand":           nil,
 				"Category":              {DefaultCategory},
 				"EbuildName":            nil,
@@ -602,6 +635,18 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	currentConfig.TagsCommand, err = emptyOrOnlyOrFail(parsedFields["TagsCommand"])
 	if err != nil {
 		return nil, fmt.Errorf("on TagsCommand: %v: %w", parsedFields["TagsCommand"], err)
+	}
+	currentConfig.CustomDownloadUrl, err = emptyOrOnlyOrFail(parsedFields["CustomDownloadUrl"])
+	if err != nil {
+		return nil, fmt.Errorf("on CustomDownloadUrl: %v: %w", parsedFields["CustomDownloadUrl"], err)
+	}
+	currentConfig.CustomVersionSource, err = emptyOrOnlyOrFail(parsedFields["CustomVersionSource"])
+	if err != nil {
+		return nil, fmt.Errorf("on CustomVersionSource: %v: %w", parsedFields["CustomVersionSource"], err)
+	}
+	currentConfig.CustomBuildSteps, err = emptyOrOnlyOrFail(parsedFields["CustomBuildSteps"])
+	if err != nil {
+		return nil, fmt.Errorf("on CustomBuildSteps: %v: %w", parsedFields["CustomBuildSteps"], err)
 	}
 	currentConfig.MaintainerName, err = emptyOrOnlyOrFail(parsedFields["MaintainerName"])
 	if err != nil {
