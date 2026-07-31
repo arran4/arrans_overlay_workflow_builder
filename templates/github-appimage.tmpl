@@ -244,7 +244,7 @@ jobs:
                   highest_rev_file=$(basename "$highest_rev_ebuild")
                   highest_rev_p="${highest_rev_file%.ebuild}"
   [[- range $i, $externalResource := .ExternalResources ]]
-    [[- if eq $i 0 ]]
+    [[- if eq (printf "%v" $i) "0" ]]
       [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
                   remote_size=$(curl -sL --head "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]]" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
                   local_distfile="${highest_rev_p}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]"

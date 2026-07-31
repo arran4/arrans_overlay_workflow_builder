@@ -1,0 +1,195 @@
+This fixture evaluates the complete Web AppImage workflow, including deterministic page scraping,
+redirect resolution, desktop integration, runtime dependencies, manifest creation, and installation.
+
+-- input.config --
+Type Web AppImage
+DownloadPageUrl https://downloads.example.com/example/
+Category net-im
+EbuildName example-appimage
+Description Example self-contained desktop client
+Homepage https://www.example.com/
+License MIT
+Workaround Check Asset Size
+MaintainerEmail maintainer@example.com
+MaintainerName Example Maintainer
+ProgramName example
+DesktopFile example.desktop
+Icons hicolor-apps
+Dependencies sys-libs/glibc sys-libs/zlib
+Binary amd64=>example-${VERSION}-x86_64.AppImage > example.AppImage
+
+-- expected.yaml --
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web AppImage test.config 2026-07-12 00:00:00 +0000 UTC
+
+name: net-im/example-appimage update
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '24 2 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/net-im-example-appimage-update.yaml'
+
+env:
+  ecn: net-im
+  epn: example-appimage
+  description: "Example self-contained desktop client"
+  homepage: "https://www.example.com/"
+  keywords: ~amd64
+  workflow_filename: net-im-example-appimage-update.yaml
+  example_desktop_file: 'example.desktop'
+  example_appimage_installed_name: 'example.AppImage'
+
+jobs:
+  fetch-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Install required tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget jq coreutils
+          curl -sfL https://github.com/mgdm/htmlq/releases/download/v0.4.0/htmlq-x86_64-linux.tar.gz | sudo tar xz -C /usr/local/bin htmlq
+
+      - name: Install g2
+        uses: arran4/g2-action@v1.2
+
+      - name: Determine latest AppImage
+        id: find_appimage
+        run: |
+          set -euo pipefail
+          source_url="$(curl -sL 'https://downloads.example.com/example/' | htmlq -a href 'a' | grep -iE '\.AppImage$' | sort -V | tail -n1)"
+          if [ -z "$source_url" ]; then
+            echo "failed to find AppImage link" >&2
+            exit 1
+          fi
+          appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' "$source_url")"
+          if [ -z "$appimage_url" ]; then
+            echo "failed to resolve AppImage redirect" >&2
+            exit 1
+          fi
+          fname="$(basename "$appimage_url")"
+          artifact_ext="${fname##*.}"
+          if [ -z "$artifact_ext" ] || [ "$artifact_ext" = "$fname" ]; then
+            echo "unable to determine artifact extension from $fname" >&2
+            exit 1
+          fi
+          base_name="${fname%.*}"
+          version="${base_name##*-}"
+          echo "appimage_url=$appimage_url" >> "$GITHUB_ENV"
+          echo "appimage_extension=$artifact_ext" >> "$GITHUB_ENV"
+          echo "version=$version" >> "$GITHUB_ENV"
+
+      - name: Update ebuild
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p "$ebuild_dir"
+          metadata_file="${ebuild_dir}/metadata.xml"
+          g2 metadata -m "maintainer@example.com:Example Maintainer:person" "$metadata_file"
+          tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            # shellcheck disable=SC2016
+            {
+              echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
+              echo 'EAPI=8'
+              echo "DESCRIPTION=\"${{ env.description }}\""
+              echo "HOMEPAGE=\"${{ env.homepage }}\""
+              echo 'LICENSE="MIT"'
+              echo 'SLOT="0"'
+              echo 'KEYWORDS="${{ env.keywords }}"'
+              echo 'IUSE=""'
+              echo 'DEPEND=""'
+              echo 'RDEPEND="sys-fs/fuse:0 sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
+              echo 'S="${WORKDIR}"'
+              echo 'RESTRICT="strip"'
+              echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
+              echo ''
+              echo 'inherit xdg-utils'
+              echo ''
+              echo 'src_install() {'
+              echo '  cp "${DISTDIR}/${P}.${appimage_extension}" "${P}.${appimage_extension}" || die "Failed to copy AppImage"'
+              echo '  chmod a+x "${P}.${appimage_extension}" || die "Can'"'"'t chmod archive file"'
+              echo '  "./${P}.${appimage_extension}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+              echo '  "./${P}.${appimage_extension}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
+              echo '  exeinto /opt/bin'
+              echo '  newexe "${P}.${appimage_extension}" "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
+              echo '  insinto /usr/share/applications'
+              echo '  doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'
+              echo '  insinto /usr/share/icons'
+              echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
+              echo '}'
+              echo ''
+              echo 'pkg_postinst() {'
+              echo '  xdg_desktop_database_update'
+              echo '}'
+
+            } > "$tmp_ebuild_file"
+
+              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              if [ $? -eq 0 ]; then
+                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
+                  mv "$tmp_ebuild_file" "$next_ebuild_file"
+                  ebuild_file="$next_ebuild_file"
+              else
+                  highest_rev_ebuild=$(find "${ebuild_dir}" -maxdepth 1 \( -name "${{ env.epn }}-${version}.ebuild" -o -name "${{ env.epn }}-${version}-r*.ebuild" \) 2>/dev/null | sort -V | tail -n 1)
+                  highest_rev_file=$(basename "$highest_rev_ebuild")
+                  highest_rev_p="${highest_rev_file%.ebuild}"
+                  remote_size=$(curl -sL --head "$appimage_url" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
+                  local_distfile="${highest_rev_p}.${appimage_extension}"
+                  local_size=$(grep "DIST $local_distfile " "${ebuild_dir}/Manifest" | awk '{print $3}')
+                  if [ -n "$remote_size" ] && [ -n "$local_size" ] && [ "$remote_size" != "$local_size" ]; then
+                      echo "Size mismatch for ${version}: remote $remote_size, local $local_size. RC bumping."
+                      if [[ "$highest_rev_file" =~ -r([0-9]+)\.ebuild$ ]]; then
+                          current_rev="${BASH_REMATCH[1]}"
+                          next_rev=$((current_rev + 1))
+                          revision_suffix="-r${next_rev}"
+                      else
+                          revision_suffix="-r1"
+                      fi
+                      ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}${revision_suffix}.ebuild"
+                      mv "$highest_rev_ebuild" "$ebuild_file"
+                      rm -f "$tmp_ebuild_file"
+                  else
+                      echo "Matches existing ebuild. Skipping."
+                      rm -f "$tmp_ebuild_file"
+                      exit 0
+                  fi
+              fi
+
+            g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
+            echo "generated_tag=${version}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate Overlay
+        run: |
+          mkdir -p profiles
+          echo "overlay_name" > profiles/repo_name
+          echo "8" > profiles/eapi
+
+      - name: Lint output
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint . ${{ env.ecn }}/${{ env.epn }}'
+
+      - name: Commit and push changes
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          git add "${ebuild_dir}"
+          git add metadata/md5-cache/ || true
+          if git commit -m "Add ebuild for version ${version}"; then
+            git pull --rebase &&
+            git push
+          fi || true
+        if: steps.find_appimage.outputs.version
