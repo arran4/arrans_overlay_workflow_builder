@@ -42,7 +42,6 @@ env:
   ecn: net-misc
   epn: rustdesk-appimage
   description: "Open-source remote desktop application for self-hosting"
-  homepage: "https://rustdesk.com/"
   github_owner: rustdesk
   github_repo: rustdesk
   keywords: ~amd64 ~arm64
@@ -103,7 +102,7 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo 'HOMEPAGE="https://rustdesk.com/"'
                 echo 'LICENSE="AGPL-3"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'

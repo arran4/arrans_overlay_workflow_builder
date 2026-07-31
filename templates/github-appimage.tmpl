@@ -21,7 +21,6 @@ env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
   description: [[ .Description | quoteStr ]]
-  homepage: [[ .Homepage  | quoteStr ]]
   github_owner: [[ .GithubOwner ]]
   github_repo: [[ .GithubRepo ]]
   keywords: [[ .MaskedKeywords ]]
@@ -113,7 +112,7 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo 'HOMEPAGE="[[ .Homepage ]]"'
                 echo 'LICENSE="[[ .License ]]"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'

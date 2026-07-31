@@ -17,7 +17,6 @@ env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
   description: [[ .Description | quoteStr ]]
-  homepage: [[ .Homepage  | quoteStr ]]
   keywords: [[ .MaskedKeywords ]]
   workflow_filename: [[ .WorkflowFileName ]]
   [[- range $pname, $prog := .Programs ]]
@@ -92,7 +91,7 @@ jobs:
               echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
               echo 'EAPI=8'
               echo "DESCRIPTION=\"${{ env.description }}\""
-              echo "HOMEPAGE=\"${{ env.homepage }}\""
+              echo 'HOMEPAGE="[[ .Homepage ]]"'
               echo 'LICENSE="[[ .License ]]"'
               echo 'SLOT="0"'
               echo 'KEYWORDS="${{ env.keywords }}"'
