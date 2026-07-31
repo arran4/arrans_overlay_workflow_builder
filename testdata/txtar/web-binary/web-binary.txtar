@@ -115,9 +115,9 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-\${PV}-linux-x86_64.tar.gz -> \${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz  )  "
-                echo "	arm64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-\${PV}-linux-arm.tar.gz -> \${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz  )  "
-                echo "	x86? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-\${PV}-linux-x86.tar.gz -> \${P}-google-cloud-cli-\${PV}-linux-x86.tar.gz  )  "
+                echo "	amd64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/\${PV} -> \${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz  )  "
+                echo "	arm64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/\${PV} -> \${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz  )  "
+                echo "	x86? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/\${PV} -> \${P}-google-cloud-cli-\${PV}-linux-x86.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="Apache-2.0"'
                 echo 'SLOT="0"'
@@ -171,9 +171,9 @@ jobs:
               fi
               # Manifest generation
               failed=0
-              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86_64.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-arm.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-arm.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${version}" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${version}" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-arm.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${version}" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

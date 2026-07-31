@@ -164,6 +164,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					}
 				})
 			},
+			"replace": strings.ReplaceAll,
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {

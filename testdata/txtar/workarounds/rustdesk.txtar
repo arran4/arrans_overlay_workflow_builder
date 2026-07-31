@@ -105,7 +105,7 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/\${PV}/rustdesk-${originalVersion}-x86_64.tar.gz -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
+                echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${originalVersion}/\${PV} -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="AGPL-3"'
                 echo 'SLOT="0"'
@@ -147,7 +147,7 @@ jobs:
               fi
               # Manifest generation
               failed=0
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz" "${{ env.epn }}-${version}-rustdesk-${version}-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${P}" "${{ env.epn }}-${version}-rustdesk-${version}-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

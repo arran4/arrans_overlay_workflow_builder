@@ -116,8 +116,8 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI="'
-                echo "  arm64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-aarch64.AppImage -> \${P}-rustdesk-${tag}-aarch64.AppImage )"
-                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-x86_64.AppImage -> \${P}-rustdesk-${tag}-x86_64.AppImage )"
+                echo "  arm64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rustdesk-${tag}-aarch64.AppImage )"
+                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rustdesk-${tag}-x86_64.AppImage )"
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
@@ -166,8 +166,8 @@ jobs:
               fi
               # Manifest generation
               failed=0
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-aarch64.AppImage" "${{ env.epn }}-${version}-rustdesk-${tag}-aarch64.AppImage" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-x86_64.AppImage" "${{ env.epn }}-${version}-rustdesk-${tag}-x86_64.AppImage" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-rustdesk-${tag}-aarch64.AppImage" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-rustdesk-${tag}-x86_64.AppImage" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
