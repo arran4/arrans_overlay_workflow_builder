@@ -1,31 +1,48 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder [[.Version]] [[.Type]] [[.ConfigFile]] [[.Now]]
+This fixture evaluates the complete Web AppImage workflow, including deterministic page scraping,
+redirect resolution, desktop integration, runtime dependencies, manifest creation, and installation.
 
-name: [[ .WorkflowName ]]
+-- input.config --
+Type Web AppImage
+DownloadPageUrl https://downloads.example.com/example/
+Category net-im
+EbuildName example-appimage
+Description Example self-contained desktop client
+Homepage https://www.example.com/
+License MIT
+Workaround Check Asset Size
+MaintainerEmail maintainer@example.com
+MaintainerName Example Maintainer
+ProgramName example
+DesktopFile example.desktop
+Icons hicolor-apps
+Dependencies sys-libs/glibc sys-libs/zlib
+Binary amd64=>example-${VERSION}-x86_64.AppImage > example.AppImage
+
+-- expected.yaml --
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web AppImage test.config 2026-07-12 00:00:00 +0000 UTC
+
+name: net-im/example-appimage update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '[[ .Cron ]]'
+    - cron: '24 2 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/[[ .WorkflowFileName ]]'
+      - '.github/workflows/net-im-example-appimage-update.yaml'
 
 env:
-  ecn: [[ .Category ]]
-  epn: [[ .PackageName ]]
-  description: [[ .Description | quoteStr ]]
-  homepage: [[ .Homepage  | quoteStr ]]
-  keywords: [[ .MaskedKeywords ]]
-  workflow_filename: [[ .WorkflowFileName ]]
-  [[- range $pname, $prog := .Programs ]]
-  [[- if $prog.HasDesktopFile ]]
-  [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: '[[ $prog.DesktopFile ]]'
-  [[- end ]]
-  [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
-  [[- end ]]
+  ecn: net-im
+  epn: example-appimage
+  description: "Example self-contained desktop client"
+  homepage: "https://www.example.com/"
+  keywords: ~amd64
+  workflow_filename: net-im-example-appimage-update.yaml
+  example_desktop_file: 'example.desktop'
+  example_appimage_installed_name: 'example.AppImage'
 
 jobs:
   fetch-latest:
@@ -43,9 +60,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget jq coreutils
-          [[- if not .DownloadRedirect ]]
           curl -sfL https://github.com/mgdm/htmlq/releases/download/v0.4.0/htmlq-x86_64-linux.tar.gz | sudo tar xz -C /usr/local/bin htmlq
-          [[- end ]]
 
       - name: Install g2
         uses: arran4/g2-action@v1.2
@@ -54,16 +69,12 @@ jobs:
         id: find_appimage
         run: |
           set -euo pipefail
-          [[- if .DownloadRedirect ]]
-          appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' '[[ .DownloadRedirect ]]')"
-          [[- else ]]
-          source_url="$(curl -sL '[[ .DownloadPageUrl ]]' | htmlq -a href 'a' | grep -iE '[[ if .DownloadMatch ]][[ .DownloadMatch ]][[ else ]]\.AppImage$[[ end ]]' | sort -V | tail -n1)"
+          source_url="$(curl -sL 'https://downloads.example.com/example/' | htmlq -a href 'a' | grep -iE '\.AppImage$' | sort -V | tail -n1)"
           if [ -z "$source_url" ]; then
             echo "failed to find AppImage link" >&2
             exit 1
           fi
           appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' "$source_url")"
-          [[- end ]]
           if [ -z "$appimage_url" ]; then
             echo "failed to resolve AppImage redirect" >&2
             exit 1
@@ -85,7 +96,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
+          g2 metadata -m "maintainer@example.com:Example Maintainer:person" "$metadata_file"
           tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
             # shellcheck disable=SC2016
             {
@@ -93,68 +104,35 @@ jobs:
               echo 'EAPI=8'
               echo "DESCRIPTION=\"${{ env.description }}\""
               echo "HOMEPAGE=\"${{ env.homepage }}\""
-              echo 'LICENSE="[[ .License ]]"'
+              echo 'LICENSE="MIT"'
               echo 'SLOT="0"'
               echo 'KEYWORDS="${{ env.keywords }}"'
               echo 'IUSE=""'
               echo 'DEPEND=""'
-              echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]] [[$dep]][[end]]"'
+              echo 'RDEPEND="sys-fs/fuse:0 sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
               echo 'S="${WORKDIR}"'
               echo 'RESTRICT="strip"'
               echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
-[[ if .HasDesktopFile ]]
               echo ''
               echo 'inherit xdg-utils'
-[[ end ]]
               echo ''
               echo 'src_install() {'
               echo '  cp "${DISTDIR}/${P}.${appimage_extension}" "${P}.${appimage_extension}" || die "Failed to copy AppImage"'
               echo '  chmod a+x "${P}.${appimage_extension}" || die "Can'"'"'t chmod archive file"'
-[[ range $pname, $prog := .Programs ]]
-[[ if $prog.HasDesktopFile ]]
-              echo '  "./${P}.${appimage_extension}" --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
-[[ end ]]
-[[ range $i, $icon := $prog.Icons ]]
-[[ if eq $icon "hicolor-apps" ]]
+              echo '  "./${P}.${appimage_extension}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'
               echo '  "./${P}.${appimage_extension}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
-[[ else if eq $icon "pixmaps" ]]
-              echo '  "./${P}.${appimage_extension}" --appimage-extract "usr/share/pixmaps" || die "Failed to extract pixmaps icons from app image"'
-[[ else if eq $icon "root" ]]
-              echo '  "./${P}.${appimage_extension}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
-[[ end ]]
-[[ end ]]
-[[ end ]]
               echo '  exeinto /opt/bin'
-[[ range $pname, $prog := .Programs ]]
-              echo '  newexe "${P}.${appimage_extension}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
-[[ end ]]
-[[ if .HasDesktopFile ]]
+              echo '  newexe "${P}.${appimage_extension}" "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
               echo '  insinto /usr/share/applications'
-[[ range $pname, $prog := .Programs ]]
-              echo '  doins "squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to install desktop file"'
-[[ end ]]
-[[ end ]]
-[[ range $pname, $prog := .Programs ]]
-[[ range $i, $icon := $prog.Icons ]]
-[[ if eq $icon "hicolor-apps" ]]
+              echo '  doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'
               echo '  insinto /usr/share/icons'
               echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
-[[ else if eq $icon "pixmaps" ]]
-              echo '  insinto /usr/share/pixmaps'
-              echo '  doins squashfs-root/usr/share/pixmaps/*.png || die "Failed to install icons"'
-[[ else if eq $icon "root" ]]
-              echo '  insinto /usr/share/pixmaps'
-              echo '  doins squashfs-root/*.png || die "Failed to install icons"'
-[[ end ]]
-[[ end ]]
-[[ end ]]
               echo '}'
-[[ if .HasDesktopFile ]]
               echo ''
               echo 'pkg_postinst() {'
               echo '  xdg_desktop_database_update'
               echo '}'
-[[ end ]]
+
             } > "$tmp_ebuild_file"
 
               next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
@@ -163,7 +141,6 @@ jobs:
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
                   ebuild_file="$next_ebuild_file"
               else
-[[- if $.WorkaroundCheckAssetSize ]]
                   highest_rev_ebuild=$(find "${ebuild_dir}" -maxdepth 1 \( -name "${{ env.epn }}-${version}.ebuild" -o -name "${{ env.epn }}-${version}-r*.ebuild" \) 2>/dev/null | sort -V | tail -n 1)
                   highest_rev_file=$(basename "$highest_rev_ebuild")
                   highest_rev_p="${highest_rev_file%.ebuild}"
@@ -172,7 +149,7 @@ jobs:
                   local_size=$(grep "DIST $local_distfile " "${ebuild_dir}/Manifest" | awk '{print $3}')
                   if [ -n "$remote_size" ] && [ -n "$local_size" ] && [ "$remote_size" != "$local_size" ]; then
                       echo "Size mismatch for ${version}: remote $remote_size, local $local_size. RC bumping."
-                      if [[ "[[" ]] "$highest_rev_file" =~ -r([0-9]+)\.ebuild$ [[ "]]" ]]; then
+                      if [[ "$highest_rev_file" =~ -r([0-9]+)\.ebuild$ ]]; then
                           current_rev="${BASH_REMATCH[1]}"
                           next_rev=$((current_rev + 1))
                           revision_suffix="-r${next_rev}"
@@ -187,11 +164,6 @@ jobs:
                       rm -f "$tmp_ebuild_file"
                       exit 0
                   fi
-[[- else ]]
-                  echo "Matches existing ebuild. Skipping."
-                  rm -f "$tmp_ebuild_file"
-                  exit 0
-[[- end ]]
               fi
 
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"

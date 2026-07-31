@@ -283,9 +283,44 @@ jobs:
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
                   ebuild_file="$next_ebuild_file"
               else
+[[- if $.WorkaroundCheckAssetSize ]]
+                  highest_rev_ebuild=$(find "${ebuild_dir}" -maxdepth 1 \( -name "${{ env.epn }}-${version}.ebuild" -o -name "${{ env.epn }}-${version}-r*.ebuild" \) 2>/dev/null | sort -V | tail -n 1)
+                  highest_rev_file=$(basename "$highest_rev_ebuild")
+                  highest_rev_p="${highest_rev_file%.ebuild}"
+  [[- range $i, $externalResource := .ExternalResources ]]
+    [[- if eq (printf "%v" $i) "0" ]]
+      [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
+                  remote_size=$(curl -sL --head "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]]" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
+                  local_distfile="${highest_rev_p}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]"
+      [[- else ]]
+                  remote_size=$(curl -sL --head "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]]" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
+                  local_distfile="${highest_rev_p}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]"
+      [[- end ]]
+                  local_size=$(grep "DIST $local_distfile " "${ebuild_dir}/Manifest" | awk '{print $3}')
+    [[- end ]]
+  [[- end ]]
+                  if [ -n "$remote_size" ] && [ -n "$local_size" ] && [ "$remote_size" != "$local_size" ]; then
+                      echo "Size mismatch for ${version}: remote $remote_size, local $local_size. RC bumping."
+                      if [[ "[[" ]] "$highest_rev_file" =~ -r([0-9]+)\.ebuild$ [[ "]]" ]]; then
+                          current_rev="${BASH_REMATCH[1]}"
+                          next_rev=$((current_rev + 1))
+                          revision_suffix="-r${next_rev}"
+                      else
+                          revision_suffix="-r1"
+                      fi
+                      ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}${revision_suffix}.ebuild"
+                      mv "$highest_rev_ebuild" "$ebuild_file"
+                      rm -f "$tmp_ebuild_file"
+                  else
+                      echo "Matches existing ebuild. Skipping."
+                      rm -f "$tmp_ebuild_file"
+                      continue
+                  fi
+[[- else ]]
                   echo "Matches existing ebuild. Skipping."
                   rm -f "$tmp_ebuild_file"
                   continue
+[[- end ]]
               fi
 
               # Manifest generation

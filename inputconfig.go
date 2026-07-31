@@ -757,6 +757,14 @@ func (ic *InputConfig) WorkaroundSemanticVersionPrereleaseHack1() bool {
 	return ok
 }
 
+func (ic *InputConfig) WorkaroundCheckAssetSize() bool {
+	if ic.Workarounds == nil {
+		return false
+	}
+	_, ok := ic.Workarounds["Check Asset Size"]
+	return ok
+}
+
 func (ic *InputConfig) WorkaroundTagPrefix() string {
 	if ic.Workarounds == nil {
 		return ""
@@ -774,6 +782,7 @@ func (ic *InputConfig) Validate() error {
 		case "Version Replacement":
 		case "Gentoo Version Regular Expression":
 		case "Tag Prefix":
+		case "Check Asset Size":
 		case "Programs as Alternatives":
 		default:
 			return fmt.Errorf("unknown workaround: %s", workaround)
