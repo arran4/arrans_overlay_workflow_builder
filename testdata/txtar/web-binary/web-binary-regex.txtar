@@ -1,5 +1,4 @@
-This fixture verifies Web Binary rendering from stable, repository-owned input data.
-It covers the tag command, architecture-specific downloads, and manifest upserts.
+This fixture evaluates the complete Web Binary workflow with regex workarounds.
 
 -- input.config --
 Type Web Binary
@@ -14,7 +13,7 @@ ProgramName google-cloud-cli
 Binary amd64=>google-cloud-cli-${VERSION}-linux-x86_64.tar.gz > gcloud > gcloud
 Binary x86=>google-cloud-cli-${VERSION}-linux-x86.tar.gz > gcloud > gcloud
 Binary arm64=>google-cloud-cli-${VERSION}-linux-arm.tar.gz > gcloud > gcloud
-
+Workaround Gentoo Version Regular Expression ^([0-9]+)\.([0-9]+)$
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web Binary test.config 2026-07-12 00:00:00 +0000 UTC
 

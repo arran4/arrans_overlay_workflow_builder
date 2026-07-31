@@ -89,10 +89,13 @@ jobs:
 [[ end ]]
             # shellcheck disable=SC2034
             originalVersion="${version}"
+[[- if .WorkaroundVersionReplacement ]]
+            version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
+[[ end ]]
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)\(\|\.\?\([0-9]\+\)\)\)$/\1_\5\3\7/')"
 [[ end ]]
-            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+            if ! echo "${version}" | grep -E '[[- if .WorkaroundGentooVersionRegularExpression ]][[ .WorkaroundGentooVersionRegularExpression ]][[- else ]]^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$[[- end ]]'; then
                 echo "version: $version doesn't match regexp";
                 continue;
             fi
@@ -127,9 +130,9 @@ jobs:
                 echo 'SRC_URI="'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
+                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
     [[ else ]]
-                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
+                echo "  [[ $externalResource.Keyword ]]? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
     [[ end ]]
 [[ end ]]
                 echo '"'
@@ -245,9 +248,9 @@ jobs:
               failed=0
 [[ range $releaseFilename, $externalResource := .ExternalResources ]] 
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
     [[ else ]]
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
     [[ end ]]
 
 [[ end ]]

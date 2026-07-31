@@ -1,17 +1,29 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder [[.Version]] [[.Type]] [[.ConfigFile]] [[.Now]]
+This fixture evaluates the complete GitHub CMake workflow with regular expression workarounds.
 
-name: [[ .WorkflowName ]]
+-- input.config --
+Type Github Cmake Release
+GithubProjectUrl https://github.com/arran4/kjules
+Category app-misc
+EbuildName kjules
+Description A testing client
+Homepage https://github.com/arran4/kjules
+License MIT
+Workaround Gentoo Version Regular Expression ^([0-9]+)\.([0-9]+)$
+-- expected.yaml --
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Cmake Release test.config 2026-07-12 00:00:00 +0000 UTC
+
+name: app-misc/kjules update
 
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: '[[ .Cron ]]'
+    - cron: '24 2 * * *'
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/[[ .WorkflowFileName ]]'
+      - '.github/workflows/app-misc-kjules-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -19,12 +31,12 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ecn: [[ .Category ]]
-  epn: [[ .PackageName ]]
-  description: [[ .Description | quoteStr ]]
-  homepage: [[ .Homepage  | quoteStr ]]
-  github_owner: [[ .GithubOwner ]]
-  github_repo: [[ .GithubRepo ]]
+  ecn: app-misc
+  epn: kjules
+  description: "A testing client"
+  homepage: "https://github.com/arran4/kjules"
+  github_owner: arran4
+  github_repo: kjules
 
 jobs:
   check-and-create-ebuild:
@@ -53,38 +65,23 @@ jobs:
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
-
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
-
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:arran4/kjules" "$metadata_file"
           tags=$(gh api repos/${{ env.github_owner }}/${{ env.github_repo }}/releases --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           for tag in $tags; do
             originalVersion="${tag#v}"
             # shellcheck disable=SC2034
             version="${tag#v}"
-            [[- if .WorkaroundTagPrefix ]]
-            version="${tag#[[- .WorkaroundTagPrefix ]]}"
-            [[- end ]]
-            [[- if .WorkaroundSemanticVersionWithoutV ]]
-            version="${tag}"
-            [[- end ]]
-
-[[- if .WorkaroundVersionReplacement ]]
-            version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
-[[ end ]]
             # Semantic Version format check (skip invalid tags)
-            if ! echo "$version" | egrep -q '[[- if .WorkaroundGentooVersionRegularExpression ]][[ .WorkaroundGentooVersionRegularExpression ]][[- else ]]^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$[[- end ]]'; then
+            if ! echo "$version" | egrep -q '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
               echo "$tag / $version doesn't match gentoo version regexp; skipping"
               continue
             fi
-
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
               cmake_content=$(curl -sL "https://raw.githubusercontent.com/${{ env.github_owner }}/${{ env.github_repo }}/${tag}/CMakeLists.txt")
-
               qt6_components=$(echo "$cmake_content" | grep -i "find_package(Qt6" | tr '()' '  ' | sed 's/find_package  *Qt6//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED|COMPONENTS|CONFIG' | sort -u || true)
               kf6_packages=$(echo "$cmake_content" | grep -i "find_package(KF6" | tr '()' '  ' | grep -iv COMPONENTS | awk '{print $2}' | grep -i "^KF6" | sed 's/KF6//i' | sort -u || true)
               kf6_components=$(echo "$cmake_content" | grep -i "find_package(KF6" | grep -i COMPONENTS | tr '()' '  ' | sed 's/.*COMPONENTS//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED' | sort -u || true)
-
               DEPEND=""
               if [ -n "$qt6_components" ]; then
                 qt6_flags=$(echo "$qt6_components" | grep -ivE 'Test|Svg' | tr '\n' ',' | sed 's/,$//' | tr '[:upper:]' '[:lower:]')
@@ -93,22 +90,18 @@ jobs:
                 else
                   DEPEND="$DEPEND\n\tdev-qt/qtbase:6"
                 fi
-
                 # Handling qt6 components that map to different Gentoo packages if needed
                 if echo "$qt6_components" | grep -iq "Svg"; then DEPEND="$DEPEND\n\tdev-qt/qtsvg:6"; fi
               fi
-
               BDEPEND="virtual/pkgconfig\n\tkde-frameworks/extra-cmake-modules:0"
               if echo "$qt6_components" | grep -iq "Test"; then
                  BDEPEND="$BDEPEND\n\tdev-qt/qttools:6[linguist]"
               fi
-
               for pkg in $kf6_packages $kf6_components; do
                  # Basic mapping logic for KF6
                  mapped=$(echo "$pkg" | tr '[:upper:]' '[:lower:]')
                  DEPEND="$DEPEND\n\tkde-frameworks/k${mapped}:6"
               done
-
               {
                 echo "# Copyright $(date +%Y) Gentoo Authors"
                 echo "# Distributed under the terms of the GNU General Public License v2"
@@ -121,7 +114,7 @@ jobs:
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo "SRC_URI=\"https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz -> \${P}.tar.gz\""
                 echo ""
-                echo "LICENSE=\"[[ .License ]]\""
+                echo "LICENSE=\"MIT\""
                 echo "SLOT=\"0\""
                 echo "KEYWORDS=\"~amd64\""
                 echo "IUSE=\"debug\""
@@ -135,7 +128,6 @@ jobs:
                 echo "\""
                 echo ""
               } > "$tmp_ebuild_file"
-
               next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
               if [ $? -eq 0 ]; then
                   echo "Content changed or new version for $version. Writing $next_ebuild_file"
@@ -146,10 +138,8 @@ jobs:
                   rm -f "$tmp_ebuild_file"
                   continue
               fi
-
               failed=0
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz" "${{ env.epn }}-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

@@ -28,3 +28,11 @@ func (ggctd *GenerateGithubCmakeTemplateData) PackageName() string {
 func (ggctd *GenerateGithubCmakeTemplateData) Metadata() (string, error) {
 	return ggctd.DefaultMetadata()
 }
+
+func (ggctd *GenerateGithubCmakeTemplateData) WorkaroundVersionReplacement() string {
+	return ggctd.InputConfig.WorkaroundVersionReplacement()
+}
+
+func (ggctd *GenerateGithubCmakeTemplateData) WorkaroundGentooVersionRegularExpression() string {
+	return ggctd.InputConfig.WorkaroundGentooVersionRegularExpression()
+}

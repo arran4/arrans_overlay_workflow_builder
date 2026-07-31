@@ -771,6 +771,8 @@ func (ic *InputConfig) Validate() error {
 		switch workaround {
 		case "Semantic Version Without V":
 		case "Semantic Version Prerelease Hack 1":
+		case "Version Replacement":
+		case "Gentoo Version Regular Expression":
 		case "Tag Prefix":
 		case "Programs as Alternatives":
 		default:
@@ -1063,4 +1065,18 @@ func NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, ebuildSuffix
 
 	log.Printf("Latest release %v", versions)
 	return repoName, ic, versions, tags, releaseInfo, nil, nil
+}
+
+func (ic *InputConfig) WorkaroundVersionReplacement() string {
+	if ic.Workarounds == nil {
+		return ""
+	}
+	return ic.Workarounds["Version Replacement"]
+}
+
+func (ic *InputConfig) WorkaroundGentooVersionRegularExpression() string {
+	if ic.Workarounds == nil {
+		return ""
+	}
+	return ic.Workarounds["Gentoo Version Regular Expression"]
 }

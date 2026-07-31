@@ -164,6 +164,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					}
 				})
 			},
+			"replace": strings.ReplaceAll,
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {
@@ -334,4 +335,12 @@ func (ic *InputConfig) Cron() string {
 	i /= 60
 	hour := i % 24
 	return fmt.Sprintf("%d %d * * *", minute, hour)
+}
+
+func (b *GenerateGithubWorkflowBase) WorkaroundVersionReplacement() string {
+	return b.InputConfig.WorkaroundVersionReplacement()
+}
+
+func (b *GenerateGithubWorkflowBase) WorkaroundGentooVersionRegularExpression() string {
+	return b.InputConfig.WorkaroundGentooVersionRegularExpression()
 }
