@@ -1,24 +1,25 @@
-Verifies that custom tags, downloads, and build steps override standard github appimage behavior.
+This fixture evaluates that LocalSend dependencies are correctly included in generated workflows.
 
 -- input.config --
 Type Github AppImage Release
-GithubProjectUrl https://github.com/example/example/
-CustomDownloadUrl https://custom.url/${version}
-CustomVersionSource echo "v1.2.3"
-CustomBuildSteps touch built.txt
-TagsCommand cat tags.txt
-Category app-misc
-EbuildName example-appimage
-Description Example is an open source
-Homepage https://example.com/
-ProgramName example
-DesktopFile example.desktop
-Binary amd64=>example-linux-x86_64-${VERSION}.AppImage > example
+GithubProjectUrl https://github.com/localsend/localsend/
+Category net-misc
+EbuildName localsend-appimage
+Description An open-source cross-platform alternative to AirDrop
+Homepage https://localsend.org/
+License MIT
+MaintainerEmail gentoo@arran4.com
+MaintainerName Arran Ubels
+ProgramName localsend
+DesktopFile localsend_app.desktop
+Icons hicolor-apps
+Dependencies gui-libs/wayland
+Binary amd64=>LocalSend-${TAG}-linux-x86-64.AppImage > localsend_app
 
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github AppImage Release test.config 2026-07-12 00:00:00 +0000 UTC
 
-name: app-misc/example-appimage update
+name: net-misc/localsend-appimage update
 
 permissions:
   contents: write
@@ -29,24 +30,24 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/app-misc-example-appimage-update.yaml'
+      - '.github/workflows/net-misc-localsend-appimage-update.yaml'
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  ecn: app-misc
-  epn: example-appimage
-  description: "Example is an open source"
-  homepage: "https://example.com/"
-  github_owner: example
-  github_repo: example
+  ecn: net-misc
+  epn: localsend-appimage
+  description: "An open-source cross-platform alternative to AirDrop"
+  homepage: "https://localsend.org/"
+  github_owner: localsend
+  github_repo: localsend
   keywords: ~amd64
-  workflow_filename: app-misc-example-appimage-update.yaml
-  example_desktop_file: 'example.desktop'
-  example_appimage_installed_name: 'example'
-  example_release_name_amd64: 'example-linux-x86_64-\${PV}.AppImage'
+  workflow_filename: net-misc-localsend-appimage-update.yaml
+  localsend_desktop_file: 'localsend_app.desktop'
+  localsend_appimage_installed_name: 'localsend_app'
+  localsend_release_name_amd64: 'LocalSend-${tag}-linux-x86-64.AppImage'
 
 jobs:
   check-and-create-ebuild:
@@ -69,9 +70,9 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:example/example" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:localsend/localsend" "$metadata_file"
           declare -A releaseTypes=()
-          tags=$(echo "v1.2.3")
+          tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
           for tag in $tags; do
             version="${tag#v}"
@@ -100,39 +101,44 @@ jobs:
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'LICENSE="unknown"'
+                echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo 'IUSE=""'
                 echo 'DEPEND=""'
-                echo 'RDEPEND="sys-fs/fuse:0"'
+                echo 'RDEPEND="sys-fs/fuse:0 gui-libs/wayland"'
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI="'
-                echo "  amd64? ( https://custom.url/${version} -> \${P}-example-linux-x86_64-\${PV}.AppImage )"
+                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-LocalSend-${tag}-linux-x86-64.AppImage )"
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo "    cp \"\${DISTDIR}/\${P}-${{ env.localsend_release_name_amd64 }}\" \"${{ env.localsend_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
-                echo '  chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
-                echo '  "./${{ env.example_appimage_installed_name }}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+                echo '  chmod a+x "${{ env.localsend_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
+                echo '  "./${{ env.localsend_appimage_installed_name }}" --appimage-extract "${{ env.localsend_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+                echo '  "./${{ env.localsend_appimage_installed_name }}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.example_appimage_installed_name }}:' 'squashfs-root/${{ env.example_desktop_file }}'"
+                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.localsend_appimage_installed_name }}:' 'squashfs-root/${{ env.localsend_desktop_file }}'"
+                echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
+                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
                 echo '  eapply_user'
                 echo '}'
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
-                echo '  doexe "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
+                echo '  doexe "${{ env.localsend_appimage_installed_name }}" || die "Failed to install AppImage"'
                 echo '  insinto /usr/share/applications'
-                echo '  doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'
+                echo '  doins "squashfs-root/${{ env.localsend_desktop_file }}" || die "Failed to install desktop file"'
+                echo '  insinto /usr/share/icons'
+                echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
                 echo '}'
                 echo ""
                 echo "pkg_postinst() {"
@@ -153,13 +159,12 @@ jobs:
               fi
               # Manifest generation
               failed=0
-              if ! g2 manifest upsert-from-url "https://custom.url/${version}" "${{ env.epn }}-${version}-example-linux-x86_64-${version}.AppImage" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-LocalSend-${tag}-linux-x86-64.AppImage" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
                   continue
               fi
-              touch built.txt
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
           done
 
