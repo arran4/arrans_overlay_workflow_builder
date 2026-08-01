@@ -34,7 +34,6 @@ env:
   ecn: app-admin
   epn: k9s-bin
   description: "Kubernetes CLI To Manage Your Clusters In Style!"
-  homepage: "https://k9scli.io/"
   github_owner: derailed
   github_repo: k9s
   keywords: ~amd64
@@ -98,7 +97,7 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"https://k9scli.io/\""
                 echo 'SRC_URI="'
                 echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/v${originalVersion}/\${PV} -> \${P}-k9s_Linux_amd64.tar.gz  )  "
                 echo '"'

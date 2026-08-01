@@ -21,7 +21,6 @@ env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
   description: [[ .Description | quoteStr ]]
-  homepage: [[ .Homepage  | quoteStr ]]
   github_owner: [[ .GithubOwner ]]
   github_repo: [[ .GithubRepo ]]
   keywords: [[ .MaskedKeywords ]]
@@ -119,7 +118,7 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"[[ if .Homepage ]][[ .Homepage ]][[ else ]]https://github.com/[[ .GithubOwner ]]/[[ .GithubRepo ]][[ end ]]\""
                 echo 'SRC_URI="'
 [[- range $i, $externalResource := .ExternalResources ]]
                 echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]${originalVersion}[[ else ]][[- $.WorkaroundTagPrefix ]]v${originalVersion}[[ end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]][[- end ]][[ end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "

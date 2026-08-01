@@ -212,8 +212,8 @@ func (p *Program) ShellCompletion(shell string) (result []*KeywordedFilenameRefe
 
 // InputConfig represents a single configuration entry.
 type InputConfig struct {
-	EntryNumber      int
-	Type             string
+	EntryNumber         int
+	Type                string
 	GithubProjectUrl    string
 	DownloadPageUrl     string
 	DownloadRedirect    string
@@ -224,18 +224,18 @@ type InputConfig struct {
 	CustomVersionSource string
 	CustomBuildSteps    string
 	Category            string
-	EbuildName       string
-	Description      string
-	Homepage         string
-	GithubRepo       string
-	GithubOwner      string
-	License          string
-	MaintainerEmail  string
-	MaintainerName   string
-	Workarounds      map[string]string
-	Programs         map[string]*Program
-	IUse             []string
-	RequiredUse      []string
+	EbuildName          string
+	Description         string
+	Homepage            string
+	GithubRepo          string
+	GithubOwner         string
+	License             string
+	MaintainerEmail     string
+	MaintainerName      string
+	Workarounds         map[string]string
+	Programs            map[string]*Program
+	IUse                []string
+	RequiredUse         []string
 }
 
 func (ic *InputConfig) GetPrograms() map[string]*Program {

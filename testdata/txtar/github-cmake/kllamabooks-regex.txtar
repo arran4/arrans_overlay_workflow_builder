@@ -34,7 +34,6 @@ env:
   ecn: app-misc
   epn: kjules
   description: "A testing client"
-  homepage: "https://github.com/arran4/kjules"
   github_owner: arran4
   github_repo: kjules
 
@@ -111,7 +110,7 @@ jobs:
                 echo "inherit cmake xdg"
                 echo ""
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"https://github.com/arran4/kjules\""
                 echo "SRC_URI=\"https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz -> \${P}.tar.gz\""
                 echo ""
                 echo "LICENSE=\"MIT\""
