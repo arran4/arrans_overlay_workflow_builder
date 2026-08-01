@@ -3,13 +3,14 @@ package arrans_overlay_workflow_builder
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/arran4/g2"
-	"github.com/stoewer/go-strcase"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/arran4/g2"
+	"github.com/stoewer/go-strcase"
 )
 
 type GenerateGithubBinaryTemplateData struct {
@@ -523,7 +524,17 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ExternalResources() []*ExternalRe
 				MustHaveUseFlags:   ggbtd.GetMustHaveUseFlags(programName, kwWithFlags),
 				MustntHaveUseFlags: ggbtd.GetMustntHaveUseFlags(programName, kwWithFlags),
 			}
-			m[rfn[0]] = e
+			if existing, ok := m[rfn[0]]; ok {
+				existing.MustHaveUseFlags = append(existing.MustHaveUseFlags, ggbtd.GetMustHaveUseFlags(programName, kwWithFlags)...)
+				slices.Sort(existing.MustHaveUseFlags)
+				existing.MustHaveUseFlags = slices.Compact(existing.MustHaveUseFlags)
+
+				existing.MustntHaveUseFlags = append(existing.MustntHaveUseFlags, ggbtd.GetMustntHaveUseFlags(programName, kwWithFlags)...)
+				slices.Sort(existing.MustntHaveUseFlags)
+				existing.MustntHaveUseFlags = slices.Compact(existing.MustntHaveUseFlags)
+			} else {
+				m[rfn[0]] = e
+			}
 		}
 	}
 	result := make([]*ExternalResourceKeywordExtended, 0, len(ggbtd.Programs))
