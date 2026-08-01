@@ -12,6 +12,9 @@ const testConfigData = `
 Type Github AppImage Release
 GithubProjectUrl https://github.com/janhq/jan/
 TagsCommand cat tags.txt
+CustomDownloadUrl https://custom.url/${version}
+CustomVersionSource echo "v1.2.3"
+CustomBuildSteps touch built.txt
 DesktopFile jan
 Category app-misc
 EbuildName jan-appimage
@@ -80,6 +83,9 @@ func TestParseConfigFile(t *testing.T) {
 			Type:             "Github AppImage Release",
 			GithubProjectUrl: "https://github.com/janhq/jan/",
 			TagsCommand:      "cat tags.txt",
+			CustomDownloadUrl: "https://custom.url/${version}",
+			CustomVersionSource: "echo \"v1.2.3\"",
+			CustomBuildSteps: "touch built.txt",
 			Category:         "app-misc",
 			EbuildName:       "jan-appimage.ebuild",
 			Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
@@ -239,6 +245,9 @@ func TestConfigString(t *testing.T) {
 				Type:             "Github AppImage Release",
 				GithubProjectUrl: "https://github.com/janhq/jan/",
 				TagsCommand:      "cat tags.txt",
+				CustomDownloadUrl: "https://custom.url/${version}",
+				CustomVersionSource: "echo \"v1.2.3\"",
+				CustomBuildSteps: "touch built.txt",
 				Category:         "app-misc",
 				EbuildName:       "jan-appimage.ebuild",
 				Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
@@ -261,6 +270,9 @@ func TestConfigString(t *testing.T) {
 			},
 			want: `Type Github AppImage Release
 GithubProjectUrl https://github.com/janhq/jan/
+CustomDownloadUrl https://custom.url/${version}
+CustomVersionSource echo "v1.2.3"
+CustomBuildSteps touch built.txt
 TagsCommand cat tags.txt
 Category app-misc
 EbuildName jan-appimage.ebuild
@@ -272,6 +284,57 @@ DesktopFile jan.desktop
 Icons hicolor-apps root
 Dependencies dev-libs/libappindicator
 Binary amd64=>anotherrepo-${VERSION}.AppImage > jan
+`,
+		},
+		{
+			name: "jan-appimage-custom",
+			config: &InputConfig{
+				EntryNumber:      1,
+				Type:             "Github AppImage Release",
+				GithubProjectUrl: "https://github.com/janhq/jan/",
+				TagsCommand:      "cat tags.txt",
+				CustomDownloadUrl: "https://custom.url/${version}",
+				CustomVersionSource: "echo \"v1.2.3\"",
+				CustomBuildSteps: "touch built.txt",
+				Category:         "app-misc",
+				EbuildName:       "jan-appimage.ebuild",
+				Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
+				Workarounds: map[string]string{
+					"Test Workaround":            "",
+					"Test Workaround with value": "Values",
+				},
+				Homepage: "https://jan.ai/",
+				Programs: map[string]*Program{
+					"jan": {
+						ProgramName: "jan",
+						Binary: map[string][]string{
+							"amd64": {"jan-linux-x86_64-${VERSION}.AppImage", "jan"},
+							"arm64": {"jan-linux-arm64-${VERSION}.AppImage", "jan"},
+						},
+						DesktopFile: "jan.desktop",
+						Dependencies: []string{
+							"dev-libs/libappindicator",
+						},
+					},
+				},
+			},
+			want: `Type Github AppImage Release
+GithubProjectUrl https://github.com/janhq/jan/
+CustomDownloadUrl https://custom.url/${version}
+CustomVersionSource echo "v1.2.3"
+CustomBuildSteps touch built.txt
+TagsCommand cat tags.txt
+Category app-misc
+EbuildName jan-appimage.ebuild
+Description Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)
+Homepage https://jan.ai/
+Workaround Test Workaround
+Workaround Test Workaround with value => Values
+ProgramName jan
+DesktopFile jan.desktop
+Dependencies dev-libs/libappindicator
+Binary amd64=>jan-linux-x86_64-${VERSION}.AppImage > jan
+Binary arm64=>jan-linux-arm64-${VERSION}.AppImage > jan
 `,
 		},
 		{
