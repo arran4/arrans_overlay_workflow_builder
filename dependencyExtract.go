@@ -129,8 +129,8 @@ var (
 		"librt.so":                  "sys-libs/glibc",
 		"libgtk-3.so":               "x11-libs/gtk+",
 		"libgtk-3.so.0":             "x11-libs/gtk+",
-		"libwayland-cursor.so":      "dev-libs/wayland",
-		"libwayland-cursor.so.0":    "dev-libs/wayland",
+		"libwayland-cursor.so":      "gui-libs/wayland",
+		"libwayland-cursor.so.0":    "gui-libs/wayland",
 		"libGL.so":                  "media-libs/libglvnd",
 		"libGL.so.1":                "media-libs/libglvnd",
 		"libGL.so.1.0":              "media-libs/libglvnd",
@@ -138,9 +138,9 @@ var (
 		"libX11.so.6.4":             "x11-libs/libX11",
 		"libX11.so.6.4.0":           "x11-libs/libX11",
 		// Under evaluation
-		"libwayland-client.so.0": "dev-libs/wayland",
-		"libwayland-egl.so.1":    "dev-libs/wayland",
-		"libwayland-server.so.0": "dev-libs/wayland",
+		"libwayland-client.so.0": "gui-libs/wayland",
+		"libwayland-egl.so.1":    "gui-libs/wayland",
+		"libwayland-server.so.0": "gui-libs/wayland",
 	}
 )
 

@@ -108,7 +108,7 @@ jobs:
               echo 'KEYWORDS="${{ env.keywords }}"'
               echo 'IUSE=""'
               echo 'DEPEND=""'
-              echo 'RDEPEND="sys-fs/fuse:0 sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
+              echo 'RDEPEND="sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
               echo 'S="${WORKDIR}"'
               echo 'RESTRICT="strip"'
               echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""

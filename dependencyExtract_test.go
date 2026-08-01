@@ -6,8 +6,8 @@ import (
 
 func TestLookupSymbolIncludesWaylandCursor(t *testing.T) {
 	tests := map[string]string{
-		"libwayland-cursor.so":   "dev-libs/wayland",
-		"libwayland-cursor.so.0": "dev-libs/wayland",
+		"libwayland-cursor.so":   "gui-libs/wayland",
+		"libwayland-cursor.so.0": "gui-libs/wayland",
 	}
 
 	for library, expected := range tests {
@@ -24,7 +24,7 @@ func TestLookupSymbolWayland(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected lookup to succeed for libwayland-cursor.so.0")
 	}
-	if pkg != "dev-libs/wayland" {
-		t.Fatalf("expected package to be dev-libs/wayland, got %s", pkg)
+	if pkg != "gui-libs/wayland" {
+		t.Fatalf("expected package to be gui-libs/wayland, got %s", pkg)
 	}
 }
