@@ -46,7 +46,7 @@ env:
   workflow_filename: app-misc-example-appimage-update.yaml
   example_desktop_file: 'example.desktop'
   example_appimage_installed_name: 'example'
-  example_release_name_amd64: 'example-linux-x86_64-\${PV}.AppImage'
+  example_release_name_amd64: 'example-linux-x86_64-${version}.AppImage'
 
 jobs:
   check-and-create-ebuild:

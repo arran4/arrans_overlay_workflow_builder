@@ -35,7 +35,7 @@ env:
   [[- if gt (len $binary) 2 ]]
   [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
   [[ end ]]
-  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | ebuildvardoublequoted ]]'
+  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | actionvardoublequoted ]]'
   [[ end ]]
   [[ end ]]
 
