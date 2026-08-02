@@ -791,7 +791,7 @@ func (ic *InputConfig) WorkaroundSemanticVersionWithoutV() bool {
 		return false
 	}
 	_, ok := ic.Workarounds["Semantic Version Without V"]
-	return ok
+	return ok || CommitMd5CacheGlobal
 }
 
 func (ic *InputConfig) WorkaroundSemanticVersionPrereleaseHack1() bool {
@@ -799,7 +799,7 @@ func (ic *InputConfig) WorkaroundSemanticVersionPrereleaseHack1() bool {
 		return false
 	}
 	_, ok := ic.Workarounds["Semantic Version Prerelease Hack 1"]
-	return ok
+	return ok || CommitMd5CacheGlobal
 }
 
 func (ic *InputConfig) WorkaroundCheckAssetSize() bool {
@@ -807,7 +807,7 @@ func (ic *InputConfig) WorkaroundCheckAssetSize() bool {
 		return false
 	}
 	_, ok := ic.Workarounds["Check Asset Size"]
-	return ok
+	return ok || CommitMd5CacheGlobal
 }
 
 func (ic *InputConfig) WorkaroundTagPrefix() string {
@@ -1140,5 +1140,7 @@ func (ic *InputConfig) WorkaroundCommitMd5Cache() bool {
 		return false
 	}
 	_, ok := ic.Workarounds["Commit Md5 Cache"]
-	return ok
+	return ok || CommitMd5CacheGlobal
 }
+
+var CommitMd5CacheGlobal = false
