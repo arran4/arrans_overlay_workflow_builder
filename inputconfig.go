@@ -1134,3 +1134,11 @@ func (ic *InputConfig) WorkaroundGentooVersionRegularExpression() string {
 	}
 	return ic.Workarounds["Gentoo Version Regular Expression"]
 }
+
+func (ic *InputConfig) WorkaroundCommitMd5Cache() bool {
+	if ic.Workarounds == nil {
+		return false
+	}
+	_, ok := ic.Workarounds["Commit Md5 Cache"]
+	return ok
+}
