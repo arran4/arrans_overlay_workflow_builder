@@ -41,7 +41,7 @@ env:
   keywords: ~amd64
   workflow_filename: app-misc-example-bin-update.yaml
   example_binary_installed_name: 'example'
-  example_release_name_amd64: 'example-\${PV}.tar.gz'
+  example_release_name_amd64: 'example-${version}.tar.gz'
 
 jobs:
   check-and-create-ebuild:
