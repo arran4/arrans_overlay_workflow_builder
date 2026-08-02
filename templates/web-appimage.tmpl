@@ -225,6 +225,9 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "${ebuild_dir}"
+          [[ if index .Workarounds "Commit Md5 Cache" ]]
+          git add metadata/md5-cache/ || true
+          [[ end ]]
           if git commit -m "Add ebuild for version ${version}"; then
             git pull --rebase &&
             git push
