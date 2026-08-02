@@ -344,3 +344,7 @@ func (b *GenerateGithubWorkflowBase) WorkaroundVersionReplacement() string {
 func (b *GenerateGithubWorkflowBase) WorkaroundGentooVersionRegularExpression() string {
 	return b.InputConfig.WorkaroundGentooVersionRegularExpression()
 }
+
+func (b *GenerateGithubWorkflowBase) WorkaroundCommitMd5Cache() bool {
+	return b.InputConfig.WorkaroundCommitMd5Cache()
+}
