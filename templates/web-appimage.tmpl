@@ -61,7 +61,7 @@ jobs:
           version=$([[ .CustomVersionSource ]])
           [[- end ]]
           [[- if .CustomDownloadUrl ]]
-          appimage_url="[[ .CustomDownloadUrl ]]"
+          appimage_url="[[ .CustomDownloadUrl | actionvardoublequoted ]]"
           [[- else if .DownloadRedirect ]]
           appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' '[[ .DownloadRedirect ]]')"
           [[- else ]]

@@ -140,6 +140,20 @@ go run github.com/arran4/arrans_overlay_workflow_builder@latest generate workflo
 Look in the `output/` directory for the generated file(s) these should be copied to your github overlay's `./.github/workflows` 
 directory after being modified. Remember to add: `Category` with the appropriate Gentoo ebuild [category](https://packages.gentoo.org/categories).
 
+
+## Configuration Variables
+
+When defining URLs or filenames in directives like `Binary`, `Custom Download URL`, or `Download Base URL`, you can use the following variables, which the generator will automatically replace with appropriate bash variables during workflow generation:
+
+* `${TAG}` - Replaced by `${tag}` in the generated bash script. Used to represent the original release tag string.
+* `${VERSION}` - Replaced by `${version}` or `\${PV}` (in `SRC_URI`), depending on the context. Used to represent the version string (e.g. `1.2.3`).
+* `${GITHUB_OWNER}` - Replaced by `${{ env.github_owner }}`.
+* `${GITHUB_REPO}` - Replaced by `${{ env.github_repo }}`.
+* `${KEYWORD}` - Replaced by `\${ARCH}` in the ebuild `SRC_URI`.
+
+**Note on `${TAG}` vs `${tag}`:**
+It is highly recommended to use `${TAG}` (or `${VERSION}`) in your configuration file. The generator will safely convert it into the correct loop variable declaration (`${tag}`) within the bash script used by the GitHub actions workflow. If you use `${tag}` directly, it will still work but using the capitalized version explicitly signals to the generator that this is a placeholder meant to be substituted.
+
 ## Additional options and work-arounds
 
 There are a couple workarounds. At the moment the application assumes semantic versions, and using GitHub releases. Some will be automatically detected, some won't.
