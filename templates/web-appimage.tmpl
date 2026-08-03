@@ -164,42 +164,8 @@ jobs:
 [[ end ]]
             } > "$tmp_ebuild_file"
 
-              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
-              if [ $? -eq 0 ]; then
-                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
-                  mv "$tmp_ebuild_file" "$next_ebuild_file"
-                  ebuild_file="$next_ebuild_file"
-              else
-[[- if $.WorkaroundCheckAssetSize ]]
-                  highest_rev_ebuild=$(find "${ebuild_dir}" -maxdepth 1 \( -name "${{ env.epn }}-${version}.ebuild" -o -name "${{ env.epn }}-${version}-r*.ebuild" \) 2>/dev/null | sort -V | tail -n 1)
-                  highest_rev_file=$(basename "$highest_rev_ebuild")
-                  highest_rev_p="${highest_rev_file%.ebuild}"
-                  remote_size=$(curl -sL --head "$appimage_url" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
-                  local_distfile="${highest_rev_p}.${appimage_extension}"
-                  local_size=$(grep "DIST $local_distfile " "${ebuild_dir}/Manifest" | awk '{print $3}')
-                  if [ -n "$remote_size" ] && [ -n "$local_size" ] && [ "$remote_size" != "$local_size" ]; then
-                      echo "Size mismatch for ${version}: remote $remote_size, local $local_size. RC bumping."
-                      if [[ "[[" ]] "$highest_rev_file" =~ -r([0-9]+)\.ebuild$ [[ "]]" ]]; then
-                          current_rev="${BASH_REMATCH[1]}"
-                          next_rev=$((current_rev + 1))
-                          revision_suffix="-r${next_rev}"
-                      else
-                          revision_suffix="-r1"
-                      fi
-                      ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}${revision_suffix}.ebuild"
-                      mv "$highest_rev_ebuild" "$ebuild_file"
-                      rm -f "$tmp_ebuild_file"
-                  else
-                      echo "Matches existing ebuild. Skipping."
-                      rm -f "$tmp_ebuild_file"
-                      exit 0
-                  fi
-[[- else ]]
-                  echo "Matches existing ebuild. Skipping."
-                  rm -f "$tmp_ebuild_file"
-                  exit 0
-[[- end ]]
-              fi
+
+[[- template "ebuild_revision_and_manifest" (dict "WorkaroundCheckAssetSize" $.WorkaroundCheckAssetSize "ExitOnMatch" true "ExternalResources" (list (dict "ReleaseFilename" (printf "${P}.%s" "${appimage_extension}"))) "DownloadBaseUrl" "$appimage_url" ) ]]
 
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
 [[ if .CustomBuildSteps ]]

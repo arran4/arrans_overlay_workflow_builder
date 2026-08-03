@@ -133,7 +133,6 @@ jobs:
               echo '}'
 
             } > "$tmp_ebuild_file"
-
               next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
               if [ $? -eq 0 ]; then
                   echo "Content changed or new version for $version. Writing $next_ebuild_file"

@@ -169,7 +169,7 @@ jobs:
                   highest_rev_ebuild=$(find "${ebuild_dir}" -maxdepth 1 \( -name "${{ env.epn }}-${version}.ebuild" -o -name "${{ env.epn }}-${version}-r*.ebuild" \) 2>/dev/null | sort -V | tail -n 1)
                   highest_rev_file=$(basename "$highest_rev_ebuild")
                   highest_rev_p="${highest_rev_file%.ebuild}"
-                  remote_size=$(curl -sL --head "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${version}" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
+                  remote_size=$(curl -sL --head "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/\${PV}" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
                   local_distfile="${highest_rev_p}-google-cloud-cli-${version}-linux-x86_64.tar.gz"
                   local_size=$(grep "DIST $local_distfile " "${ebuild_dir}/Manifest" | awk '{print $3}')
                   if [ -n "$remote_size" ] && [ -n "$local_size" ] && [ "$remote_size" != "$local_size" ]; then
