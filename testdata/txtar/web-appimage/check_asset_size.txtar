@@ -168,6 +168,7 @@ jobs:
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
             echo "generated_tag=${version}" >> $GITHUB_OUTPUT
           fi
+          g2 ebuild deduplicate "${ebuild_dir}"
 
       - name: Generate Overlay
         run: |

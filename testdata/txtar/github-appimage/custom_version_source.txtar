@@ -162,6 +162,7 @@ jobs:
               touch built.txt
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
           done
+          g2 ebuild deduplicate "${ebuild_dir}"
 
       - name: Generate Overlay
         run: |
