@@ -54,6 +54,9 @@ jobs:
         id: find_appimage
         run: |
           set -euo pipefail
+          [[- if .PreVersionSteps ]]
+          [[ .PreVersionSteps ]]
+          [[- end ]]
           [[- if .CustomVersionSource ]]
           version=$([[ .CustomVersionSource ]])
           [[- end ]]

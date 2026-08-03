@@ -62,6 +62,9 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
+          [[ if .PreVersionSteps ]]
+          [[ .PreVersionSteps ]]
+          [[ end ]]
           [[ if .CustomVersionSource ]]
           tags=$([[ .CustomVersionSource ]])
           [[ else if .TagsCommand ]]
