@@ -173,6 +173,7 @@ jobs:
 [[ end ]]
             echo "generated_tag=${version}" >> $GITHUB_OUTPUT
           fi
+          g2 ebuild deduplicate "${ebuild_dir}"
 
       - name: Generate Overlay
         run: |
