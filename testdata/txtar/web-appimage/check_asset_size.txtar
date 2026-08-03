@@ -140,7 +140,6 @@ jobs:
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
                   ebuild_file="$next_ebuild_file"
               else
-
                   highest_rev_ebuild=$(find "${ebuild_dir}" -maxdepth 1 \( -name "${{ env.epn }}-${version}.ebuild" -o -name "${{ env.epn }}-${version}-r*.ebuild" \) 2>/dev/null | sort -V | tail -n 1)
                   highest_rev_file=$(basename "$highest_rev_ebuild")
                   highest_rev_p="${highest_rev_file%.ebuild}"
