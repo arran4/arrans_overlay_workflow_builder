@@ -232,6 +232,7 @@ type InputConfig struct {
 	License          string
 	MaintainerEmail  string
 	MaintainerName   string
+	Features         map[string]string
 	Workarounds      map[string]string
 	Programs         map[string]*Program
 	IUse             []string
@@ -329,6 +330,15 @@ func (ic *InputConfig) String() string {
 		if ic.MaintainerName != "" {
 			fmt.Fprintf(&sb, "MaintainerName %s\n", ic.MaintainerName)
 		}
+		features := ic.FeatureString()
+		for _, feature := range features {
+			if len(ic.Features[feature]) == 0 {
+				fmt.Fprintf(&sb, "Feature %s\n", feature)
+			} else {
+				fmt.Fprintf(&sb, "Feature %s => %s\n", feature, ic.Features[feature])
+			}
+		}
+
 		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
 			if len(ic.Workarounds[workaround]) == 0 {
@@ -378,6 +388,15 @@ func (ic *InputConfig) String() string {
 		if ic.MaintainerName != "" {
 			fmt.Fprintf(&sb, "MaintainerName %s\n", ic.MaintainerName)
 		}
+		features := ic.FeatureString()
+		for _, feature := range features {
+			if len(ic.Features[feature]) == 0 {
+				fmt.Fprintf(&sb, "Feature %s\n", feature)
+			} else {
+				fmt.Fprintf(&sb, "Feature %s => %s\n", feature, ic.Features[feature])
+			}
+		}
+
 		workarounds := ic.WorkaroundString()
 		for _, workaround := range workarounds {
 			if len(ic.Workarounds[workaround]) == 0 {
@@ -404,6 +423,15 @@ func (ic *InputConfig) ProgramsString() []string {
 	}
 	sort.Strings(programs)
 	return programs
+}
+
+func (ic *InputConfig) FeatureString() []string {
+	var features []string
+	for key := range ic.Features {
+		features = append(features, key)
+	}
+	sort.Strings(features)
+	return features
 }
 
 func (ic *InputConfig) WorkaroundString() []string {
@@ -474,6 +502,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"Document":              nil,
 				"ShellCompletionScript": nil,
 				"Dependencies":          nil,
+				"Feature":               nil,
 				"Workaround":            nil,
 				"Binary":                nil,
 				"IUse":                  nil,
@@ -658,6 +687,11 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			return nil, fmt.Errorf("github url parser: %w", err)
 		}
 	}
+	currentConfig.Features, err = parseOptionalMapType1(parsedFields["Feature"])
+	if err != nil {
+		return nil, fmt.Errorf("on Features: %v: %w", parsedFields["Feature"], err)
+	}
+
 	currentConfig.Workarounds, err = parseOptionalMapType1(parsedFields["Workaround"])
 	if err != nil {
 		return nil, fmt.Errorf("on Workarounds: %v: %w", parsedFields["Workaround"], err)
@@ -1029,6 +1063,7 @@ func NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, ebuildSuffix
 		Homepage:    util.StringOrDefault(repo.Homepage, ""),
 		GithubRepo:  repoName,
 		GithubOwner: ownerName,
+		Features: map[string]string{},
 		Workarounds: map[string]string{},
 		Programs:    map[string]*Program{},
 		License:     util.StringOrDefault(licenseName, "unknown"),
@@ -1135,12 +1170,12 @@ func (ic *InputConfig) WorkaroundGentooVersionRegularExpression() string {
 	return ic.Workarounds["Gentoo Version Regular Expression"]
 }
 
-func (ic *InputConfig) WorkaroundCommitMd5Cache() bool {
-	if ic.Workarounds == nil {
+func (ic *InputConfig) FeatureGenerateMd5Cache() bool {
+	if ic.Features == nil {
 		return false
 	}
-	_, ok := ic.Workarounds["Commit Md5 Cache"]
-	return ok || CommitMd5CacheGlobal
+	_, ok := ic.Features["Generate Md5 Cache"]
+	return ok || GenerateMd5CacheGlobal
 }
 
-var CommitMd5CacheGlobal = false
+var GenerateMd5CacheGlobal = false

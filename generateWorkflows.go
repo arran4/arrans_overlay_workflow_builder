@@ -345,6 +345,6 @@ func (b *GenerateGithubWorkflowBase) WorkaroundGentooVersionRegularExpression() 
 	return b.InputConfig.WorkaroundGentooVersionRegularExpression()
 }
 
-func (b *GenerateGithubWorkflowBase) WorkaroundCommitMd5Cache() bool {
-	return b.InputConfig.WorkaroundCommitMd5Cache()
+func (b *GenerateGithubWorkflowBase) FeatureGenerateMd5Cache() bool {
+	return b.InputConfig.FeatureGenerateMd5Cache()
 }

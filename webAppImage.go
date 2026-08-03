@@ -49,6 +49,7 @@ func GenerateWebAppImageConfigEntry(pageURL, matchExpr, linkExt string) (*InputC
 		Description:     fmt.Sprintf("%s AppImage", humanizeName(programName)),
 		Homepage:        pageURL,
 		GithubRepo:      packageName,
+		Features:        map[string]string{},
 		Workarounds:     map[string]string{},
 		Programs:        map[string]*Program{},
 		License:         DefaultLicense,

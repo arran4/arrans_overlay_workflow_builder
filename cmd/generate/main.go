@@ -34,16 +34,16 @@ func main() {
 		Commit:  commit,
 		Date:    date,
 	}
-	var globalCommitMd5Cache bool
+	var globalGenerateMd5Cache bool
 	// A workaround for global flags being parsed before the command is parsed
 	for i, arg := range os.Args {
-		if arg == "--commit-md5-cache" || arg == "-commit-md5-cache" {
-			globalCommitMd5Cache = true
+		if arg == "--generate-md5-cache" || arg == "-generate-md5-cache" {
+			globalGenerateMd5Cache = true
 			os.Args = append(os.Args[:i], os.Args[i+1:]...)
 			break
 		}
 	}
-	arrans_overlay_workflow_builder.CommitMd5CacheGlobal = globalCommitMd5Cache
+	arrans_overlay_workflow_builder.GenerateMd5CacheGlobal = globalGenerateMd5Cache
 
 	if err := fs.Parse(os.Args); err != nil {
 		log.Printf("Flag parse error: %s", err)
