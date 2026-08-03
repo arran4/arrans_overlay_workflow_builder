@@ -9,6 +9,7 @@ Description Kubernetes CLI To Manage Your Clusters In Style!
 Homepage https://k9scli.io/
 License Apache-2.0
 Workaround Version Replacement s/v//g
+Feature Generate Md5 Cache
 Binary amd64=>k9s_Linux_amd64.tar.gz > k9s > k9s
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC

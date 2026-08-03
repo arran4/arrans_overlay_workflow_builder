@@ -90,7 +90,8 @@ func TestParseConfigFile(t *testing.T) {
 			EbuildName:       "jan-appimage.ebuild",
 			Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 			Homepage:         "https://jan.ai/",
-			Workarounds: map[string]string{
+			Features: map[string]string{},
+				Workarounds: map[string]string{
 				"Test Workaround":            "",
 				"Test Workaround with value": "Values",
 			},
@@ -117,6 +118,7 @@ func TestParseConfigFile(t *testing.T) {
 			Category:         "app-misc",
 			EbuildName:       "anotherrepo-appimage.ebuild",
 			GithubOwner:      "anotherorg",
+			Features:      map[string]string{},
 			Workarounds:      map[string]string{},
 			GithubRepo:       "anotherrepo",
 			License:          "unknown",
@@ -138,6 +140,7 @@ func TestParseConfigFile(t *testing.T) {
 			Category:         "app-misc",
 			Description:      "Go implementation of AppImage tools",
 			EbuildName:       "go-appimage-appimage.ebuild",
+			Features:      map[string]string{},
 			Workarounds:      map[string]string{},
 			GithubOwner:      "probonopd",
 			GithubRepo:       "go-appimage",
@@ -181,6 +184,7 @@ func TestParseConfigFile(t *testing.T) {
 			GithubRepo:       "goreleaser",
 			GithubOwner:      "goreleaser",
 			License:          "MIT License",
+			Features:      map[string]string{},
 			Workarounds:      map[string]string{},
 			IUse:             nil,
 			Programs: map[string]*Program{
@@ -252,6 +256,7 @@ func TestConfigString(t *testing.T) {
 				EbuildName:       "jan-appimage.ebuild",
 				Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
 				Homepage:         "https://jan.ai/",
+				Features: map[string]string{},
 				Workarounds: map[string]string{
 					"Test Workaround":            "",
 					"Test Workaround with value": "Values",
@@ -299,6 +304,7 @@ Binary amd64=>anotherrepo-${VERSION}.AppImage > jan
 				Category:         "app-misc",
 				EbuildName:       "jan-appimage.ebuild",
 				Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
+				Features: map[string]string{},
 				Workarounds: map[string]string{
 					"Test Workaround":            "",
 					"Test Workaround with value": "Values",
