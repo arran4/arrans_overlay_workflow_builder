@@ -212,8 +212,8 @@ func (p *Program) ShellCompletion(shell string) (result []*KeywordedFilenameRefe
 
 // InputConfig represents a single configuration entry.
 type InputConfig struct {
-	EntryNumber      int
-	Type             string
+	EntryNumber         int
+	Type                string
 	GithubProjectUrl    string
 	DownloadPageUrl     string
 	DownloadRedirect    string
@@ -223,20 +223,21 @@ type InputConfig struct {
 	CustomDownloadUrl   string
 	CustomVersionSource string
 	CustomBuildSteps    string
+	PreVersionSteps     string
 	Category            string
-	EbuildName       string
-	Description      string
-	Homepage         string
-	GithubRepo       string
-	GithubOwner      string
-	License          string
-	MaintainerEmail  string
-	MaintainerName   string
-	Features         map[string]string
-	Workarounds      map[string]string
-	Programs         map[string]*Program
-	IUse             []string
-	RequiredUse      []string
+	EbuildName          string
+	Description         string
+	Homepage            string
+	GithubRepo          string
+	GithubOwner         string
+	License             string
+	MaintainerEmail     string
+	MaintainerName      string
+	Features            map[string]string
+	Workarounds         map[string]string
+	Programs            map[string]*Program
+	IUse                []string
+	RequiredUse         []string
 }
 
 func (ic *InputConfig) GetPrograms() map[string]*Program {
@@ -269,6 +270,9 @@ func (ic *InputConfig) String() string {
 		if ic.CustomBuildSteps != "" {
 			fmt.Fprintf(&sb, "CustomBuildSteps %s\n", ic.CustomBuildSteps)
 		}
+		if ic.PreVersionSteps != "" {
+			fmt.Fprintf(&sb, "PreVersionSteps %s\n", ic.PreVersionSteps)
+		}
 		if ic.TagsCommand != "" {
 			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
 		}
@@ -298,6 +302,9 @@ func (ic *InputConfig) String() string {
 		}
 		if ic.CustomBuildSteps != "" {
 			fmt.Fprintf(&sb, "CustomBuildSteps %s\n", ic.CustomBuildSteps)
+		}
+		if ic.PreVersionSteps != "" {
+			fmt.Fprintf(&sb, "PreVersionSteps %s\n", ic.PreVersionSteps)
 		}
 		if ic.TagsCommand != "" {
 			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
@@ -363,6 +370,9 @@ func (ic *InputConfig) String() string {
 		}
 		if ic.CustomBuildSteps != "" {
 			fmt.Fprintf(&sb, "CustomBuildSteps %s\n", ic.CustomBuildSteps)
+		}
+		if ic.PreVersionSteps != "" {
+			fmt.Fprintf(&sb, "PreVersionSteps %s\n", ic.PreVersionSteps)
 		}
 		if ic.TagsCommand != "" {
 			fmt.Fprintf(&sb, "TagsCommand %s\n", ic.TagsCommand)
@@ -487,6 +497,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"CustomDownloadUrl":     nil,
 				"CustomVersionSource":   nil,
 				"CustomBuildSteps":      nil,
+				"PreVersionSteps":       nil,
 				"TagsCommand":           nil,
 				"Category":              {DefaultCategory},
 				"EbuildName":            nil,
@@ -677,9 +688,18 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	if err != nil {
 		return nil, fmt.Errorf("on CustomBuildSteps: %v: %w", parsedFields["CustomBuildSteps"], err)
 	}
+	currentConfig.PreVersionSteps, err = emptyOrOnlyOrFail(parsedFields["PreVersionSteps"])
+	if err != nil {
+		return nil, fmt.Errorf("on PreVersionSteps: %v: %w", parsedFields["PreVersionSteps"], err)
+	}
 	currentConfig.MaintainerName, err = emptyOrOnlyOrFail(parsedFields["MaintainerName"])
 	if err != nil {
 		return nil, fmt.Errorf("on MaintainerName: %v: %w", parsedFields["MaintainerName"], err)
+	}
+	if currentConfig.Type == "Web Binary" {
+		if currentConfig.TagsCommand == "" && currentConfig.CustomVersionSource == "" {
+			return nil, fmt.Errorf("TagsCommand or CustomVersionSource is required for Web Binary configurations")
+		}
 	}
 	if currentConfig.Type == "Github AppImage Release" || currentConfig.Type == "Github Binary Release" || currentConfig.Type == "Github Cmake Release" {
 		currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
@@ -1063,7 +1083,7 @@ func NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, ebuildSuffix
 		Homepage:    util.StringOrDefault(repo.Homepage, ""),
 		GithubRepo:  repoName,
 		GithubOwner: ownerName,
-		Features: map[string]string{},
+		Features:    map[string]string{},
 		Workarounds: map[string]string{},
 		Programs:    map[string]*Program{},
 		License:     util.StringOrDefault(licenseName, "unknown"),

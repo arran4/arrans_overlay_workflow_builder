@@ -15,6 +15,7 @@ TagsCommand cat tags.txt
 CustomDownloadUrl https://custom.url/${version}
 CustomVersionSource echo "v1.2.3"
 CustomBuildSteps touch built.txt
+PreVersionSteps echo "PreVersionSteps"
 DesktopFile jan
 Category app-misc
 EbuildName jan-appimage
@@ -79,19 +80,20 @@ func TestParseConfigFile(t *testing.T) {
 
 	expectedConfigs := []*InputConfig{
 		{
-			EntryNumber:      0,
-			Type:             "Github AppImage Release",
-			GithubProjectUrl: "https://github.com/janhq/jan/",
-			TagsCommand:      "cat tags.txt",
-			CustomDownloadUrl: "https://custom.url/${version}",
+			EntryNumber:         0,
+			Type:                "Github AppImage Release",
+			GithubProjectUrl:    "https://github.com/janhq/jan/",
+			TagsCommand:         "cat tags.txt",
+			CustomDownloadUrl:   "https://custom.url/${version}",
 			CustomVersionSource: "echo \"v1.2.3\"",
-			CustomBuildSteps: "touch built.txt",
-			Category:         "app-misc",
-			EbuildName:       "jan-appimage.ebuild",
-			Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
-			Homepage:         "https://jan.ai/",
-			Features: map[string]string{},
-				Workarounds: map[string]string{
+			CustomBuildSteps:    "touch built.txt",
+			PreVersionSteps:     "echo \"PreVersionSteps\"",
+			Category:            "app-misc",
+			EbuildName:          "jan-appimage.ebuild",
+			Description:         "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
+			Homepage:            "https://jan.ai/",
+			Features:            map[string]string{},
+			Workarounds: map[string]string{
 				"Test Workaround":            "",
 				"Test Workaround with value": "Values",
 			},
@@ -118,7 +120,7 @@ func TestParseConfigFile(t *testing.T) {
 			Category:         "app-misc",
 			EbuildName:       "anotherrepo-appimage.ebuild",
 			GithubOwner:      "anotherorg",
-			Features:      map[string]string{},
+			Features:         map[string]string{},
 			Workarounds:      map[string]string{},
 			GithubRepo:       "anotherrepo",
 			License:          "unknown",
@@ -140,7 +142,7 @@ func TestParseConfigFile(t *testing.T) {
 			Category:         "app-misc",
 			Description:      "Go implementation of AppImage tools",
 			EbuildName:       "go-appimage-appimage.ebuild",
-			Features:      map[string]string{},
+			Features:         map[string]string{},
 			Workarounds:      map[string]string{},
 			GithubOwner:      "probonopd",
 			GithubRepo:       "go-appimage",
@@ -184,7 +186,7 @@ func TestParseConfigFile(t *testing.T) {
 			GithubRepo:       "goreleaser",
 			GithubOwner:      "goreleaser",
 			License:          "MIT License",
-			Features:      map[string]string{},
+			Features:         map[string]string{},
 			Workarounds:      map[string]string{},
 			IUse:             nil,
 			Programs: map[string]*Program{
@@ -245,18 +247,19 @@ func TestConfigString(t *testing.T) {
 		{
 			name: "jan-appimage",
 			config: &InputConfig{
-				EntryNumber:      0,
-				Type:             "Github AppImage Release",
-				GithubProjectUrl: "https://github.com/janhq/jan/",
-				TagsCommand:      "cat tags.txt",
-				CustomDownloadUrl: "https://custom.url/${version}",
+				EntryNumber:         0,
+				Type:                "Github AppImage Release",
+				GithubProjectUrl:    "https://github.com/janhq/jan/",
+				TagsCommand:         "cat tags.txt",
+				CustomDownloadUrl:   "https://custom.url/${version}",
 				CustomVersionSource: "echo \"v1.2.3\"",
-				CustomBuildSteps: "touch built.txt",
-				Category:         "app-misc",
-				EbuildName:       "jan-appimage.ebuild",
-				Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
-				Homepage:         "https://jan.ai/",
-				Features: map[string]string{},
+				CustomBuildSteps:    "touch built.txt",
+				PreVersionSteps:     "echo \"PreVersionSteps\"",
+				Category:            "app-misc",
+				EbuildName:          "jan-appimage.ebuild",
+				Description:         "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
+				Homepage:            "https://jan.ai/",
+				Features:            map[string]string{},
 				Workarounds: map[string]string{
 					"Test Workaround":            "",
 					"Test Workaround with value": "Values",
@@ -278,6 +281,7 @@ GithubProjectUrl https://github.com/janhq/jan/
 CustomDownloadUrl https://custom.url/${version}
 CustomVersionSource echo "v1.2.3"
 CustomBuildSteps touch built.txt
+PreVersionSteps echo "PreVersionSteps"
 TagsCommand cat tags.txt
 Category app-misc
 EbuildName jan-appimage.ebuild
@@ -294,17 +298,18 @@ Binary amd64=>anotherrepo-${VERSION}.AppImage > jan
 		{
 			name: "jan-appimage-custom",
 			config: &InputConfig{
-				EntryNumber:      1,
-				Type:             "Github AppImage Release",
-				GithubProjectUrl: "https://github.com/janhq/jan/",
-				TagsCommand:      "cat tags.txt",
-				CustomDownloadUrl: "https://custom.url/${version}",
+				EntryNumber:         1,
+				Type:                "Github AppImage Release",
+				GithubProjectUrl:    "https://github.com/janhq/jan/",
+				TagsCommand:         "cat tags.txt",
+				CustomDownloadUrl:   "https://custom.url/${version}",
 				CustomVersionSource: "echo \"v1.2.3\"",
-				CustomBuildSteps: "touch built.txt",
-				Category:         "app-misc",
-				EbuildName:       "jan-appimage.ebuild",
-				Description:      "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
-				Features: map[string]string{},
+				CustomBuildSteps:    "touch built.txt",
+				PreVersionSteps:     "echo \"PreVersionSteps\"",
+				Category:            "app-misc",
+				EbuildName:          "jan-appimage.ebuild",
+				Description:         "Jan is an open source alternative to ChatGPT that runs 100% offline on your computer. Multiple engine support (llama.cpp, TensorRT-LLM)",
+				Features:            map[string]string{},
 				Workarounds: map[string]string{
 					"Test Workaround":            "",
 					"Test Workaround with value": "Values",
@@ -329,6 +334,7 @@ GithubProjectUrl https://github.com/janhq/jan/
 CustomDownloadUrl https://custom.url/${version}
 CustomVersionSource echo "v1.2.3"
 CustomBuildSteps touch built.txt
+PreVersionSteps echo "PreVersionSteps"
 TagsCommand cat tags.txt
 Category app-misc
 EbuildName jan-appimage.ebuild
