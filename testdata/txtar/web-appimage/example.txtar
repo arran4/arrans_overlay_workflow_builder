@@ -37,7 +37,6 @@ env:
   ecn: net-im
   epn: example-appimage
   description: "Example self-contained desktop client"
-  homepage: "https://www.example.com/"
   keywords: ~amd64
   workflow_filename: net-im-example-appimage-update.yaml
   example_desktop_file: 'example.desktop'
@@ -102,16 +101,14 @@ jobs:
               echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
               echo 'EAPI=8'
               echo "DESCRIPTION=\"${{ env.description }}\""
-              echo "HOMEPAGE=\"${{ env.homepage }}\""
+              echo "HOMEPAGE=\"https://www.example.com/\""
+                echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
               echo 'LICENSE="MIT"'
               echo 'SLOT="0"'
               echo 'KEYWORDS="${{ env.keywords }}"'
-              echo 'IUSE=""'
-              echo 'DEPEND=""'
-              echo 'RDEPEND="sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
+              echo 'RDEPEND="sys-fs/fuse:0 sys-libs/zlib"'
               echo 'S="${WORKDIR}"'
               echo 'RESTRICT="strip"'
-              echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
               echo ''
               echo 'inherit xdg-utils'
               echo ''

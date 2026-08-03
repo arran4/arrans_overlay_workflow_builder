@@ -42,7 +42,6 @@ env:
   ecn: net-misc
   epn: rustdesk-appimage
   description: "Open-source remote desktop application for self-hosting"
-  homepage: "https://rustdesk.com/"
   github_owner: rustdesk
   github_repo: rustdesk
   keywords: ~amd64 ~arm64
@@ -103,23 +102,21 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"https://rustdesk.com/\""
+                echo 'SRC_URI="'
+                echo "  arm64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rustdesk-${tag}-aarch64.AppImage )"
+                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rustdesk-${tag}-x86_64.AppImage )"
+                echo '"'
                 echo 'LICENSE="AGPL-3"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
-                echo 'IUSE=""'
-                echo 'DEPEND=""'
-                echo 'RDEPEND="sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
+                echo 'RDEPEND="sys-fs/fuse:0 sys-libs/zlib"'
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo 'SRC_URI="'
-                echo "  arm64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rustdesk-${tag}-aarch64.AppImage )"
-                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rustdesk-${tag}-x86_64.AppImage )"
-                echo '"'
-                echo ''
+                                echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.rustdesk_release_name_amd64 }}\" \"${{ env.rustdesk_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""

@@ -35,7 +35,6 @@ env:
   ecn: app-misc
   epn: example-bin
   description: ""
-  homepage: ""
   github_owner:
   github_repo: example-bin
   keywords: ~amd64
@@ -100,11 +99,11 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"https://github.com//example-bin\""
                 echo 'SRC_URI="'
                 echo "	amd64? (  https://custom.download.example.com/${version}/example.tar.gz -> \${P}-example-\${PV}.tar.gz  )  "
                 echo '"'
-                echo 'LICENSE="unknown"'
+                                echo 'LICENSE="unknown"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'

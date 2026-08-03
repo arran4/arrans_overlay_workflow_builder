@@ -21,7 +21,6 @@ env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
   description: [[ .Description | quoteStr ]]
-  homepage: [[ .Homepage  | quoteStr ]]
   github_owner: [[ .GithubOwner ]]
   github_repo: [[ .GithubRepo ]]
   keywords: [[ .MaskedKeywords ]]
@@ -115,20 +114,7 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'LICENSE="[[ .License ]]"'
-                echo 'SLOT="0"'
-                echo 'KEYWORDS="${{ env.keywords }}"'
-                echo 'IUSE=""'
-                echo 'DEPEND=""'
-                echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"'
-                echo 'S="${WORKDIR}"'
-                echo 'RESTRICT="strip"'
-[[- if .HasDesktopFile ]]
-                echo ''
-                echo "inherit xdg-utils"
-[[ end ]]
-                echo ''
+                echo "HOMEPAGE=\"[[ if .Homepage ]][[ .Homepage ]][[ else ]]https://github.com/[[ .GithubOwner ]]/[[ .GithubRepo ]][[ end ]]\""
                 echo 'SRC_URI="'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
@@ -138,7 +124,18 @@ jobs:
     [[ end ]]
 [[ end ]]
                 echo '"'
+                echo 'LICENSE="[[ .License ]]"'
+                echo 'SLOT="0"'
+                echo 'KEYWORDS="${{ env.keywords }}"'
+                echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if or (eq $dep "sys-fs/fuse:0") (eq $dep "sys-libs/glibc")]][[else]] [[$dep]][[end]][[end]]"'
+                echo 'S="${WORKDIR}"'
+                echo 'RESTRICT="strip"'
+[[- if .HasDesktopFile ]]
                 echo ''
+                echo "inherit xdg-utils"
+[[ end ]]
+                echo ''
+                                echo ''
                 [[- if $.NeedsSrcUnpack ]]
                 echo 'src_unpack() {'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]

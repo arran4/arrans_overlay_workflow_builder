@@ -38,7 +38,6 @@ env:
   ecn: app-admin
   epn: google-cloud-sdk-bin
   description: "Google Cloud SDK"
-  homepage: "https://cloud.google.com/sdk/"
   github_owner:
   github_repo: google-cloud-sdk
   keywords: ~amd64 ~arm64 ~x86
@@ -112,13 +111,13 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"https://cloud.google.com/sdk/\""
                 echo 'SRC_URI="'
                 echo "	amd64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/\${PV} -> \${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz  )  "
                 echo "	arm64? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/\${PV} -> \${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz  )  "
                 echo "	x86? (  https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/\${PV} -> \${P}-google-cloud-cli-\${PV}-linux-x86.tar.gz  )  "
                 echo '"'
-                echo 'LICENSE="Apache-2.0"'
+                                echo 'LICENSE="Apache-2.0"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'

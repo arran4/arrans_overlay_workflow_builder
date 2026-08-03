@@ -17,7 +17,6 @@ env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
   description: [[ .Description | quoteStr ]]
-  homepage: [[ .Homepage  | quoteStr ]]
   keywords: [[ .MaskedKeywords ]]
   workflow_filename: [[ .WorkflowFileName ]]
   [[- range $pname, $prog := .Programs ]]
@@ -99,17 +98,15 @@ jobs:
               echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
               echo 'EAPI=8'
               echo "DESCRIPTION=\"${{ env.description }}\""
-              echo "HOMEPAGE=\"${{ env.homepage }}\""
+              echo "HOMEPAGE=\"[[ if .Homepage ]][[ .Homepage ]][[ else ]]https://github.com/[[ .GithubOwner ]]/[[ .GithubRepo ]][[ end ]]\""
+                echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
               echo 'LICENSE="[[ .License ]]"'
               echo 'SLOT="0"'
               echo 'KEYWORDS="${{ env.keywords }}"'
-              echo 'IUSE=""'
-              echo 'DEPEND=""'
-              echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"'
+              echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if or (eq $dep "sys-fs/fuse:0") (eq $dep "sys-libs/glibc")]][[else]] [[$dep]][[end]][[end]]"'
               echo 'S="${WORKDIR}"'
               echo 'RESTRICT="strip"'
-              echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
-[[ if .HasDesktopFile ]]
+              [[ if .HasDesktopFile ]]
               echo ''
               echo 'inherit xdg-utils'
 [[ end ]]

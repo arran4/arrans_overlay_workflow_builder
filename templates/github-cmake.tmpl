@@ -22,7 +22,6 @@ env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
   description: [[ .Description | quoteStr ]]
-  homepage: [[ .Homepage  | quoteStr ]]
   github_owner: [[ .GithubOwner ]]
   github_repo: [[ .GithubRepo ]]
 
@@ -118,9 +117,9 @@ jobs:
                 echo "inherit cmake xdg"
                 echo ""
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"[[ if .Homepage ]][[ .Homepage ]][[ else ]]https://github.com/[[ .GithubOwner ]]/[[ .GithubRepo ]][[ end ]]\""
                 echo "SRC_URI=\"https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz -> \${P}.tar.gz\""
-                echo ""
+                                echo ""
                 echo "LICENSE=\"[[ .License ]]\""
                 echo "SLOT=\"0\""
                 echo "KEYWORDS=\"~amd64\""

@@ -39,7 +39,6 @@ env:
   ecn: app-misc
   epn: example-appimage
   description: "Example is an open source"
-  homepage: "https://example.com/"
   github_owner: example
   github_repo: example
   keywords: ~amd64
@@ -99,22 +98,20 @@ jobs:
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo "HOMEPAGE=\"https://example.com/\""
+                echo 'SRC_URI="'
+                echo "  amd64? ( https://custom.url/${version} -> \${P}-example-linux-x86_64-\${PV}.AppImage )"
+                echo '"'
                 echo 'LICENSE="unknown"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
-                echo 'IUSE=""'
-                echo 'DEPEND=""'
                 echo 'RDEPEND="sys-fs/fuse:0"'
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo 'SRC_URI="'
-                echo "  amd64? ( https://custom.url/${version} -> \${P}-example-linux-x86_64-\${PV}.AppImage )"
-                echo '"'
-                echo ''
+                                echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
