@@ -147,6 +147,7 @@ jobs:
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
                   ebuild_file="$next_ebuild_file"
               else
+
                   echo "Matches existing ebuild. Skipping."
                   rm -f "$tmp_ebuild_file"
                   continue

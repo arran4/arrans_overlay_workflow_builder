@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	//go:embed "templates/*.tmpl"
+	//go:embed "templates/*.tmpl" "templates/_partials/*.tmpl"
 	templateFiles embed.FS
 )
 
@@ -122,6 +122,35 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 	templates, err := template.New("").
 		Delims("[[", "]]").
 		Funcs(map[string]any{
+			"dict": func(values ...any) (map[string]any, error) {
+				if len(values)%2 != 0 {
+					return nil, fmt.Errorf("invalid dict call: odd number of arguments")
+				}
+				dict := make(map[string]any, len(values)/2)
+				for i := 0; i < len(values); i += 2 {
+					key, ok := values[i].(string)
+					if !ok {
+						return nil, fmt.Errorf("dict keys must be strings")
+					}
+					dict[key] = values[i+1]
+				}
+				return dict, nil
+			},
+			"exitOnMatch": func(v any) bool {
+				if d, ok := v.(map[string]any); ok {
+					if val, exists := d["ExitOnMatch"]; exists {
+						if b, ok := val.(bool); ok {
+							return b
+						}
+					}
+					return false
+				}
+				// Default to continue if we can't determine
+				return false
+			},
+			"list": func(values ...any) []any {
+				return values
+			},
 			"join": strings.Join,
 			"filterEmpty": func(strs ...string) []string {
 				return slices.DeleteFunc(slices.Clone(strs), func(s string) bool {
@@ -184,7 +213,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 				})
 			},
 		}).
-		ParseFS(subFs, "*.tmpl")
+		ParseFS(subFs, "*.tmpl", "_partials/*.tmpl")
 	if err != nil {
 		return nil, fmt.Errorf("parsing templates: %w", err)
 	}
