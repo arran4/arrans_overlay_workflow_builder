@@ -1,0 +1,15 @@
+[[ define "manifest_upsert" ]]
+[[ range $indexOrFilename, $externalResource := .ExternalResources ]]
+    [[- $releaseFilename := "" ]]
+    [[- if $.IsAppImage ]]
+        [[- $releaseFilename = $indexOrFilename ]]
+    [[- else ]]
+        [[- $releaseFilename = $externalResource.ReleaseFilename ]]
+    [[- end ]]
+    [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
+              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]][[ if $.DownloadBaseUrl ]][[ $.DownloadBaseUrl | actionvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[ if $.WorkaroundSemanticVersionWithoutV ]]${originalVersion}[[ else ]][[- $.WorkaroundTagPrefix ]]v${originalVersion}[[ end ]]/[[ end ]][[ end ]][[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
+    [[ else ]]
+              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]][[ if $.DownloadBaseUrl ]][[ $.DownloadBaseUrl | actionvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[ if $.WorkaroundSemanticVersionWithoutV ]]${originalVersion}[[ else ]][[- $.WorkaroundTagPrefix ]]v${originalVersion}[[ end ]]/[[ end ]][[ end ]][[ $releaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
+    [[ end ]]
+[[ end ]]
+[[ end ]]

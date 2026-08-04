@@ -151,9 +151,6 @@ When defining URLs or filenames in directives like `Binary`, `Custom Download UR
 * `${GITHUB_REPO}` - Replaced by `${{ env.github_repo }}`.
 * `${KEYWORD}` - Replaced by `\${ARCH}` in the ebuild `SRC_URI`.
 
-**Note on `${TAG}` vs `${tag}`:**
-It is highly recommended to use `${TAG}` (or `${VERSION}`) in your configuration file. The generator will safely convert it into the correct loop variable declaration (`${tag}`) within the bash script used by the GitHub actions workflow. If you use `${tag}` directly, it will still work but using the capitalized version explicitly signals to the generator that this is a placeholder meant to be substituted.
-
 ## Additional options and work-arounds
 
 There are a couple workarounds. At the moment the application assumes semantic versions, and using GitHub releases. Some will be automatically detected, some won't.
