@@ -129,7 +129,7 @@ jobs:
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
 [[- range $i, $externalResource := .ExternalResources ]]
-                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]][[ $.DownloadBaseUrl ]][[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]][[- end ]][[ end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | ebuildvardoublequoted ]][[ else ]][[ $.DownloadBaseUrl | ebuildvardoublequoted ]][[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]][[- end ]][[ end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
 [[ end ]]
                 echo '"'
                 echo 'LICENSE="[[ .License ]]"'
@@ -292,9 +292,9 @@ jobs:
               failed=0
 [[ range $i, $externalResource := .ExternalResources ]]
     [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]][[ $.DownloadBaseUrl ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]][[ $.DownloadBaseUrl | actionvardoublequoted ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
     [[ else ]]
-              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]][[ $.DownloadBaseUrl ]][[ $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]][[ $.DownloadBaseUrl | actionvardoublequoted ]][[ $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
     [[ end ]]
 
 [[ end ]]

@@ -12,10 +12,10 @@
   [[- range $i, $externalResource := .ExternalResources ]]
     [[- if eq (printf "%v" $i) "0" ]]
       [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-                  remote_size=$(curl -sL --head "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]][[ if $.DownloadBaseUrl ]][[ $.DownloadBaseUrl ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ end ]][[ end ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]]" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
+                  remote_size=$(curl -sL --head "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]][[ if $.DownloadBaseUrl ]][[ $.DownloadBaseUrl | actionvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ end ]][[ end ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]]" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
                   local_distfile="${highest_rev_p}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]"
       [[- else ]]
-                  remote_size=$(curl -sL --head "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl ]][[ else ]][[ if $.DownloadBaseUrl ]][[ $.DownloadBaseUrl ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ end ]][[ end ]][[ $externalResource.ReleaseFilename | actionvardoublequoted | replace "\\${PV}" "${originalVersion}" ]]" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
+                  remote_size=$(curl -sL --head "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]][[ if $.DownloadBaseUrl ]][[ $.DownloadBaseUrl | actionvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ end ]][[ end ]][[ $externalResource.ReleaseFilename | actionvardoublequoted | replace "\\${PV}" "${originalVersion}" ]]" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
                   local_distfile="${highest_rev_p}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]"
       [[- end ]]
                   local_size=$(grep "DIST $local_distfile " "${ebuild_dir}/Manifest" | awk '{print $3}')
