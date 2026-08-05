@@ -204,13 +204,13 @@ jobs:
                 echo '}'
 [[- if .EbuildInclude.pkg_postinst ]]
                 echo 'pkg_postinst() {'
-[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | auto_echo_indent "                " ]]
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | auto_echo_indent (repeat 16 " ") ]]
                 echo '}'
 [[- end ]]
                 echo ''
                 echo 'src_install() {'
 [[- if .EbuildInclude.src_install ]]
-[[ getEbuildIncludes .EbuildInclude "src_install" | auto_echo_indent "                " ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" | auto_echo_indent (repeat 16 " ") ]]
 [[- end ]]
                 echo '  exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]

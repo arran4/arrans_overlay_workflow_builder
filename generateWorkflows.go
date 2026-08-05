@@ -226,6 +226,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			},
 			"replace":           strings.ReplaceAll,
 			"getEbuildIncludes": getEbuildIncludes,
+			"repeat": strings.Repeat,
 			"auto_echo_indent": func(indent, content string) string {
 				if content == "" {
 					return ""
