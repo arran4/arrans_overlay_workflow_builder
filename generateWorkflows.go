@@ -114,6 +114,39 @@ func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputC
 	return nil
 }
 
+func IndentContent(indent, content string) string {
+	if content == "" {
+		return ""
+	}
+	var res strings.Builder
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		if l == "" && i == len(lines)-1 {
+			continue
+		}
+		res.WriteString(indent)
+		res.WriteString(l)
+		res.WriteString("\n")
+	}
+	return res.String()
+}
+
+func ShellEchoContent(content string) string {
+	if content == "" {
+		return ""
+	}
+	var res strings.Builder
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		if l == "" && i == len(lines)-1 {
+			continue
+		}
+		escaped := strings.ReplaceAll(l, "'", "'\\''")
+		fmt.Fprintf(&res, "echo '%s'\n", escaped)
+	}
+	return res.String()
+}
+
 func getEbuildIncludes(includes map[string][]string, section string) (string, error) {
 	if includes == nil {
 		return "", nil
@@ -227,38 +260,8 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			"replace":           strings.ReplaceAll,
 			"getEbuildIncludes": getEbuildIncludes,
 			"repeat": strings.Repeat,
-			"indent": func(indent, content string) string {
-				if content == "" {
-					return ""
-				}
-				var res strings.Builder
-				lines := strings.Split(content, "\n")
-				for i, l := range lines {
-					if l == "" && i == len(lines)-1 {
-						continue
-					}
-					res.WriteString(indent)
-					res.WriteString(l)
-					res.WriteString("\n")
-				}
-				return res.String()
-			},
-			"shell_echo": func(content string) string {
-				if content == "" {
-					return ""
-				}
-				var res strings.Builder
-				lines := strings.Split(content, "\n")
-				for i, l := range lines {
-					if l == "" && i == len(lines)-1 {
-						continue
-					}
-					// Escape single quotes for bash
-					escaped := strings.ReplaceAll(l, "'", "'\\''")
-					fmt.Fprintf(&res, "echo '%s'\n", escaped)
-				}
-				return res.String()
-			},
+			"indent":     IndentContent,
+			"shell_echo": ShellEchoContent,
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {
