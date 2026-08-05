@@ -202,9 +202,20 @@ jobs:
 [[ end ]]
                 echo '  eapply_user'
                 echo '}'
+[[- if .EbuildInclude.pkg_postinst ]]
+                echo 'pkg_postinst() {'
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" ]]
+                echo '}'
+[[- end ]]
                 echo ''
                 echo 'src_install() {'
+[[- if .EbuildInclude.src_install ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" ]]
+[[- end ]]
                 echo '  exeinto /opt/bin'
+[[- range $sname, $starget := .Symlinks ]]
+                echo "  dosym ${starget} ${sname}"
+[[- end ]]
 [[- range $pname, $prog := .Programs ]]
                 echo '  doexe "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
 [[ end ]]

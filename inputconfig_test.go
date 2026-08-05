@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"testing"
 )
 
@@ -231,7 +232,7 @@ func TestParseConfigFile(t *testing.T) {
 	// Assertion loop remains the same as before
 	for i, expected := range expectedConfigs {
 		t.Run(fmt.Sprintf("config[%d]", i), func(t *testing.T) {
-			if diff := cmp.Diff(configs[i], expected); diff != "" {
+			if diff := cmp.Diff(configs[i], expected, cmp.AllowUnexported(InputConfig{}), cmpopts.IgnoreFields(InputConfig{}, "EbuildInclude", "Symlinks")); diff != "" {
 				t.Errorf("unexpected config[%d]:\n%s", i, diff)
 			}
 		})

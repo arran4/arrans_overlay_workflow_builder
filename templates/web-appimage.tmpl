@@ -118,6 +118,9 @@ jobs:
 [[ end ]]
               echo ''
               echo 'src_install() {'
+[[- if .EbuildInclude.src_install ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" ]]
+[[- end ]]
               echo '  cp "${DISTDIR}/${P}.${appimage_extension}" "${P}.${appimage_extension}" || die "Failed to copy AppImage"'
               echo '  chmod a+x "${P}.${appimage_extension}" || die "Can'"'"'t chmod archive file"'
 [[ range $pname, $prog := .Programs ]]
@@ -135,6 +138,9 @@ jobs:
 [[ end ]]
 [[ end ]]
               echo '  exeinto /opt/bin'
+[[- range $sname, $starget := .Symlinks ]]
+                echo "  dosym ${starget} ${sname}"
+[[- end ]]
 [[ range $pname, $prog := .Programs ]]
               echo '  newexe "${P}.${appimage_extension}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
 [[ end ]]
@@ -159,12 +165,16 @@ jobs:
 [[ end ]]
 [[ end ]]
               echo '}'
-[[ if .HasDesktopFile ]]
-              echo ''
+[[- if or .HasDesktopFile .EbuildInclude.pkg_postinst ]]
               echo 'pkg_postinst() {'
+[[- if .EbuildInclude.pkg_postinst ]]
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" ]]
+[[- end ]]
+[[- if .HasDesktopFile ]]
               echo '  xdg_desktop_database_update'
+[[- end ]]
               echo '}'
-[[ end ]]
+[[- end ]]
             } > "$tmp_ebuild_file"
 
 

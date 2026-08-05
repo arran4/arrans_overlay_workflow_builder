@@ -114,6 +114,37 @@ func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputC
 	return nil
 }
 
+func getEbuildIncludes(includes map[string][]string, section string) (string, error) {
+	if includes == nil {
+		return "", nil
+	}
+	paths, ok := includes[section]
+	if !ok {
+		return "", nil
+	}
+	var result strings.Builder
+	for _, p := range paths {
+		if strings.Contains(p, "\n") {
+			result.WriteString(p)
+			if !strings.HasSuffix(p, "\n") {
+				result.WriteString("\n")
+			}
+		} else {
+			content, err := os.ReadFile(strings.TrimSpace(p))
+			if err == nil {
+				result.WriteString(string(content))
+				if len(content) > 0 && content[len(content)-1] != '\n' {
+					result.WriteString("\n")
+				}
+			} else {
+				result.WriteString(p)
+				result.WriteString("\n")
+			}
+		}
+	}
+	return result.String(), nil
+}
+
 func ParseWorkflowTemplates() (*template.Template, error) {
 	subFs, err := fs.Sub(templateFiles, "templates")
 	if err != nil {
@@ -193,7 +224,8 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					}
 				})
 			},
-			"replace": strings.ReplaceAll,
+			"replace":           strings.ReplaceAll,
+			"getEbuildIncludes": getEbuildIncludes,
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {

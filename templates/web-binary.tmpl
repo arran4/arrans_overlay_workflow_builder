@@ -212,7 +212,13 @@ jobs:
                 [[ end ]]
                 echo ''
                 echo 'src_install() {'
+[[- if .EbuildInclude.src_install ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" ]]
+[[- end ]]
                 echo '  exeinto /opt/bin'
+[[- range $sname, $starget := .Symlinks ]]
+                echo "  dosym ${starget} ${sname}"
+[[- end ]]
 
 [[- range $pname, $prog := .Programs ]]
   [[- range $keyword, $binary := $prog.Binary ]]
@@ -284,6 +290,11 @@ jobs:
                 echo '  fi'
 [[ end ]]
                 echo '}'
+[[- if .EbuildInclude.pkg_postinst ]]
+                echo 'pkg_postinst() {'
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" ]]
+                echo '}'
+[[- end ]]
               } > "$tmp_ebuild_file"
 
 [[- template "ebuild_revision_and_manifest" (dict "WorkaroundCheckAssetSize" $.WorkaroundCheckAssetSize "ExitOnMatch" false "ExternalResources" .ExternalResources "DownloadBaseUrl" $.DownloadBaseUrl "CustomDownloadUrl" "" "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 ) ]]

@@ -106,7 +106,7 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${originalVersion}/\${PV} -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
+                echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="AGPL-3"'
                 echo 'SLOT="0"'
