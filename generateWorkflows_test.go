@@ -3,11 +3,46 @@ package arrans_overlay_workflow_builder
 import (
 	"bytes"
 	"strings"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
-
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 )
+
+func TestShellEchoContent(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "empty",
+			content: "",
+			want:    "",
+		},
+		{
+			name:    "single line",
+			content: "hello world",
+			want:    "echo 'hello world'\n",
+		},
+		{
+			name:    "multiline",
+			content: "hello\nworld",
+			want:    "echo 'hello'\necho 'world'\n",
+		},
+		{
+			name:    "single quotes escaped",
+			content: "echo 'hello'",
+			want:    "echo 'echo '\\''hello'\\'''\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, ShellEchoContent(tt.content))
+		})
+	}
+}
+
 
 func TestNormalizeGeneratedWorkflow(t *testing.T) {
 	input := []byte("top:  \n  first  \n\t\n\n  second\t\n\nnext:\n  child\n")
