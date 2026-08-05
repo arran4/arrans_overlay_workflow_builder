@@ -255,7 +255,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					}
 					// Escape single quotes for bash
 					escaped := strings.ReplaceAll(l, "'", "'\\''")
-					res.WriteString(fmt.Sprintf("echo '%s'\n", escaped))
+					fmt.Fprintf(&res, "echo '%s'\n", escaped)
 				}
 				return res.String()
 			},
