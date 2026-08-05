@@ -213,7 +213,7 @@ jobs:
                 echo ''
                 echo 'src_install() {'
 [[- if .EbuildInclude.src_install ]]
-[[ getEbuildIncludes .EbuildInclude "src_install" ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" | auto_echo_indent "                " ]]
 [[- end ]]
                 echo '  exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
@@ -292,7 +292,7 @@ jobs:
                 echo '}'
 [[- if .EbuildInclude.pkg_postinst ]]
                 echo 'pkg_postinst() {'
-[[ getEbuildIncludes .EbuildInclude "pkg_postinst" ]]
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | auto_echo_indent "                " ]]
                 echo '}'
 [[- end ]]
               } > "$tmp_ebuild_file"

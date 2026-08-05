@@ -119,7 +119,7 @@ jobs:
               echo ''
               echo 'src_install() {'
 [[- if .EbuildInclude.src_install ]]
-[[ getEbuildIncludes .EbuildInclude "src_install" ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" | auto_echo_indent "                " ]]
 [[- end ]]
               echo '  cp "${DISTDIR}/${P}.${appimage_extension}" "${P}.${appimage_extension}" || die "Failed to copy AppImage"'
               echo '  chmod a+x "${P}.${appimage_extension}" || die "Can'"'"'t chmod archive file"'
@@ -168,7 +168,7 @@ jobs:
 [[- if or .HasDesktopFile .EbuildInclude.pkg_postinst ]]
               echo 'pkg_postinst() {'
 [[- if .EbuildInclude.pkg_postinst ]]
-[[ getEbuildIncludes .EbuildInclude "pkg_postinst" ]]
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | auto_echo_indent "                " ]]
 [[- end ]]
 [[- if .HasDesktopFile ]]
               echo '  xdg_desktop_database_update'

@@ -226,6 +226,21 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			},
 			"replace":           strings.ReplaceAll,
 			"getEbuildIncludes": getEbuildIncludes,
+			"auto_echo_indent": func(indent, content string) string {
+				if content == "" {
+					return ""
+				}
+				var res strings.Builder
+				lines := strings.Split(content, "\n")
+				for _, l := range lines {
+					if l == "" {
+						continue
+					}
+					res.WriteString(indent)
+					res.WriteString("echo )					res.WriteString(l)					res.WriteString(\\n")
+				}
+				return res.String()
+			},
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {
