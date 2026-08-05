@@ -227,18 +227,35 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			"replace":           strings.ReplaceAll,
 			"getEbuildIncludes": getEbuildIncludes,
 			"repeat": strings.Repeat,
-			"auto_echo_indent": func(indent, content string) string {
+			"indent": func(indent, content string) string {
 				if content == "" {
 					return ""
 				}
 				var res strings.Builder
 				lines := strings.Split(content, "\n")
-				for _, l := range lines {
-					if l == "" {
+				for i, l := range lines {
+					if l == "" && i == len(lines)-1 {
 						continue
 					}
 					res.WriteString(indent)
-					res.WriteString("echo )					res.WriteString(l)					res.WriteString(\\n")
+					res.WriteString(l)
+					res.WriteString("\n")
+				}
+				return res.String()
+			},
+			"shell_echo": func(content string) string {
+				if content == "" {
+					return ""
+				}
+				var res strings.Builder
+				lines := strings.Split(content, "\n")
+				for i, l := range lines {
+					if l == "" && i == len(lines)-1 {
+						continue
+					}
+					// Escape single quotes for bash
+					escaped := strings.ReplaceAll(l, "'", "'\\''")
+					res.WriteString(fmt.Sprintf("echo '%s'\n", escaped))
 				}
 				return res.String()
 			},
