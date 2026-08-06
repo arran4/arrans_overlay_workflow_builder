@@ -131,6 +131,24 @@ func IndentContent(indent, content string) string {
 	return res.String()
 }
 
+func ShellEchoEvalContent(content string) string {
+	if content == "" {
+		return ""
+	}
+	var res strings.Builder
+	lines := strings.Split(content, "\n")
+	for i, l := range lines {
+		if l == "" && i == len(lines)-1 {
+			continue
+		}
+		escaped := strings.ReplaceAll(l, "\\", "\\\\")
+		escaped = strings.ReplaceAll(escaped, "\"", "\\\"")
+		escaped = strings.ReplaceAll(escaped, "`", "\\`")
+		fmt.Fprintf(&res, "echo \"%s\"\n", escaped)
+	}
+	return res.String()
+}
+
 func ShellEchoContent(content string) string {
 	if content == "" {
 		return ""
@@ -261,7 +279,8 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			"getEbuildIncludes": getEbuildIncludes,
 			"repeat": strings.Repeat,
 			"indent":     IndentContent,
-			"shell_echo": ShellEchoContent,
+			"shell_echo": ShellEchoEvalContent,
+			"shell_echo_literal": ShellEchoContent,
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {

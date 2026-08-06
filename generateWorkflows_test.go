@@ -48,6 +48,25 @@ func TestShellEchoContent(t *testing.T) {
 	}
 }
 
+func TestShellEchoEvalContent(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    string
+	}{
+		{
+			name:    "variables",
+			content: "echo \"${VAR}\"",
+			want:    "echo \"echo \\\"${VAR}\\\"\"\n",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, ShellEchoEvalContent(tt.content))
+		})
+	}
+}
+
 
 func TestNormalizeGeneratedWorkflow(t *testing.T) {
 	input := []byte("top:  \n  first  \n\t\n\n  second\t\n\nnext:\n  child\n")
