@@ -77,42 +77,6 @@ func TestNormalizeGeneratedWorkflow(t *testing.T) {
 	}
 }
 
-func TestPreserveManualHacks(t *testing.T) {
-	tests := []struct {
-		name      string
-		existing  string
-		generated string
-		want      string
-	}{
-		{
-			name:      "no hacks",
-			existing:  "steps:\n  - name: Checkout",
-			generated: "steps:\n  - name: Checkout\n  - name: Setup",
-			want:      "steps:\n  - name: Checkout\n  - name: Setup",
-		},
-		{
-			name:      "single hack",
-			existing:  "steps:\n  - name: Checkout\n  # BEGIN MANUAL HACK\n  - run: echo hello\n  # END MANUAL HACK\n  - name: Setup",
-			generated: "steps:\n  - name: Checkout\n  - name: Setup",
-			want:      "steps:\n  - name: Checkout\n  # BEGIN MANUAL HACK\n  - run: echo hello\n  # END MANUAL HACK\n  - name: Setup",
-		},
-		{
-			name:      "hack appended at end if anchor not found",
-			existing:  "steps:\n  - name: Not Found\n  # BEGIN MANUAL HACK\n  - run: echo end\n  # END MANUAL HACK",
-			generated: "steps:\n  - name: Checkout",
-			want:      "steps:\n  - name: Checkout\n  # BEGIN MANUAL HACK\n  - run: echo end\n  # END MANUAL HACK",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := preserveManualHacks([]byte(tt.existing), []byte(tt.generated))
-			if string(got) != tt.want {
-				t.Errorf("preserveManualHacks() = %q, want %q", string(got), tt.want)
-			}
-		})
-	}
-}
-
 func TestGenerateGithubWorkflowBaseCron(t *testing.T) {
 	base := &GenerateGithubWorkflowBase{
 		InputConfig: &InputConfig{GithubRepo: "changes-do-not-affect-the-test-schedule"},

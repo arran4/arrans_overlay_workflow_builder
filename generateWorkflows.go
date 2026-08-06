@@ -435,85 +435,11 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		}
 	}
 
-	if existing, err := fsys.ReadFile(n); err == nil {
-		rendered = preserveManualHacks(existing, rendered)
-	}
-
 	if err := fsys.WriteFile(n, rendered, 0644); err != nil {
 		return fmt.Errorf("writing %s: %w", n, err)
 	}
 	fmt.Printf("Written: %s\n", n)
 	return nil
-}
-
-func preserveManualHacks(existing, generated []byte) []byte {
-	if len(existing) == 0 {
-		return generated
-	}
-
-	existingLines := strings.Split(string(existing), "\n")
-	generatedLines := strings.Split(string(generated), "\n")
-
-	type hack struct {
-		anchorBefore string
-		content      []string
-		anchorAfter  string
-	}
-	var hacks []hack
-
-	inHack := false
-	var currentHack hack
-
-	for i := 0; i < len(existingLines); i++ {
-		line := existingLines[i]
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "# BEGIN MANUAL HACK" {
-			inHack = true
-			if i > 0 {
-				currentHack.anchorBefore = existingLines[i-1]
-			}
-			currentHack.content = append(currentHack.content, line)
-		} else if trimmed == "# END MANUAL HACK" && inHack {
-			currentHack.content = append(currentHack.content, line)
-			inHack = false
-			if i+1 < len(existingLines) {
-				currentHack.anchorAfter = existingLines[i+1]
-			}
-			hacks = append(hacks, currentHack)
-			currentHack = hack{}
-		} else if inHack {
-			currentHack.content = append(currentHack.content, line)
-		}
-	}
-
-	if len(hacks) == 0 {
-		return generated
-	}
-
-	var finalLines []string
-	applied := make(map[int]bool)
-
-	for i := 0; i < len(generatedLines); i++ {
-		finalLines = append(finalLines, generatedLines[i])
-
-		for j, h := range hacks {
-			if applied[j] {
-				continue
-			}
-			if h.anchorBefore == generatedLines[i] {
-				finalLines = append(finalLines, h.content...)
-				applied[j] = true
-			}
-		}
-	}
-
-	for j, h := range hacks {
-		if !applied[j] {
-			finalLines = append(finalLines, h.content...)
-		}
-	}
-
-	return []byte(strings.Join(finalLines, "\n"))
 }
 
 func (ic *InputConfig) Cron() string {
