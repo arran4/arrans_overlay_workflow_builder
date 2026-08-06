@@ -190,7 +190,6 @@ jobs:
                       continue
                   fi
               fi
-              # Manifest generation
               failed=0
               if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${version}" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/${version}" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-arm.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi

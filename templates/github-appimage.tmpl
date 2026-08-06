@@ -132,15 +132,7 @@ jobs:
                 echo "inherit xdg-utils"
 [[ end ]]
                 echo ''
-                echo 'SRC_URI="'
-[[- range $releaseFilename, $externalResource := .ExternalResources ]]
-    [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-                echo "  [[ $externalResource.Keyword ]]? ( [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | ebuildvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]][[ end ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
-    [[ else ]]
-                echo "  [[ $externalResource.Keyword ]]? ( [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | ebuildvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]][[ end ]] -> \${P}-[[ $releaseFilename  | ebuildvardoublequoted ]] )"
-    [[ end ]]
-[[ end ]]
-                echo '"'
+[[- template "src_uri" (dict "ExternalResources" .ExternalResources "IsAppImage" true "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" "" ) ]]
                 echo ''
                 [[- if $.NeedsSrcUnpack ]]
                 echo 'src_unpack() {'
@@ -251,16 +243,8 @@ jobs:
 
 [[- template "ebuild_revision_and_manifest" (dict "WorkaroundCheckAssetSize" $.WorkaroundCheckAssetSize "ExitOnMatch" false "ExternalResources" .ExternalResources "DownloadBaseUrl" "" "CustomDownloadUrl" $.CustomDownloadUrl "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 ) ]]
 
-              # Manifest generation
               failed=0
-[[ range $releaseFilename, $externalResource := .ExternalResources ]] 
-    [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
-    [[ else ]]
-              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[ $releaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $releaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
-    [[ end ]]
-
-[[ end ]]
+[[- template "manifest_upsert" (dict "ExternalResources" .ExternalResources "IsAppImage" true "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" "" ) ]]
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

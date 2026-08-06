@@ -136,7 +136,6 @@ jobs:
                   rm -f "$tmp_ebuild_file"
                   continue
               fi
-              # Manifest generation
               failed=0
               if ! g2 manifest upsert-from-url "https://example.com/download/${tag}/example-${tag}.AppImage" "${{ env.epn }}-${version}-example-${tag}.AppImage" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then

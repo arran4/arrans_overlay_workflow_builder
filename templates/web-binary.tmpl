@@ -127,11 +127,7 @@ jobs:
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'SRC_URI="'
-[[- range $i, $externalResource := .ExternalResources ]]
-                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | ebuildvardoublequoted ]][[ else ]][[ $.DownloadBaseUrl | ebuildvardoublequoted ]][[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]][[- end ]][[ end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
-[[ end ]]
-                echo '"'
+[[- template "src_uri" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
                 echo 'LICENSE="[[ .License ]]"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -299,16 +295,8 @@ jobs:
 
 [[- template "ebuild_revision_and_manifest" (dict "WorkaroundCheckAssetSize" $.WorkaroundCheckAssetSize "ExitOnMatch" false "ExternalResources" .ExternalResources "DownloadBaseUrl" $.DownloadBaseUrl "CustomDownloadUrl" "" "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 ) ]]
 
-              # Manifest generation
               failed=0
-[[ range $i, $externalResource := .ExternalResources ]]
-    [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]][[ $.DownloadBaseUrl | actionvardoublequoted ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
-    [[ else ]]
-              if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | actionvardoublequoted ]][[ else ]][[ $.DownloadBaseUrl | actionvardoublequoted ]][[ $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" ]][[ end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
-    [[ end ]]
-
-[[ end ]]
+[[- template "manifest_upsert" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
