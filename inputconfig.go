@@ -226,6 +226,8 @@ type InputConfig struct {
 	CustomVersionSource string
 	CustomBuildSteps    string
 	PreVersionSteps     string
+	CustomJobSteps      string
+	CheckoutVersion     string
 	Category            string
 	EbuildName          string
 	Description         string
@@ -508,6 +510,8 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"CustomVersionSource":   nil,
 				"CustomBuildSteps":      nil,
 				"PreVersionSteps":       nil,
+				"CustomJobSteps":        nil,
+				"CheckoutVersion":       nil,
 				"TagsCommand":           nil,
 				"Category":              {DefaultCategory},
 				"EbuildName":            nil,
@@ -724,6 +728,14 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	currentConfig.PreVersionSteps, err = emptyOrOnlyOrFail(parsedFields["PreVersionSteps"])
 	if err != nil {
 		return nil, fmt.Errorf("on PreVersionSteps: %v: %w", parsedFields["PreVersionSteps"], err)
+	}
+	currentConfig.CustomJobSteps, err = emptyOrOnlyOrFail(parsedFields["CustomJobSteps"])
+	if err != nil {
+		return nil, fmt.Errorf("on CustomJobSteps: %v: %w", parsedFields["CustomJobSteps"], err)
+	}
+	currentConfig.CheckoutVersion, err = emptyOrOnlyOrFail(parsedFields["CheckoutVersion"])
+	if err != nil {
+		return nil, fmt.Errorf("on CheckoutVersion: %v: %w", parsedFields["CheckoutVersion"], err)
 	}
 	currentConfig.MaintainerName, err = emptyOrOnlyOrFail(parsedFields["MaintainerName"])
 	if err != nil {

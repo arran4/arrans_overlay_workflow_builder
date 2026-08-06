@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout[[ if .CheckoutVersion ]][[ .CheckoutVersion ]][[ else ]]@v7[[ end ]]
         with:
           fetch-depth: 0
 
@@ -175,3 +175,6 @@ jobs:
             git push
           fi || true
         if: steps.process_releases.outputs.generated_tag
+[[ if .CustomJobSteps ]]
+[[ indent "      " .CustomJobSteps ]]
+[[ end ]]
