@@ -35,6 +35,11 @@ func TestShellEchoContent(t *testing.T) {
 			content: "echo 'hello'",
 			want:    "echo 'echo '\\''hello'\\'''\n",
 		},
+		{
+			name:    "variables not escaped",
+			content: "echo $VAR",
+			want:    "echo 'echo $VAR'\n",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
