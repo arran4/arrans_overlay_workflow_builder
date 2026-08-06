@@ -125,7 +125,7 @@ jobs:
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
 [[- range $i, $externalResource := .ExternalResources ]]
-                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | ebuildvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/[[- if $.WorkaroundSemanticVersionWithoutV ]]${originalVersion}[[ else ]][[- $.WorkaroundTagPrefix ]]v${originalVersion}[[ end ]]/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]][[- end ]][[ end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+                echo "	[[range $i, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $i, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl ]][[ $.CustomDownloadUrl | ebuildvardoublequoted ]][[ else ]]https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/[[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]][[ $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" ]][[- else ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" ]][[- end ]][[ end ]] -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $i, $uf := .MustHaveUseFlags]] ) [[end]][[range $i, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
 [[ end ]]
                 echo '"'
                 echo 'LICENSE="[[ .License ]]"'
@@ -208,7 +208,13 @@ jobs:
                 [[ end ]]
                 echo ''
                 echo 'src_install() {'
+[[- if .EbuildInclude.src_install ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[- end ]]
                 echo '  exeinto /opt/bin'
+[[- range $sname, $starget := .Symlinks ]]
+                echo "  dosym ${starget} ${sname}"
+[[- end ]]
 
 [[- range $pname, $prog := .Programs ]]
   [[- range $keyword, $binary := $prog.Binary ]]
@@ -280,6 +286,11 @@ jobs:
                 echo '  fi'
 [[ end ]]
                 echo '}'
+[[- if .EbuildInclude.pkg_postinst ]]
+                echo 'pkg_postinst() {'
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+                echo '}'
+[[- end ]]
               } > "$tmp_ebuild_file"
 
 [[- template "ebuild_revision_and_manifest" (dict "WorkaroundCheckAssetSize" $.WorkaroundCheckAssetSize "ExitOnMatch" false "ExternalResources" .ExternalResources "DownloadBaseUrl" "" "CustomDownloadUrl" $.CustomDownloadUrl "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 ) ]]

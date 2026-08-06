@@ -212,6 +212,8 @@ func (p *Program) ShellCompletion(shell string) (result []*KeywordedFilenameRefe
 
 // InputConfig represents a single configuration entry.
 type InputConfig struct {
+	EbuildInclude       map[string][]string
+	Symlinks            map[string]string
 	EntryNumber         int
 	Type                string
 	GithubProjectUrl    string
@@ -252,6 +254,11 @@ const (
 // String serializes the InputConfig struct back into the configuration file format.
 func (ic *InputConfig) String() string {
 	var sb strings.Builder
+
+	MapStringer(&sb, "EbuildInclude", ic.EbuildInclude)
+	for k, v := range ic.Symlinks {
+		fmt.Fprintf(&sb, "Symlink %s=>%s\n", k, v)
+	}
 
 	if ic.Type != "" {
 		fmt.Fprintf(&sb, "Type %s\n", ic.Type)
@@ -461,9 +468,11 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 	scanner := bufio.NewScanner(file)
 	breakCount := 0
 	var lastProgramName string
+	var lastPrefix string
 	var lineNumber = 0
 
 	for scanner.Scan() {
+		originalLine := scanner.Text()
 		line := strings.TrimSpace(scanner.Text())
 		lineNumber++
 		if strings.HasPrefix(line, "#") {
@@ -482,6 +491,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 			}
 			parseFields = nil
 			parseProgramFields = nil
+			lastPrefix = ""
 			lastProgramName = ""
 			continue
 		}
@@ -518,11 +528,32 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"Binary":                nil,
 				"IUse":                  nil,
 				"RequiredUse":           nil,
+				"EbuildInclude":         nil,
+				"Symlink":               nil,
 			}
 			parseProgramFields = map[string]map[string][]string{}
+			lastPrefix = ""
 			lastProgramName = ""
 		}
 
+		if originalLine != "" && (originalLine[0] == ' ' || originalLine[0] == '\t') {
+			trimmed := strings.TrimSpace(originalLine)
+			if strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			if lastProgramName != "" && lastPrefix != "" {
+				lines := parseProgramFields[lastProgramName][lastPrefix]
+				if len(lines) > 0 {
+					lines[len(lines)-1] += "\n" + originalLine
+				}
+			} else if lastPrefix != "" {
+				lines := parseFields[lastPrefix]
+				if len(lines) > 0 {
+					lines[len(lines)-1] += "\n" + originalLine
+				}
+			}
+			continue
+		}
 		matched := false
 		switch {
 		case lastProgramName != "":
@@ -550,6 +581,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 						}
 					}
 					parseProgramFields[lastProgramName][prefix] = append(parseProgramFields[lastProgramName][prefix], value)
+					lastPrefix = prefix
 					matched = true
 					break
 				}
@@ -583,6 +615,7 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 						}
 					}
 					parseFields[prefix] = append(parseFields[prefix], value)
+					lastPrefix = prefix
 					matched = true
 					break
 				}
@@ -707,6 +740,15 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			return nil, fmt.Errorf("github url parser: %w", err)
 		}
 	}
+	currentConfig.EbuildInclude, err = parseMapStringListType1(parsedFields["EbuildInclude"])
+	if err != nil {
+		return nil, fmt.Errorf("on EbuildInclude: %v: %w", parsedFields["EbuildInclude"], err)
+	}
+	currentConfig.Symlinks, err = parseMapType1(parsedFields["Symlink"])
+	if err != nil {
+		return nil, fmt.Errorf("on Symlink: %v: %w", parsedFields["Symlink"], err)
+	}
+
 	currentConfig.Features, err = parseOptionalMapType1(parsedFields["Feature"])
 	if err != nil {
 		return nil, fmt.Errorf("on Features: %v: %w", parsedFields["Feature"], err)
@@ -1157,7 +1199,7 @@ func NewInputConfigurationFromRepo(gitRepo, tagOverride, tagPrefix, ebuildSuffix
 		}
 		tag := releaseInfo.GetTagName()
 		if tagPrefix != "" {
-			if !strings.HasSuffix(tag, tagPrefix) {
+			if !strings.HasPrefix(tag, tagPrefix) {
 				return "", nil, nil, nil, nil, nil, fmt.Errorf("github latest release tag %s doesn't have prefix %s", tag, tagPrefix)
 			}
 			tag = strings.TrimPrefix(tag, tagPrefix)

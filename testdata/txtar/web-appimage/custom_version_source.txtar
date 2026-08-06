@@ -123,11 +123,9 @@ jobs:
               echo '  insinto /usr/share/icons'
               echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
               echo '}'
-              echo ''
               echo 'pkg_postinst() {'
               echo '  xdg_desktop_database_update'
               echo '}'
-
             } > "$tmp_ebuild_file"
               next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
               if [ $? -eq 0 ]; then
