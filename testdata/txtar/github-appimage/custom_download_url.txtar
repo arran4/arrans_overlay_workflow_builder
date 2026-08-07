@@ -42,7 +42,6 @@ env:
   keywords: ~amd64
   workflow_filename: net-misc-example-appimage-update.yaml
   example_appimage_installed_name: 'example-${TAG}.AppImage'
-  example_release_name_amd64: 'example-${tag}.AppImage'
 
 jobs:
   check-and-create-ebuild:
@@ -111,7 +110,7 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo "    cp \"\${DISTDIR}/\${P}-example-${tag}.AppImage\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
                 echo '  chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '}'

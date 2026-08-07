@@ -46,7 +46,6 @@ env:
   workflow_filename: app-misc-example-appimage-update.yaml
   example_desktop_file: 'example.desktop'
   example_appimage_installed_name: 'example'
-  example_release_name_amd64: 'example-linux-x86_64-${version}.AppImage'
 
 jobs:
   check-and-create-ebuild:
@@ -117,7 +116,7 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo "    cp \"\${DISTDIR}/\${P}-example-linux-x86_64-\${PV}.AppImage\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
                 echo '  chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '  "./${{ env.example_appimage_installed_name }}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'

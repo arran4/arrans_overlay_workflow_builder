@@ -44,7 +44,6 @@ env:
   keywords: ~amd64
   workflow_filename: app-misc-tool-bin-update.yaml
   tool_binary_installed_name: 'tool'
-  tool_release_name_amd64: 'tool-${tag}-amd64'
 
 jobs:
   check-and-create-ebuild:
@@ -125,7 +124,7 @@ jobs:
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
                 echo '  if use amd64; then'
-                echo '    newexe "${DISTDIR}/${P}-${{ env.tool_release_name_amd64 }}" "${{ env.tool_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '    newexe "${DISTDIR}/${P}-'"tool-${tag}-amd64"'" "${{ env.tool_binary_installed_name }}" || die "Failed to install Binary"'
                 echo '  fi'
                 echo '}'
               } > "$tmp_ebuild_file"

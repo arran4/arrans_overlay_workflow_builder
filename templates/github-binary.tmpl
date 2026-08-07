@@ -35,7 +35,6 @@ env:
   [[- if gt (len $binary) 2 ]]
   [[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
   [[ end ]]
-  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | actionvardoublequoted ]]'
   [[ end ]]
   [[ end ]]
 
@@ -222,7 +221,7 @@ jobs:
     [[ else ]]
         [[- $count := 0 ]]
                 echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
-                echo '    newexe "${DISTDIR}/${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
+                echo '    newexe "${DISTDIR}/${P}-'"[[ index $binary 0 | ebuildvardoublequoted ]]"'" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
                 echo '  fi'
     [[ end ]]
   [[ end ]]

@@ -35,7 +35,6 @@ env:
   [[- if gt (len $binary) 2 ]]
   [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
   [[ end ]]
-  [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | actionvardoublequoted ]]'
   [[ end ]]
   [[ end ]]
 
@@ -151,7 +150,7 @@ jobs:
                 echo '  fi'
   [[ else ]]
                 echo '  if use [[ $keyword ]]; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
+                echo "    cp \"\${DISTDIR}/\${P}-[[ index $binary 0 | ebuildvardoublequoted ]]\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
   [[ end ]]
 [[ end ]]

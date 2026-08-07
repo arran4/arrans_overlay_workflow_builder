@@ -42,7 +42,6 @@ env:
   keywords: ~amd64
   workflow_filename: net-misc-example-bin-update.yaml
   example_binary_installed_name: 'example-${TAG}.tar.gz'
-  example_release_name_amd64: 'example-${tag}.tar.gz'
 
 jobs:
   check-and-create-ebuild:
@@ -123,7 +122,7 @@ jobs:
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
                 echo '  if use amd64; then'
-                echo '    newexe "${DISTDIR}/${P}-${{ env.example_release_name_amd64 }}" "${{ env.example_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '    newexe "${DISTDIR}/${P}-'"example-${tag}.tar.gz"'" "${{ env.example_binary_installed_name }}" || die "Failed to install Binary"'
                 echo '  fi'
                 echo '}'
               } > "$tmp_ebuild_file"

@@ -241,6 +241,8 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			},
 			"quoteStr": strconv.Quote,
 			"actionvardoublequoted": func(s string) string {
+				s = strings.ReplaceAll(s, "{{.Tag}}", "${tag}")
+				s = strings.ReplaceAll(s, "{{.Version}}", "${version}")
 				return os.Expand(s, func(s string) string {
 					switch s {
 					case "VERSION":
@@ -258,6 +260,8 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			},
 			"UseFlagSafe": strcase.SnakeCase,
 			"ebuildvardoublequoted": func(s string) string {
+				s = strings.ReplaceAll(s, "{{.Tag}}", "${tag}")
+				s = strings.ReplaceAll(s, "{{.Version}}", "\\${PV}")
 				return os.Expand(s, func(s string) string {
 					switch s {
 					case "VERSION":
@@ -282,6 +286,8 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			"shell_echo": ShellEchoEvalContent,
 			"shell_echo_literal": ShellEchoContent,
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
+				s = strings.ReplaceAll(s, "{{.Tag}}", "${tag}")
+				s = strings.ReplaceAll(s, "{{.Version}}", "${originalVersion}")
 				return os.Expand(s, func(s string) string {
 					switch s {
 					case "VERSION":

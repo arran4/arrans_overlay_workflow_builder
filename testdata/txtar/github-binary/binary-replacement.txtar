@@ -42,7 +42,6 @@ env:
   workflow_filename: app-admin-k9s-bin-update.yaml
   binary_installed_name: 'k9s'
   binary_archived_name_amd64: 'k9s'
-  release_name_amd64: 'k9s_Linux_amd64.tar.gz'
 
 jobs:
   check-and-create-ebuild:

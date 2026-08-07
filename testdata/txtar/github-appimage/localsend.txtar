@@ -47,7 +47,6 @@ env:
   workflow_filename: net-misc-localsend-appimage-update.yaml
   localsend_desktop_file: 'localsend_app.desktop'
   localsend_appimage_installed_name: 'localsend_app'
-  localsend_release_name_amd64: 'LocalSend-${tag}-linux-x86-64.AppImage'
 
 jobs:
   check-and-create-ebuild:
@@ -118,7 +117,7 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.localsend_release_name_amd64 }}\" \"${{ env.localsend_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo "    cp \"\${DISTDIR}/\${P}-LocalSend-${tag}-linux-x86-64.AppImage\" \"${{ env.localsend_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
                 echo '  chmod a+x "${{ env.localsend_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '  "./${{ env.localsend_appimage_installed_name }}" --appimage-extract "${{ env.localsend_desktop_file }}" || die "Failed to extract .desktop from appimage"'
