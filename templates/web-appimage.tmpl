@@ -213,3 +213,6 @@ jobs:
             git push
           fi || true
         if: steps.find_appimage.outputs.version
+[[ if .CustomJobSteps ]]
+[[ indent "      " .CustomJobSteps ]]
+[[ end ]]

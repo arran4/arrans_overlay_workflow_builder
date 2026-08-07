@@ -330,3 +330,6 @@ jobs:
             git push
           fi || true
         if: steps.process_releases.outputs.generated_tag
+[[ if .CustomJobSteps ]]
+[[ indent "      " .CustomJobSteps ]]
+[[ end ]]
