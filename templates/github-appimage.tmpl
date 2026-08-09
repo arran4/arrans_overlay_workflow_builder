@@ -271,6 +271,7 @@ jobs:
 
       - name: Lint output
         uses: arran4/g2-action@v1.2
+        with:
           mode: 'run'
           action: 'lint -disable-rule PG0802 . ${{ env.ecn }}/${{ env.epn }}'
 
