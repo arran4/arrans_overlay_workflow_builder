@@ -166,6 +166,10 @@ jobs:
               fi
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
           done
+
+      - name: Deduplicate ebuilds
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           g2 ebuild deduplicate "${ebuild_dir}"
 
       - name: Generate Overlay
