@@ -63,8 +63,6 @@ jobs:
 
       - name: Install g2
         uses: arran4/g2-action@v1.2
-        with:
-          version: v0.0.94
 
       - name: Determine latest AppImage
         id: find_appimage
@@ -163,8 +161,6 @@ jobs:
 
       - name: Lint output
         uses: arran4/g2-action@v1.2
-        with:
-          version: v0.0.94
           mode: 'run'
           action: 'lint -disable-rule PG0802 . ${{ env.ecn }}/${{ env.epn }}'
 
