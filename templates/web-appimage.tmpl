@@ -207,7 +207,7 @@ jobs:
         with:
           version: v0.0.94
           mode: 'run'
-          action: 'lint [[ if not .FeatureGenerateMd5Cache ]]-disable-rule PG0802 [[ end ]]. ${{ env.ecn }}/${{ env.epn }}'
+          action: 'lint -disable-rule PG0802 . ${{ env.ecn }}/${{ env.epn }}'
 
       - name: Commit and push changes
         run: |
