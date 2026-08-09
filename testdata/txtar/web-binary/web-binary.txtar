@@ -188,9 +188,11 @@ jobs:
 
       - name: Generate Overlay
         run: |
-          mkdir -p profiles
-          echo "overlay_name" > profiles/repo_name
-          echo "8" > profiles/eapi
+          mkdir -p profiles metadata
+          [ ! -f profiles/repo_name ] && echo "overlay_name" > profiles/repo_name
+          [ ! -f profiles/eapi ] && echo "8" > profiles/eapi
+          [ ! -f metadata/layout.conf ] && wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true
+          grep -q "^cache-formats" metadata/layout.conf || echo "cache-formats = md5-dict" >> metadata/layout.conf
 
       - name: Lint output
         uses: arran4/g2-action@v1.2
@@ -201,7 +203,7 @@ jobs:
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p profiles; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles metadata; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; [ ! -f metadata/layout.conf ] && wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; grep -q "^cache-formats" metadata/layout.conf || echo "cache-formats = md5-dict" >> metadata/layout.conf; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "./${ebuild_dir}"
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
             git pull --rebase &&
