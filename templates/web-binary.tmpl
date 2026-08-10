@@ -96,8 +96,8 @@ jobs:
                 continue
             fi
 [[ end ]]
-            TAG="${tag}"
-            VERSION="${version}"
+            export TAG="${tag}"
+            export VERSION="${version}"
             # shellcheck disable=SC2034
             originalVersion="${version}"
 [[- if .WorkaroundVersionReplacement ]]
