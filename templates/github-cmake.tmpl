@@ -60,14 +60,12 @@ jobs:
           tags=$(gh api repos/${{ env.github_owner }}/${{ env.github_repo }}/releases --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           for tag in $tags; do
             originalVersion="${tag#v}"
-            export TAG="${tag}"
             # shellcheck disable=SC2034
             version="${tag#v}"
             [[- if .WorkaroundTagPrefix ]]
 
             version="${tag#[[- .WorkaroundTagPrefix ]]}"
             [[- end ]]
-            export VERSION="${version}"
             [[- if .WorkaroundSemanticVersionWithoutV ]]
             version="${tag}"
             [[- end ]]

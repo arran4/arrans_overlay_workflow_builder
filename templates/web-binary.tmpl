@@ -63,16 +63,16 @@ jobs:
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
           [[ if .PreVersionSteps ]]
-          [[ .PreVersionSteps ]]
+          [[ .PreVersionSteps | actionvardoublequoted ]]
           [[ end ]]
           [[ if .CustomVersionSource ]]
-          tags=$([[ .CustomVersionSource ]])
+          tags=$([[ .CustomVersionSource | actionvardoublequoted ]])
           [[ else ]]
-          if [ -z "[[ .TagsCommand ]]" ]; then
+          if [ -z "[[ .TagsCommand | actionvardoublequoted ]]" ]; then
              echo "TagsCommand is required for Web Binary configurations" >&2
              exit 1
           fi
-          tags=$([[ .TagsCommand ]])
+          tags=$([[ .TagsCommand | actionvardoublequoted ]])
           [[ end ]]
           # shellcheck disable=SC2086
 [[- if .WorkaroundSemanticVersionWithoutV ]]
@@ -96,8 +96,6 @@ jobs:
                 continue
             fi
 [[ end ]]
-            export TAG="${tag}"
-            export VERSION="${version}"
             # shellcheck disable=SC2034
             originalVersion="${version}"
 [[- if .WorkaroundVersionReplacement ]]
