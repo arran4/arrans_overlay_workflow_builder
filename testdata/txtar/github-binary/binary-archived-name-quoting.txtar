@@ -1,4 +1,4 @@
-This fixture tests that the `binary_archived_name` (index 1) in a Binary block uses `| actionvardoublequoted`.
+This fixture tests that the `binary_archived_name_amd64` (index 1) in a Binary block uses `| actionvardoublequoted`.
 
 -- input.config --
 Type Github Binary Release
