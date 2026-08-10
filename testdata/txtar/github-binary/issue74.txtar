@@ -10,6 +10,9 @@ Homepage https://k9scli.io/
 License Apache-2.0
 Workaround Version Replacement s/v//g
 Binary amd64=>k9s_Linux_amd64.tar.gz > ${TAG}-archived > k9s
+PreVersionSteps echo "Pre version steps test with TAG=${TAG} and VERSION=${VERSION}"
+TagsCommand curl -s https://example.com/tags | jq -r .[] | grep ${TAG}
+CustomVersionSource echo "${TAG}" | sed 's/v//'
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC
 
@@ -66,7 +69,8 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:derailed/k9s" --use-add "amd64:Enable amd64" "$metadata_file"
           declare -A releaseTypes=()
-          tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
+          echo "Pre version steps test with TAG=${tag} and VERSION=${version}"
+          tags=$(echo "${tag}" | sed 's/v//')
           # shellcheck disable=SC2086
           for tag in $tags; do
             version="${tag#v}"
