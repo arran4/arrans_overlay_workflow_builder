@@ -81,6 +81,8 @@ jobs:
                 echo "$version == $tag so there is no v removed skipping"
                 continue
             fi
+            TAG="${tag}"
+            VERSION="${version}"
             # shellcheck disable=SC2034
             originalVersion="${version}"
             if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
