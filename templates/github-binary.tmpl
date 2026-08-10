@@ -63,12 +63,12 @@ jobs:
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
           [[ if .PreVersionSteps ]]
-          [[ .PreVersionSteps ]]
+          [[ .PreVersionSteps | actionvardoublequoted ]]
           [[ end ]]
           [[ if .CustomVersionSource ]]
-          tags=$([[ .CustomVersionSource ]])
+          tags=$([[ .CustomVersionSource | actionvardoublequoted ]])
           [[ else if .TagsCommand ]]
-          tags=$([[ .TagsCommand ]])
+          tags=$([[ .TagsCommand | actionvardoublequoted ]])
           [[ else ]]
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           [[ end ]]

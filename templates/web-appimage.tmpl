@@ -55,10 +55,10 @@ jobs:
         run: |
           set -euo pipefail
           [[- if .PreVersionSteps ]]
-          [[ .PreVersionSteps ]]
+          [[ .PreVersionSteps | actionvardoublequoted ]]
           [[- end ]]
           [[- if .CustomVersionSource ]]
-          version=$([[ .CustomVersionSource ]])
+          version=$([[ .CustomVersionSource | actionvardoublequoted ]])
           [[- end ]]
           [[- if .CustomDownloadUrl ]]
           appimage_url="[[ .CustomDownloadUrl | actionvardoublequoted ]]"

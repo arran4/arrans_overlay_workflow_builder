@@ -63,6 +63,7 @@ jobs:
             # shellcheck disable=SC2034
             version="${tag#v}"
             [[- if .WorkaroundTagPrefix ]]
+
             version="${tag#[[- .WorkaroundTagPrefix ]]}"
             [[- end ]]
             [[- if .WorkaroundSemanticVersionWithoutV ]]
