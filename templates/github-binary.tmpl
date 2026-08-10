@@ -33,7 +33,7 @@ env:
   [[ join (filterEmpty $pname "binary_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
   [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
-  [[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]]: '[[ index $binary 1 ]]'
+  [[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]]: '[[ index $binary 1 | actionvardoublequoted ]]'
   [[ end ]]
   [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | actionvardoublequoted ]]'
   [[ end ]]
