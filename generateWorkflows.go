@@ -277,9 +277,11 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			},
 			"replace":           strings.ReplaceAll,
 			"getEbuildIncludes": getEbuildIncludes,
-			"repeat": strings.Repeat,
-			"indent":     IndentContent,
-			"shell_echo": ShellEchoEvalContent,
+			"repeat": func(count int, s string) string {
+				return strings.Repeat(s, count)
+			},
+			"indent":             IndentContent,
+			"shell_echo":         ShellEchoEvalContent,
 			"shell_echo_literal": ShellEchoContent,
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
 				return os.Expand(s, func(s string) string {
