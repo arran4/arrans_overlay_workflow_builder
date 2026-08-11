@@ -196,17 +196,17 @@ jobs:
                 echo '}'
 [[- if .EbuildInclude.pkg_postinst ]]
                 echo 'pkg_postinst() {'
-[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent "    " | shell_echo | indent "                " ]]
                 echo '}'
 [[- end ]]
                 echo ''
                 echo 'src_install() {'
 [[- if .EbuildInclude.src_install ]]
-[[ getEbuildIncludes .EbuildInclude "src_install" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" | indent "    " | shell_echo | indent "                " ]]
 [[- end ]]
                 echo '  exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
-                echo "  dosym ${starget} ${sname}"
+                echo "  dosym [[ $starget ]] [[ $sname ]]"
 [[- end ]]
 [[- range $pname, $prog := .Programs ]]
                 echo '  doexe "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'

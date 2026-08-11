@@ -209,11 +209,11 @@ jobs:
                 echo ''
                 echo 'src_install() {'
 [[- if .EbuildInclude.src_install ]]
-[[ getEbuildIncludes .EbuildInclude "src_install" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" | indent "    " | shell_echo | indent "                " ]]
 [[- end ]]
                 echo '  exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
-                echo "  dosym ${starget} ${sname}"
+                echo "  dosym [[ $starget ]] [[ $sname ]]"
 [[- end ]]
 
 [[- range $pname, $prog := .Programs ]]
