@@ -288,7 +288,7 @@ jobs:
                 echo '}'
 [[- if .EbuildInclude.pkg_postinst ]]
                 echo 'pkg_postinst() {'
-[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent "    " | shell_echo | indent "                " ]]
                 echo '}'
 [[- end ]]
               } > "$tmp_ebuild_file"

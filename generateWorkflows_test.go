@@ -2,11 +2,11 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
-	"github.com/arran4/arrans_overlay_workflow_builder/util"
-	"github.com/stretchr/testify/assert"
 	"strings"
+	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+	"github.com/arran4/arrans_overlay_workflow_builder/util"
 )
 
 func TestShellEchoContent(t *testing.T) {
@@ -66,6 +66,7 @@ func TestShellEchoEvalContent(t *testing.T) {
 		})
 	}
 }
+
 
 func TestNormalizeGeneratedWorkflow(t *testing.T) {
 	input := []byte("top:  \n  first  \n\t\n\n  second\t\n\nnext:\n  child\n")
