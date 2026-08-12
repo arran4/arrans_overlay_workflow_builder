@@ -13,10 +13,6 @@ on:
     paths:
       - '.github/workflows/[[ .WorkflowFileName ]]'
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: false
-
 env:
   ecn: [[ .Category ]]
   epn: [[ .PackageName ]]
@@ -38,6 +34,10 @@ env:
   [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | actionvardoublequoted ]]'
   [[ end ]]
   [[ end ]]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   check-and-create-ebuild:

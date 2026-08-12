@@ -653,6 +653,18 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 		return nil, fmt.Errorf("on Type: %v: %w", parsedFields["Type"], err)
 	}
 	switch currentConfig.Type {
+	case "github-appimage":
+		currentConfig.Type = "Github AppImage Release"
+	case "github-binary":
+		currentConfig.Type = "Github Binary Release"
+	case "github-cmake":
+		currentConfig.Type = "Github Cmake Release"
+	case "web-appimage":
+		currentConfig.Type = "Web AppImage"
+	case "web-binary":
+		currentConfig.Type = "Web Binary"
+	}
+	switch currentConfig.Type {
 	case "Web AppImage":
 		currentConfig.DownloadRedirect, err = emptyOrOnlyOrFail(parsedFields["DownloadRedirect"])
 		if err != nil {
@@ -814,7 +826,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			currentConfig.Programs = map[string]*Program{}
 		}
 	default:
-		return nil, fmt.Errorf("uknown type: %s", currentConfig.Type)
+		return nil, fmt.Errorf("unknown type: %s", currentConfig.Type)
 	}
 	program, err := currentConfig.CreateAndSanitizeInputConfigProgram("", parsedFields)
 	if err != nil {
@@ -883,7 +895,7 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 			return nil, fmt.Errorf("on ShellCompletionScript: %v: %w", programFields["ShellCompletionScript"], err)
 		}
 	default:
-		return nil, fmt.Errorf("uknown type: %s", ic.Type)
+		return nil, fmt.Errorf("unknown type: %s", ic.Type)
 	}
 	return program, nil
 }

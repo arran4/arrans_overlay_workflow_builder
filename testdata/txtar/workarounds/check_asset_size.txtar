@@ -35,10 +35,6 @@ on:
     paths:
       - '.github/workflows/net-misc-rustdesk-bin-update.yaml'
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: false
-
 env:
   ecn: net-misc
   epn: rustdesk-bin
@@ -51,6 +47,10 @@ env:
   rustdesk_binary_installed_name: 'rustdesk'
   rustdesk_binary_archived_name_amd64: 'rustdesk'
   rustdesk_release_name_amd64: 'rustdesk-${version}-x86_64.tar.gz'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   check-and-create-ebuild:
@@ -136,8 +136,9 @@ jobs:
                 echo '  fi'
                 echo '}'
               } > "$tmp_ebuild_file"
-              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}")
               if [ $? -eq 0 ]; then
+                  next_ebuild_file="${ebuild_dir}/${{ env.epn }}-${next_version}.ebuild"
                   echo "Content changed or new version for $version. Writing $next_ebuild_file"
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
                   ebuild_file="$next_ebuild_file"

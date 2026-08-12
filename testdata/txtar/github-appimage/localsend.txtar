@@ -32,10 +32,6 @@ on:
     paths:
       - '.github/workflows/net-misc-localsend-appimage-update.yaml'
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: false
-
 env:
   ecn: net-misc
   epn: localsend-appimage
@@ -48,6 +44,10 @@ env:
   localsend_desktop_file: 'localsend_app.desktop'
   localsend_appimage_installed_name: 'localsend_app'
   localsend_release_name_amd64: 'LocalSend-${tag}-linux-x86-64.AppImage'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   check-and-create-ebuild:
@@ -147,8 +147,9 @@ jobs:
                 echo ""
 
               } > "$tmp_ebuild_file"
-              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}")
               if [ $? -eq 0 ]; then
+                  next_ebuild_file="${ebuild_dir}/${{ env.epn }}-${next_version}.ebuild"
                   echo "Content changed or new version for $version. Writing $next_ebuild_file"
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
                   ebuild_file="$next_ebuild_file"

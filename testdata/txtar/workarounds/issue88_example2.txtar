@@ -27,10 +27,6 @@ on:
     paths:
       - '.github/workflows/dev-lang-rust-bin-update.yaml'
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: false
-
 env:
   ecn: dev-lang
   epn: rust-bin
@@ -42,6 +38,10 @@ env:
   workflow_filename: dev-lang-rust-bin-update.yaml
   binary_installed_name: 'rust'
   release_name_amd64: 'rust-1.0.0-amd64'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   check-and-create-ebuild:
@@ -126,8 +126,9 @@ jobs:
                 echo '  fi'
                 echo '}'
               } > "$tmp_ebuild_file"
-              next_ebuild_file=$(g2 ebuild next-revision "${ebuild_dir}/${{ env.epn }}-${version}" -inspect "$tmp_ebuild_file")
+              next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}")
               if [ $? -eq 0 ]; then
+                  next_ebuild_file="${ebuild_dir}/${{ env.epn }}-${next_version}.ebuild"
                   echo "Content changed or new version for $version. Writing $next_ebuild_file"
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
                   ebuild_file="$next_ebuild_file"
