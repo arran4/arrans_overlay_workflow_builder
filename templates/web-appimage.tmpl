@@ -139,7 +139,7 @@ jobs:
 [[ end ]]
               echo '  exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
-                echo "  dosym ${starget} ${sname}"
+              echo "  dosym [[ $starget ]] [[ $sname ]]"
 [[- end ]]
 [[ range $pname, $prog := .Programs ]]
               echo '  newexe "${P}.${appimage_extension}" "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'

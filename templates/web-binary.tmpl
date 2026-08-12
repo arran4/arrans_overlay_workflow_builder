@@ -213,7 +213,7 @@ jobs:
 [[- end ]]
                 echo '  exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
-                echo "  dosym ${starget} ${sname}"
+                echo "  dosym [[ $starget ]] [[ $sname ]]"
 [[- end ]]
 
 [[- range $pname, $prog := .Programs ]]
