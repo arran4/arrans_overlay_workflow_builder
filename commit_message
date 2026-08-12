@@ -1,0 +1,7 @@
+Fixes #97: allow config variables in src_uri and export them to bash loop
+
+Allows templated variables `{{.Tag}}` and `{{.Version}}` to be passed via the `Binary` configuration in `current.config` and expanded cleanly inside generated bash strings, resolving buggy regex substitutions.
+
+Exports `TAG`, `VERSION`, and `originalVersion` explicitly to the environment loop before ebuild generation to ensure variables are available correctly in context for custom URL workarounds like `CustomDownloadUrl`.
+
+Updates tests via `go test -update-txtar ./...`.
