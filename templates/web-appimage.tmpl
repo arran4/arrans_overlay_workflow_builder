@@ -27,6 +27,10 @@ env:
   [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
   [[- end ]]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   fetch-latest:
     runs-on: ubuntu-latest
