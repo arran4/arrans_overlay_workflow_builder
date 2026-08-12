@@ -96,6 +96,9 @@ jobs:
                 echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
             fi
+            export TAG="${tag}"
+            export VERSION="${version}"
+            export originalVersion="${originalVersion}"
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
 
               # shellcheck disable=SC2016
