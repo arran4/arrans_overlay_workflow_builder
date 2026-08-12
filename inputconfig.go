@@ -663,6 +663,9 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 		currentConfig.Type = "Web AppImage"
 	case "web-binary":
 		currentConfig.Type = "Web Binary"
+	case "Github AppImage Release", "Github Binary Release", "Github Cmake Release", "Web AppImage", "Web Binary":
+	default:
+		return nil, fmt.Errorf("unknown type: %s", currentConfig.Type)
 	}
 	switch currentConfig.Type {
 	case "Web AppImage":
