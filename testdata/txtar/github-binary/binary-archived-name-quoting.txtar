@@ -164,6 +164,7 @@ jobs:
           if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi
 
       - name: Lint output
+        if: steps.process_releases.outputs.generated_tag
         uses: arran4/g2-action@v1.2
         with:
           mode: 'run'
