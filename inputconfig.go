@@ -663,9 +663,6 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 		currentConfig.Type = "Web AppImage"
 	case "web-binary":
 		currentConfig.Type = "Web Binary"
-	case "Github AppImage Release", "Github Binary Release", "Github Cmake Release", "Web AppImage", "Web Binary":
-	default:
-		return nil, fmt.Errorf("unknown type: %s", currentConfig.Type)
 	}
 	switch currentConfig.Type {
 	case "Web AppImage":
@@ -829,7 +826,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			currentConfig.Programs = map[string]*Program{}
 		}
 	default:
-		return nil, fmt.Errorf("uknown type: %s", currentConfig.Type)
+		return nil, fmt.Errorf("unknown type: %s", currentConfig.Type)
 	}
 	program, err := currentConfig.CreateAndSanitizeInputConfigProgram("", parsedFields)
 	if err != nil {
@@ -898,7 +895,7 @@ func (ic *InputConfig) CreateAndSanitizeInputConfigProgram(programName string, p
 			return nil, fmt.Errorf("on ShellCompletionScript: %v: %w", programFields["ShellCompletionScript"], err)
 		}
 	default:
-		return nil, fmt.Errorf("uknown type: %s", ic.Type)
+		return nil, fmt.Errorf("unknown type: %s", ic.Type)
 	}
 	return program, nil
 }
