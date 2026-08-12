@@ -270,12 +270,20 @@ jobs:
         [[- if ne $docs.Keyword "" ]]
                 echo '    if use [[ $docs.Keyword ]]; then'
             [[- range $ii, $doc := $docs.Grouped ]]
+                [[- if eq $doc.SourceFilepath $doc.DestinationFilename ]]
+                echo '      dodoc "[[ $doc.SourceFilepath ]]" || die "Failed to install document [[ $doc.SourceFilepath ]]"'
+            [[- else ]]
                 echo '      newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
+            [[- end ]]
             [[ end ]]
                 echo '    fi'
         [[ else ]]
             [[- range $ii, $doc := $docs.Grouped ]]
+                [[- if eq $doc.SourceFilepath $doc.DestinationFilename ]]
+                echo '    dodoc "[[ $doc.SourceFilepath ]]" || die "Failed to install document [[ $doc.SourceFilepath ]]"'
+            [[- else ]]
                 echo '    newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
+            [[- end ]]
             [[ end ]]
         [[ end ]]
     [[ end ]]
