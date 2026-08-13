@@ -1259,3 +1259,11 @@ func (ic *InputConfig) FeatureGenerateMd5Cache() bool {
 }
 
 var GenerateMd5CacheGlobal = false
+
+func (ic *InputConfig) FeatureGenerateOverlay() bool {
+	if ic.Features == nil {
+		return false
+	}
+	_, ok := ic.Features["Generate Overlay"]
+	return ok
+}
