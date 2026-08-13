@@ -1,0 +1,276 @@
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder dev Github Binary Release examples/example.config 2026-08-13 00:36:42.464694554 +0000 UTC m=+0.049494101
+
+name: app-admin/chezmoi-bin update
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '31 12 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/app-admin-chezmoi-bin-update.yaml'
+
+env:
+  ecn: app-admin
+  epn: chezmoi-bin
+  description: "Manage your dotfiles across multiple diverse machines, securely."
+  homepage: "https://www.chezmoi.io/"
+  github_owner: twpayne
+  github_repo: chezmoi
+  keywords: ~amd64 ~arm ~arm64 ~ppc64 ~riscv ~s390 ~x86
+  workflow_filename: app-admin-chezmoi-bin-update.yaml
+  android_binary_installed_name: 'chezmoi'
+  android_binary_archived_name_arm64: 'chezmoi'
+  android_release_name_arm64: 'chezmoi_${version}_android_arm64.tar.gz'
+  chezmoi_binary_installed_name: 'chezmoi'
+  chezmoi_binary_archived_name_amd64: 'chezmoi'
+  chezmoi_release_name_amd64: 'chezmoi_${version}_linux-musl_amd64.tar.gz'
+  chezmoi_binary_archived_name_arm: 'chezmoi'
+  chezmoi_release_name_arm: 'chezmoi_${version}_linux_arm.tar.gz'
+  chezmoi_binary_archived_name_arm64: 'chezmoi'
+  chezmoi_release_name_arm64: 'chezmoi_${version}_linux_arm64.tar.gz'
+  chezmoi_binary_archived_name_ppc64: 'chezmoi'
+  chezmoi_release_name_ppc64: 'chezmoi_${version}_linux_ppc64.tar.gz'
+  chezmoi_binary_archived_name_riscv: 'chezmoi'
+  chezmoi_release_name_riscv: 'chezmoi_${version}_linux_riscv64.tar.gz'
+  chezmoi_binary_archived_name_s390: 'chezmoi'
+  chezmoi_release_name_s390: 'chezmoi_${version}_linux_s390x.tar.gz'
+  chezmoi_binary_archived_name_x86: 'chezmoi'
+  chezmoi_release_name_x86: 'chezmoi_${version}_linux_i386.tar.gz'
+  glibc_binary_installed_name: 'chezmoi'
+  glibc_binary_archived_name_amd64: 'chezmoi'
+  glibc_release_name_amd64: 'chezmoi_${version}_linux-glibc_amd64.tar.gz'
+  le_binary_installed_name: 'chezmoi'
+  le_binary_archived_name_ppc64: 'chezmoi'
+  le_release_name_ppc64: 'chezmoi_${version}_linux_ppc64le.tar.gz'
+  loong64_binary_installed_name: 'chezmoi'
+  loong64_binary_archived_name_amd64: 'chezmoi'
+  loong64_release_name_amd64: 'chezmoi_${version}_linux_loong64.tar.gz'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check-and-create-ebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Install g2
+        uses: arran4/g2-action@v1.2
+
+      - name: Process each release
+        id: process_releases
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p "$ebuild_dir"
+          metadata_file="${ebuild_dir}/metadata.xml"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:twpayne/chezmoi" --use-add "amd64:Enable amd64" --use-add "android:Install android binary" --use-add "arm:Enable arm" --use-add "arm64:Enable arm64" --use-add "glibc:Install glibc binary" --use-add "le:Install le binary" --use-add "loong64:Install loong64 binary" --use-add "ppc64:Enable ppc64" --use-add "riscv:Enable riscv" --use-add "s390:Enable s390" --use-add "x86:Enable x86" "$metadata_file"
+          declare -A releaseTypes=()
+          tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
+          # shellcheck disable=SC2086
+          for tag in $tags; do
+            version="${tag#v}"
+            if [ "${version}" = "${tag}" ]; then
+                echo "$version == $tag so there is no v removed skipping"
+                continue
+            fi
+            # shellcheck disable=SC2034
+            originalVersion="${version}"
+            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+                echo "tag / $version doesn't match regexp";
+                continue;
+            fi
+            releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
+            if [[ ! -v releaseTypes[${releaseType:=release}] ]]; then
+                if [[ -v releaseTypes[release] ]]; then
+                  echo "Already have a newer main release: ${releaseTypes[release]}"
+                  continue
+                fi
+                releaseTypes[${releaseType:=release}]="${version}"
+            else
+                echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
+                continue
+            fi
+            tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+
+              # shellcheck disable=SC2016
+              {
+                echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
+                echo 'EAPI=8'
+                echo "DESCRIPTION=\"${{ env.description }}\""
+                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                echo 'SRC_URI="'
+                echo "	amd64? ( glibc? ( !loong64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux-glibc_amd64.tar.gz  )  )  )  "
+                echo "	amd64? ( !glibc? ( !loong64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux-musl_amd64.tar.gz  )  )  )  "
+                echo "	amd64? ( loong64? ( !glibc? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_loong64.tar.gz  )  )  )  "
+                echo "	arm? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_arm.tar.gz  )  "
+                echo "	arm64? ( android? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_android_arm64.tar.gz  )  )  "
+                echo "	arm64? ( !android? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_arm64.tar.gz  )  )  "
+                echo "	ppc64? ( !le? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_ppc64.tar.gz  )  )  "
+                echo "	ppc64? ( le? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz  )  )  "
+                echo "	riscv? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_riscv64.tar.gz  )  "
+                echo "	s390? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_s390x.tar.gz  )  "
+                echo "	x86? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_i386.tar.gz  )  "
+                echo '"'
+                echo 'LICENSE="MIT License"'
+                echo 'SLOT="0"'
+                echo 'KEYWORDS="${{ env.keywords }}"'
+                echo -n 'IUSE="'
+                echo -n ' android glibc le loong64'
+                echo -n ' amd64 android arm arm64 glibc le loong64 ppc64 riscv s390 x86'
+                echo '"'
+                echo ''
+                echo -n 'REQUIRED_USE="'
+                echo -n 'android? ( || ( arm64  ) ) glibc? ( || ( amd64  ) ) le? ( || ( ppc64  ) ) loong64? ( || ( amd64  ) ) '
+                echo '"'
+                echo ''
+                echo -n 'RDEPEND="'
+                echo -n ''
+                echo '"'
+                echo ''
+                echo 'S="${WORKDIR}"'
+                echo ''
+                echo 'src_unpack() {'
+                echo '  if use amd64 && use glibc && ! use loong64 ; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux-glibc_amd64.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use amd64 && ! use glibc  && ! use loong64 ; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux-musl_amd64.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use amd64 && use loong64 && ! use glibc ; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_loong64.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use arm; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_arm.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use arm64 && use android; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_android_arm64.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use arm64 && ! use android ; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_arm64.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use ppc64 && ! use le ; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use ppc64 && use le; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use riscv; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_riscv64.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use s390; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_s390x.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '  if use x86; then'
+                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_i386.tar.gz\" || die \"Can't unpack archive file\""
+                echo '  fi'
+                echo '}'
+                echo ''
+                echo 'src_install() {'
+                echo '  exeinto /opt/bin'
+                echo '  if use arm64 && use android; then'
+                echo '    newexe "${{ env.android_binary_archived_name_arm64 }}" "${{ env.android_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use amd64 && ! use glibc  && ! use loong64 ; then'
+                echo '    newexe "${{ env.chezmoi_binary_archived_name_amd64 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use arm; then'
+                echo '    newexe "${{ env.chezmoi_binary_archived_name_arm }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use arm64 && ! use android ; then'
+                echo '    newexe "${{ env.chezmoi_binary_archived_name_arm64 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use ppc64 && ! use le ; then'
+                echo '    newexe "${{ env.chezmoi_binary_archived_name_ppc64 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use riscv; then'
+                echo '    newexe "${{ env.chezmoi_binary_archived_name_riscv }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use s390; then'
+                echo '    newexe "${{ env.chezmoi_binary_archived_name_s390 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use x86; then'
+                echo '    newexe "${{ env.chezmoi_binary_archived_name_x86 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use amd64 && use glibc && ! use loong64 ; then'
+                echo '    newexe "${{ env.glibc_binary_archived_name_amd64 }}" "${{ env.glibc_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use ppc64 && use le; then'
+                echo '    newexe "${{ env.le_binary_archived_name_ppc64 }}" "${{ env.le_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '  if use amd64 && use loong64 && ! use glibc ; then'
+                echo '    newexe "${{ env.loong64_binary_archived_name_amd64 }}" "${{ env.loong64_binary_installed_name }}" || die "Failed to install Binary"'
+                echo '  fi'
+                echo '}'
+              } > "$tmp_ebuild_file"
+              if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then
+                  next_ebuild_file="${ebuild_dir}/${{ env.epn }}-${next_version}.ebuild"
+                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
+                  mv "$tmp_ebuild_file" "$next_ebuild_file"
+                  ebuild_file="$next_ebuild_file"
+              else
+                  echo "Matches existing ebuild. Skipping."
+                  rm -f "$tmp_ebuild_file"
+                  continue
+              fi
+              failed=0
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux-glibc_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux-musl_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_loong64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_arm.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_android_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_ppc64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_ppc64le.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_riscv64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_s390x.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_i386.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if [ "$failed" -eq 1 ]; then
+                  echo "Failed to generate manifest for $tag. Skipping..."
+                  rm -f "$ebuild_file"
+                  continue
+              fi
+              echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
+          done
+
+      - name: Deduplicate ebuilds
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          g2 ebuild deduplicate "${ebuild_dir}"
+
+      - name: Generate Overlay
+        run: |
+          mkdir -p profiles metadata
+          [ ! -f profiles/repo_name ] && echo "overlay_name" > profiles/repo_name
+          [ ! -f profiles/eapi ] && echo "8" > profiles/eapi
+          [ ! -f metadata/layout.conf ] && wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true
+          if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi
+
+      - name: Lint output
+        if: steps.process_releases.outputs.generated_tag
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint -disable-rule PG0802 . ${{ env.ecn }}/${{ env.epn }}'
+
+      - name: Commit and push changes
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles metadata; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; [ ! -f metadata/layout.conf ] && wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          git add "./${ebuild_dir}"
+          if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
+            git pull --rebase &&
+            git push
+          fi || true
+        if: steps.process_releases.outputs.generated_tag
