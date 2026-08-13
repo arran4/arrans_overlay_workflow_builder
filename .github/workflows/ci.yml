@@ -301,6 +301,16 @@ jobs:
           cache: true
       - name: Test
         run: go test ./... -v
+      - name: Check examples are up-to-date
+        run: |
+          if [[ -f examples/example.config ]]; then
+            mkdir -p examples/.github/workflows
+            go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/
+            if ! git diff --quiet examples/; then
+              echo "::error::Generated examples are out of sync. Please run 'go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/' and commit the changes."
+              exit 1
+            fi
+          fi
   go-vet:
     name: Go vet
     needs:
@@ -368,6 +378,13 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Generate examples
+        if: ${{ needs.discover.outputs.has_go == 'true' }}
+        run: |
+          if [[ -f examples/example.config ]]; then
+            mkdir -p examples/.github/workflows
+            go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/
+          fi
       - name: Run autofix formatters
         shell: bash
         run: "set -euo pipefail\nif [[ \"${{ needs.discover.outputs.has_go }}\" ==\
