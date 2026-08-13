@@ -305,9 +305,9 @@ jobs:
         run: |
           if [[ -f examples/example.config ]]; then
             mkdir -p examples/.github/workflows
-            go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/
+            go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/ -force-date "2026-08-13 00:00:00 +0000 UTC"
             if ! git diff --quiet examples/; then
-              echo "::error::Generated examples are out of sync. Please run 'go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/' and commit the changes."
+              echo "::error::Generated examples are out of sync. Please run 'go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/ -force-date \"2026-08-13 00:00:00 +0000 UTC\"' and commit the changes."
               exit 1
             fi
           fi
@@ -383,7 +383,7 @@ jobs:
         run: |
           if [[ -f examples/example.config ]]; then
             mkdir -p examples/.github/workflows
-            go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/
+            go run cmd/generate/main.go generate workflows -input-file examples/example.config -output-dir examples/.github/workflows/ -force-date "2026-08-13 00:00:00 +0000 UTC"
           fi
       - name: Run autofix formatters
         shell: bash
