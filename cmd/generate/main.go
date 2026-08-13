@@ -42,6 +42,10 @@ func main() {
 			globalGenerateMd5Cache = true
 			os.Args = append(os.Args[:i], os.Args[i+1:]...)
 			break
+		} else if arg == "--generate-overlay" || arg == "-generate-overlay" {
+			arrans_overlay_workflow_builder.GenerateOverlayGlobal = true
+			os.Args = append(os.Args[:i], os.Args[i+1:]...)
+			break
 		}
 	}
 	arrans_overlay_workflow_builder.GenerateMd5CacheGlobal = globalGenerateMd5Cache

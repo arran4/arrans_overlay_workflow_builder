@@ -1265,5 +1265,7 @@ func (ic *InputConfig) FeatureGenerateOverlay() bool {
 		return false
 	}
 	_, ok := ic.Features["Generate Overlay"]
-	return ok
+	return ok || GenerateOverlayGlobal
 }
+
+var GenerateOverlayGlobal = false
