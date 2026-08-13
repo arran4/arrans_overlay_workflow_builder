@@ -6,6 +6,7 @@ import (
 	"github.com/arran4/arrans_overlay_workflow_builder"
 	"log"
 	"os"
+	"time"
 )
 
 var (
@@ -119,6 +120,7 @@ type CmdGenerateGithubWorkflowsArgConfig struct {
 	*CmdGenerateArgConfig
 	InputFile *string
 	OutputDir *string
+	ForceDate *string
 }
 
 func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error {
@@ -128,6 +130,7 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	config.InputFile = fs.String("input-file", "input.config", "The input with config")
 	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
+	config.ForceDate = fs.String("force-date", "", "Force a specific date (e.g. 2026-08-13 00:00:00 +0000 UTC) for testing")
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
@@ -136,7 +139,18 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 		if config.InputFile == nil || *config.InputFile == "" {
 			return fmt.Errorf("input file argument missing")
 		}
-		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version)
+
+		var opts []any
+		if config.ForceDate != nil && *config.ForceDate != "" {
+			t, err := time.Parse("2006-01-02 15:04:05 -0700 MST", *config.ForceDate)
+			if err == nil {
+				opts = append(opts, t)
+			} else {
+				log.Printf("Warning: failed to parse force-date: %v. Expected format: '2006-01-02 15:04:05 -0700 MST'", err)
+			}
+		}
+
+		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
