@@ -64,7 +64,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" --use-add "amd64:Enable amd64" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" "$metadata_file"
           declare -A releaseTypes=()
           tags=$(echo "v1.2.3")
           # shellcheck disable=SC2086
@@ -108,7 +108,6 @@ jobs:
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
-                echo -n ' amd64'
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'

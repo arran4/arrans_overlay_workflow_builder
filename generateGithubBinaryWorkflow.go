@@ -33,7 +33,8 @@ func (ggbtd *GenerateGithubBinaryTemplateData) KeywordList() []string {
 	keywords := make([]string, 0)
 	for programName := range ggbtd.Programs {
 		for key := range ggbtd.Programs[programName].Binary {
-			keywords = append(keywords, key)
+			kw, _, _ := ggbtd.ParseKeywordAndUseFlags(key)
+			keywords = append(keywords, kw)
 		}
 	}
 	sort.Strings(keywords)
@@ -469,17 +470,22 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 func (ggbtd *GenerateGithubBinaryTemplateData) ExtractedUseFlags() []string {
 	ggbtd.inferUseFlags()
 	flagsSet := make(map[string]struct{})
+	keywordList := ggbtd.KeywordList()
 	for _, progMap := range ggbtd.MustHaveUseFlags {
 		for _, flags := range progMap {
 			for _, f := range flags {
-				flagsSet[f] = struct{}{}
+				if !slices.Contains(keywordList, f) {
+					flagsSet[f] = struct{}{}
+				}
 			}
 		}
 	}
 	for _, progMap := range ggbtd.MustntHaveUseFlags {
 		for _, flags := range progMap {
 			for _, f := range flags {
-				flagsSet[f] = struct{}{}
+				if !slices.Contains(keywordList, f) {
+					flagsSet[f] = struct{}{}
+				}
 			}
 		}
 	}

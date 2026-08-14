@@ -19,7 +19,13 @@ func (ggaitd *GenerateGithubAppImageTemplateData) KeywordList() []string {
 	keywords := make([]string, 0)
 	for programName := range ggaitd.Programs {
 		for key := range ggaitd.Programs[programName].Binary {
-			keywords = append(keywords, key)
+			kw := key
+			if start := strings.Index(key, "["); start != -1 {
+				if end := strings.LastIndex(key, "]"); end != -1 && end > start {
+					kw = key[:start]
+				}
+			}
+			keywords = append(keywords, kw)
 		}
 	}
 	sort.Strings(keywords)
