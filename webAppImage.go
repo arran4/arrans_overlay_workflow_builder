@@ -114,7 +114,7 @@ func ConfigAddWebAppImage(toConfig, pageURL, matchExpr, linkExt string) error {
 }
 
 // CmdOneshotWebAppImage writes the derived configuration to stdout and renders a workflow.
-func CmdOneshotWebAppImage(pageURL, matchExpr, linkExt, outputDir, version string) error {
+func CmdOneshotWebAppImage(pageURL, matchExpr, linkExt, outputDir, version string, opts ...any) error {
 	ic, _, err := GenerateWebAppImageConfigEntry(pageURL, matchExpr, linkExt)
 	if err != nil {
 		return err
@@ -137,7 +137,7 @@ func CmdOneshotWebAppImage(pageURL, matchExpr, linkExt, outputDir, version strin
 		return err
 	}
 	_ = os.MkdirAll(outputDir, 0755)
-	if err := ic.GenerateGithubWorkflow("-", time.Now(), templates, outputDir, version); err != nil {
+	if err := ic.GenerateGithubWorkflow("-", time.Now(), templates, outputDir, version, opts...); err != nil {
 		return err
 	}
 	return nil
