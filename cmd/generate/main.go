@@ -16,11 +16,11 @@ var (
 )
 
 type MainArgConfig struct {
-	Version            string
-	Commit             string
-	Date               string
-	GenerateMd5Cache   bool
-	GenerateOverlay    bool
+	Version          string
+	Commit           string
+	Date             string
+	GenerateMd5Cache bool
+	GenerateOverlay  bool
 }
 
 func valueOrDefault(v *string) string {
@@ -46,11 +46,12 @@ func main() {
 	}
 	for i := 1; i < len(os.Args); i++ {
 		arg := os.Args[i]
-		if arg == "--generate-md5-cache" || arg == "-generate-md5-cache" {
+		switch arg {
+		case "--generate-md5-cache", "-generate-md5-cache":
 			globalGenerateMd5Cache = true
-		} else if arg == "--generate-overlay" || arg == "-generate-overlay" {
+		case "--generate-overlay", "-generate-overlay":
 			globalGenerateOverlay = true
-		} else {
+		default:
 			newArgs = append(newArgs, arg)
 		}
 	}
