@@ -37,18 +37,20 @@ func main() {
 	}
 	var globalGenerateMd5Cache bool
 	// A workaround for global flags being parsed before the command is parsed
+	var globalGenerateOverlay bool
 	for i, arg := range os.Args {
 		if arg == "--generate-md5-cache" || arg == "-generate-md5-cache" {
 			globalGenerateMd5Cache = true
 			os.Args = append(os.Args[:i], os.Args[i+1:]...)
 			break
 		} else if arg == "--generate-overlay" || arg == "-generate-overlay" {
-			arrans_overlay_workflow_builder.GenerateOverlayGlobal = true
+			globalGenerateOverlay = true
 			os.Args = append(os.Args[:i], os.Args[i+1:]...)
 			break
 		}
 	}
 	arrans_overlay_workflow_builder.GenerateMd5CacheGlobal = globalGenerateMd5Cache
+	arrans_overlay_workflow_builder.GenerateOverlayGlobal = globalGenerateOverlay
 
 	if err := fs.Parse(os.Args); err != nil {
 		log.Printf("Flag parse error: %s", err)
