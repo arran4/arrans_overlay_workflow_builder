@@ -67,7 +67,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "test@example.com:Test Maintainer:person" -u "github:example/tool" --use-add "amd64:Enable amd64" "$metadata_file"
+          g2 metadata -m "test@example.com:Test Maintainer:person" -u "github:example/tool" "$metadata_file"
           declare -A releaseTypes=()
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
@@ -109,7 +109,6 @@ jobs:
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
-                echo -n ' amd64'
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'

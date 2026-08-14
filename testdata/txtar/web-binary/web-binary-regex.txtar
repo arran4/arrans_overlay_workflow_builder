@@ -72,7 +72,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" --use-add "amd64:Enable amd64" --use-add "arm64:Enable arm64" --use-add "x86:Enable x86" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" "$metadata_file"
           declare -A releaseTypes=()
           if [ -z "curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text="[0-9]+\.[0-9]+\.[0-9]+' | cut -d '"' -f 2" ]; then
              echo "TagsCommand is required for Web Binary configurations" >&2
@@ -122,7 +122,6 @@ jobs:
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
-                echo -n ' amd64 arm64 x86'
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
