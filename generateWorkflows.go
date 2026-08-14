@@ -466,3 +466,7 @@ func (b *GenerateGithubWorkflowBase) WorkaroundGentooVersionRegularExpression() 
 func (b *GenerateGithubWorkflowBase) FeatureGenerateMd5Cache() bool {
 	return b.InputConfig.FeatureGenerateMd5Cache()
 }
+
+func (b *GenerateGithubWorkflowBase) FeatureGenerateOverlay() bool {
+	return b.InputConfig.FeatureGenerateOverlay()
+}
