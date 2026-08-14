@@ -16,9 +16,11 @@ var (
 )
 
 type MainArgConfig struct {
-	Version string
-	Commit  string
-	Date    string
+	Version          string
+	Commit           string
+	Date             string
+	GenerateMd5Cache bool
+	GenerateOverlay  bool
 }
 
 func valueOrDefault(v *string) string {
@@ -38,19 +40,24 @@ func main() {
 	var globalGenerateMd5Cache bool
 	// A workaround for global flags being parsed before the command is parsed
 	var globalGenerateOverlay bool
-	for i, arg := range os.Args {
-		if arg == "--generate-md5-cache" || arg == "-generate-md5-cache" {
+	var newArgs []string
+	if len(os.Args) > 0 {
+		newArgs = append(newArgs, os.Args[0])
+	}
+	for i := 1; i < len(os.Args); i++ {
+		arg := os.Args[i]
+		switch arg {
+		case "--generate-md5-cache", "-generate-md5-cache":
 			globalGenerateMd5Cache = true
-			os.Args = append(os.Args[:i], os.Args[i+1:]...)
-			break
-		} else if arg == "--generate-overlay" || arg == "-generate-overlay" {
+		case "--generate-overlay", "-generate-overlay":
 			globalGenerateOverlay = true
-			os.Args = append(os.Args[:i], os.Args[i+1:]...)
-			break
+		default:
+			newArgs = append(newArgs, arg)
 		}
 	}
-	arrans_overlay_workflow_builder.GenerateMd5CacheGlobal = globalGenerateMd5Cache
-	arrans_overlay_workflow_builder.GenerateOverlayGlobal = globalGenerateOverlay
+	os.Args = newArgs
+	config.GenerateMd5Cache = globalGenerateMd5Cache
+	config.GenerateOverlay = globalGenerateOverlay
 
 	if err := fs.Parse(os.Args); err != nil {
 		log.Printf("Flag parse error: %s", err)
@@ -154,6 +161,12 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 			} else {
 				log.Printf("Warning: failed to parse force-date: %v. Expected format: '2006-01-02 15:04:05 -0700 MST'", err)
 			}
+		}
+		if config.GenerateMd5Cache {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateMd5Cache(true))
+		}
+		if config.GenerateOverlay {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
 		}
 
 		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version, opts...)
@@ -538,7 +551,14 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) e
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
+		var opts []any
+		if config.GenerateMd5Cache {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateMd5Cache(true))
+		}
+		if config.GenerateOverlay {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
+		}
+		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
@@ -571,7 +591,14 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) err
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
+		var opts []any
+		if config.GenerateMd5Cache {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateMd5Cache(true))
+		}
+		if config.GenerateOverlay {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
+		}
+		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
@@ -602,7 +629,14 @@ func (mac *CmdOneshotArgConfig) cmdOneshotWebAppImage(args []string) error {
 		if config.PageUrl == nil || *config.PageUrl == "" {
 			return fmt.Errorf("url missing")
 		}
-		return arrans_overlay_workflow_builder.CmdOneshotWebAppImage(*config.PageUrl, *config.MatchExpr, valueOrDefault(config.Extension), *config.OutputDir, config.Version)
+		var opts []any
+		if config.GenerateMd5Cache {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateMd5Cache(true))
+		}
+		if config.GenerateOverlay {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
+		}
+		return arrans_overlay_workflow_builder.CmdOneshotWebAppImage(*config.PageUrl, *config.MatchExpr, valueOrDefault(config.Extension), *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)
@@ -704,7 +738,14 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseCmakeSource(args []string
 		if config.GithubUrl == nil || *config.GithubUrl == "" {
 			return fmt.Errorf("github URL to view is missing")
 		}
-		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseCmakeSource(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version)
+		var opts []any
+		if config.GenerateMd5Cache {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateMd5Cache(true))
+		}
+		if config.GenerateOverlay {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
+		}
+		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseCmakeSource(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
 		os.Exit(-1)

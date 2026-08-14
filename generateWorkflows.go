@@ -309,12 +309,18 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 	return templates, nil
 }
 
+type OptGenerateMd5Cache bool
+type OptGenerateOverlay bool
+
 type GenerateGithubWorkflowBase struct {
 	*InputConfig
 	Version    string
 	Now        time.Time
 	ConfigFile string
 	Schedule   string
+
+	GlobalGenerateMd5Cache bool
+	GlobalGenerateOverlay  bool
 }
 
 func (b *GenerateGithubWorkflowBase) Cron() string {
@@ -394,6 +400,14 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		ConfigFile:  file,
 		InputConfig: ic,
 	}
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case OptGenerateMd5Cache:
+			base.GlobalGenerateMd5Cache = bool(o)
+		case OptGenerateOverlay:
+			base.GlobalGenerateOverlay = bool(o)
+		}
+	}
 	switch ic.Type {
 	case "Github AppImage Release":
 		data = &GenerateGithubAppImageTemplateData{
@@ -464,9 +478,9 @@ func (b *GenerateGithubWorkflowBase) WorkaroundGentooVersionRegularExpression() 
 }
 
 func (b *GenerateGithubWorkflowBase) FeatureGenerateMd5Cache() bool {
-	return b.InputConfig.FeatureGenerateMd5Cache()
+	return b.GlobalGenerateMd5Cache || b.InputConfig.FeatureGenerateMd5Cache()
 }
 
 func (b *GenerateGithubWorkflowBase) FeatureGenerateOverlay() bool {
-	return b.InputConfig.FeatureGenerateOverlay()
+	return b.GlobalGenerateOverlay || b.InputConfig.FeatureGenerateOverlay()
 }

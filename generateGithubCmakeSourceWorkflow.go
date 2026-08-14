@@ -33,7 +33,7 @@ func ConfigViewCmakeSourceGithubReleases(githubUrl string, selectedVersionTag st
 	return err
 }
 
-func CmdOneshotGithubReleaseCmakeSource(githubUrl string, selectedVersionTag string, tagPrefix string, outputDir string, version string) error {
+func CmdOneshotGithubReleaseCmakeSource(githubUrl string, selectedVersionTag string, tagPrefix string, outputDir string, version string, opts ...any) error {
 	repoName, ic, versions, tags, releaseInfo, _, err := NewInputConfigurationFromRepo(githubUrl, selectedVersionTag, tagPrefix, "", "Github Cmake Release")
 	if err != nil {
 		return err
@@ -44,5 +44,5 @@ func CmdOneshotGithubReleaseCmakeSource(githubUrl string, selectedVersionTag str
 	_ = releaseInfo
 
 	log.Printf("Generating from repo")
-	return GenerateGithubWorkflowsFromInputConfigs("oneshot", []*InputConfig{ic}, outputDir, version)
+	return GenerateGithubWorkflowsFromInputConfigs("oneshot", []*InputConfig{ic}, outputDir, version, opts...)
 }

@@ -1255,17 +1255,13 @@ func (ic *InputConfig) FeatureGenerateMd5Cache() bool {
 		return false
 	}
 	_, ok := ic.Features["Generate Md5 Cache"]
-	return ok || GenerateMd5CacheGlobal
+	return ok
 }
-
-var GenerateMd5CacheGlobal = false
 
 func (ic *InputConfig) FeatureGenerateOverlay() bool {
 	if ic.Features == nil {
 		return false
 	}
 	_, ok := ic.Features["Generate Overlay"]
-	return ok || GenerateOverlayGlobal
+	return ok
 }
-
-var GenerateOverlayGlobal = false
