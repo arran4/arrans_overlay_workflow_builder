@@ -75,7 +75,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:twpayne/chezmoi" --use-add "android:Install android binary" --use-add "glibc:Install glibc binary" --use-add "le:Install le binary" --use-add "loong64:Install loong64 binary" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:twpayne/chezmoi" --use-add "android:Enable android" --use-add "glibc:Enable glibc" --use-add "le:Enable le" --use-add "loong64:Enable loong64" "$metadata_file"
           declare -A releaseTypes=()
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
@@ -128,11 +128,9 @@ jobs:
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
                 echo -n ' android glibc le loong64'
-                echo -n ' android glibc le loong64'
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
-                echo -n 'android? ( || ( arm64  ) ) glibc? ( || ( amd64  ) ) le? ( || ( ppc64  ) ) loong64? ( || ( amd64  ) ) '
                 echo '"'
                 echo ''
                 echo -n 'RDEPEND="'
