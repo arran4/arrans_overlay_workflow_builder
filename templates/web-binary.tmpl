@@ -132,9 +132,6 @@ jobs:
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
-[[- if $.ReverseProgramsAsAlternatives ]]
-                echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]'
-[[- end ]]
 [[- if $.HasManualPages ]]
                 echo -n ' man'
 [[- end ]]
@@ -153,9 +150,6 @@ jobs:
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
-[[- if $.ReverseProgramsAsAlternatives ]]
-                echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]'
-[[- end ]]
 [[- range $i, $ruse := $.RequiredUse]]
                 echo '		[[ $ruse ]]'
 [[- end]]

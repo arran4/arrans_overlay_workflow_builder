@@ -680,12 +680,6 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		pkgMd.Use = []g2.Use{{}}
 	}
 
-	for use := range ggbtd.ReverseProgramsAsAlternatives() {
-		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
-			Name: strcase.SnakeCase(use),
-			Text: fmt.Sprintf("Install %s binary", use),
-		})
-	}
 	for _, shell := range ggbtd.ShellCompletionShells() {
 		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
 			Name: strcase.SnakeCase(shell),
@@ -767,9 +761,6 @@ func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
 		}
 	}
 
-	for use := range ggbtd.ReverseProgramsAsAlternatives() {
-		addFlag(use, fmt.Sprintf("Install %s binary", use))
-	}
 	for _, shell := range ggbtd.ShellCompletionShells() {
 		addFlag(shell, fmt.Sprintf("Install %s completion", shell))
 	}
