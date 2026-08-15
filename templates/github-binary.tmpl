@@ -128,23 +128,8 @@ jobs:
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
-[[- if $.ReverseProgramsAsAlternatives ]]
-                echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]] [[$use | UseFlagSafe ]][[end]]'
-[[- end ]]
-[[- if $.HasManualPages ]]
-                echo -n ' man'
-[[- end ]]
-[[- if $.HasDocuments ]]
-                echo -n ' doc'
-[[- end ]]
-[[- if $.ShellCompletionShells ]]
-                echo -n '[[- range $i, $shell := $.ShellCompletionShells]] [[$shell | UseFlagSafe ]][[end]]'
-[[- end ]]
-[[- if $.IUse ]]
-                echo -n '[[- range $i, $use := $.IUse]] [[$use | UseFlagSafe ]][[end]]'
-[[- end ]]
-[[- if $.ExtractedUseFlags ]]
-                echo -n '[[- range $i, $use := $.ExtractedUseFlags]] [[$use | UseFlagSafe ]][[end]]'
+[[- if $.IUseFlags ]]
+                echo -n '[[- range $i, $use := $.IUseFlags]] [[$use.Name | UseFlagSafe ]][[end]]'
 [[- end ]]
                 echo '"'
                 echo ''

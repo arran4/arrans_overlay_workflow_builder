@@ -467,6 +467,45 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 	}
 }
 
+func (ggbtd *GenerateGithubBinaryTemplateData) IUseFlags() []g2.Flag {
+	seen := make(map[string]bool)
+
+	var finalUses []g2.Flag
+
+	addFlag := func(name, text string) {
+		cleaned := strcase.SnakeCase(name)
+		if cleaned != "" && !seen[cleaned] {
+			seen[cleaned] = true
+			finalUses = append(finalUses, g2.Flag{Name: cleaned, Text: text})
+		}
+	}
+
+	for use := range ggbtd.ReverseProgramsAsAlternatives() {
+		addFlag(use, fmt.Sprintf("Install %s binary", use))
+	}
+	if ggbtd.HasManualPages() {
+		addFlag("man", "Install manual pages")
+	}
+	if ggbtd.HasDocuments() {
+		addFlag("doc", "Install documentation")
+	}
+	for _, shell := range ggbtd.ShellCompletionShells() {
+		addFlag(shell, fmt.Sprintf("Install %s completion", shell))
+	}
+	for _, use := range ggbtd.IUse {
+		addFlag(use, fmt.Sprintf("Enable %s", use))
+	}
+	for _, use := range ggbtd.ExtractedUseFlags() {
+		addFlag(use, fmt.Sprintf("Enable %s", use))
+	}
+
+	sort.Slice(finalUses, func(i, j int) bool {
+		return finalUses[i].Name < finalUses[j].Name
+	})
+
+	return finalUses
+}
+
 func (ggbtd *GenerateGithubBinaryTemplateData) ExtractedUseFlags() []string {
 	ggbtd.inferUseFlags()
 	flagsSet := make(map[string]struct{})
@@ -639,17 +678,6 @@ func (ggbtd *GenerateGithubBinaryTemplateData) NeedsSrcUnpack() bool {
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
-	// Since DefaultMetadata returns string with header, we strip it or parse carefully
-	// g2.ParseMetadataBytes expects just the XML
-	// But DefaultMetadata constructs the struct, we should probably refactor DefaultMetadata to return the struct
-	// For now, let's construct a new struct populating it similarly or use a new method that returns the struct.
-	// Actually, easier to duplicate the struct construction logic or refactor base.
-
-	// Refactoring base: I can't easily change base method signature without affecting other callers if I didn't verify them.
-	// But I just added DefaultMetadata in previous step.
-	// Let's copy-paste the struct construction for now to avoid breaking changes in the middle of a thought process,
-	// or better, implement a `DefaultMetadataStruct` in base.
-
 	pkgMd := &g2.PkgMetadata{
 		XMLName: xml.Name{
 			Local: "pkgmetadata",
@@ -675,42 +703,13 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		pkgMd.Upstream = nil
 	}
 
-	// Add USE flags
 	if len(pkgMd.Use) == 0 {
 		pkgMd.Use = []g2.Use{{}}
 	}
 
-	for use := range ggbtd.ReverseProgramsAsAlternatives() {
-		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
-			Name: strcase.SnakeCase(use),
-			Text: fmt.Sprintf("Install %s binary", use),
-		})
+	for _, f := range ggbtd.IUseFlags() {
+		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, f)
 	}
-	for _, shell := range ggbtd.ShellCompletionShells() {
-		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
-			Name: strcase.SnakeCase(shell),
-			Text: fmt.Sprintf("Install %s completion", shell),
-		})
-	}
-
-	for _, use := range ggbtd.IUse {
-		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
-			Name: strcase.SnakeCase(use),
-			Text: fmt.Sprintf("Enable %s", use),
-		})
-	}
-
-	for _, use := range ggbtd.ExtractedUseFlags() {
-		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
-			Name: strcase.SnakeCase(use),
-			Text: fmt.Sprintf("Enable %s", use),
-		})
-	}
-
-	// Sort flags for determinism
-	sort.Slice(pkgMd.Use[0].Flags, func(i, j int) bool {
-		return pkgMd.Use[0].Flags[i].Name < pkgMd.Use[0].Flags[j].Name
-	})
 
 	for i := range pkgMd.Use {
 		var newFlags []g2.Flag
@@ -736,13 +735,11 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		pkgMd.Use = nil
 	}
 
-	o, err := xml.MarshalIndent(pkgMd, "", "\t")
+	o, err := xml.MarshalIndent(pkgMd, "", "	")
 	if err != nil {
 		return "", fmt.Errorf("marshalling metadata: %w", err)
 	}
-	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
-%s`, string(o)), nil
+	return fmt.Sprintf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE pkgmetadata SYSTEM \"http://www.gentoo.org/dtd/metadata.dtd\">\n%s", string(o)), nil
 }
 
 func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
@@ -751,41 +748,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
 	}
 	args := ggbtd.GenerateGithubWorkflowBase.G2MetadataArgs() + " "
 
-	seen := make(map[string]bool)
-
-	type flag struct {
-		Name string
-		Text string
-	}
-	var finalUses []flag
-
-	addFlag := func(name, text string) {
-		cleaned := strcase.SnakeCase(name)
-		if cleaned != "" && !seen[cleaned] {
-			seen[cleaned] = true
-			finalUses = append(finalUses, flag{Name: cleaned, Text: text})
-		}
-	}
-
-	for use := range ggbtd.ReverseProgramsAsAlternatives() {
-		addFlag(use, fmt.Sprintf("Install %s binary", use))
-	}
-	for _, shell := range ggbtd.ShellCompletionShells() {
-		addFlag(shell, fmt.Sprintf("Install %s completion", shell))
-	}
-	for _, use := range ggbtd.IUse {
-		addFlag(use, fmt.Sprintf("Enable %s", use))
-	}
-	for _, use := range ggbtd.ExtractedUseFlags() {
-		addFlag(use, fmt.Sprintf("Enable %s", use))
-	}
-
-	// Sort flags for determinism
-	sort.Slice(finalUses, func(i, j int) bool {
-		return finalUses[i].Name < finalUses[j].Name
-	})
-
-	for _, f := range finalUses {
+	for _, f := range ggbtd.IUseFlags() {
 		args += fmt.Sprintf("--use-add \"%s:%s\" ", f.Name, f.Text)
 	}
 	return strings.TrimSpace(args)
