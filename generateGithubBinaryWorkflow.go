@@ -467,6 +467,8 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 	}
 }
 
+
+
 func (ggbtd *GenerateGithubBinaryTemplateData) IUseFlags() []string {
 	seen := make(map[string]bool)
 
@@ -631,8 +633,8 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ProgramsAsAlternatives() map[stri
 	}
 	ggbtd._programsAsAlternatives = map[string][]string{}
 	s := ggbtd.Workarounds["Programs as Alternatives"]
-	ss := strings.Split(s, " ")
-	for _, each := range ss {
+	ss := strings.SplitSeq(s, " ")
+	for each := range ss {
 		e := strings.Split(each, ":")
 		if len(e) != 2 {
 			continue

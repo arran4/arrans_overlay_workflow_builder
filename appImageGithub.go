@@ -224,10 +224,7 @@ func stringDistance(a, b string) int {
 			if ra[i-1] != rb[j-1] {
 				cost = 1
 			}
-			dp[i][j] = dp[i-1][j-1] + cost
-			if dp[i][j-1]+1 < dp[i][j] {
-				dp[i][j] = dp[i][j-1] + 1
-			}
+			dp[i][j] = min(dp[i][j-1]+1, dp[i-1][j-1]+cost)
 			if dp[i-1][j]+1 < dp[i][j] {
 				dp[i][j] = dp[i-1][j] + 1
 			}

@@ -47,7 +47,6 @@ func TestWorkflowTemplates(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(strings.TrimSuffix(path.Base(tc), ".txtar"), func(t *testing.T) {
 			raw, err := testdataFS.ReadFile(tc)
 			if err != nil {
@@ -95,7 +94,7 @@ func TestWorkflowTemplates(t *testing.T) {
 			}
 
 			var templateName string
-			var data interface{}
+			var data any
 			switch ic.Type {
 			case "Github AppImage Release":
 				data = &GenerateGithubAppImageTemplateData{GenerateGithubWorkflowBase: base}
