@@ -707,9 +707,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		pkgMd.Use = []g2.Use{{}}
 	}
 
-	for _, f := range ggbtd.IUseFlags() {
-		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, f)
-	}
+	pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, ggbtd.IUseFlags()...)
 
 	for i := range pkgMd.Use {
 		var newFlags []g2.Flag
