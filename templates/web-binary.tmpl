@@ -133,7 +133,7 @@ jobs:
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
 [[- if $.IUseFlags ]]
-                echo -n '[[- range $i, $use := $.IUseFlags]] [[$use.Name | UseFlagSafe ]][[end]]'
+                echo -n '[[- range $i, $use := $.IUseFlags]] [[$use | UseFlagSafe ]][[end]]'
 [[- end ]]
                 echo '"'
                 echo ''

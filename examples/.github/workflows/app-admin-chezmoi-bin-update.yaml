@@ -128,7 +128,6 @@ jobs:
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
                 echo -n ' android glibc le loong64'
-                echo -n ' android glibc le loong64'
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'

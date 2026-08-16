@@ -467,16 +467,16 @@ func (ggbtd *GenerateGithubBinaryTemplateData) inferUseFlags() {
 	}
 }
 
-func (ggbtd *GenerateGithubBinaryTemplateData) IUseFlags() []g2.Flag {
+func (ggbtd *GenerateGithubBinaryTemplateData) IUseFlags() []string {
 	seen := make(map[string]bool)
 
-	var finalUses []g2.Flag
+	var finalUses []string
 
 	addFlag := func(name, text string) {
 		cleaned := strcase.SnakeCase(name)
 		if cleaned != "" && !seen[cleaned] {
 			seen[cleaned] = true
-			finalUses = append(finalUses, g2.Flag{Name: cleaned, Text: text})
+			finalUses = append(finalUses, cleaned)
 		}
 	}
 
@@ -499,9 +499,7 @@ func (ggbtd *GenerateGithubBinaryTemplateData) IUseFlags() []g2.Flag {
 		addFlag(use, fmt.Sprintf("Enable %s", use))
 	}
 
-	sort.Slice(finalUses, func(i, j int) bool {
-		return finalUses[i].Name < finalUses[j].Name
-	})
+	sort.Strings(finalUses)
 
 	return finalUses
 }
@@ -707,7 +705,32 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 		pkgMd.Use = []g2.Use{{}}
 	}
 
-	pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, ggbtd.IUseFlags()...)
+	useFlags := ggbtd.IUseFlags()
+	for _, f := range useFlags {
+		desc := fmt.Sprintf("Enable %s", f)
+		if f == "man" {
+			desc = "Install manual pages"
+		} else if f == "doc" {
+			desc = "Install documentation"
+		} else {
+			for use := range ggbtd.ReverseProgramsAsAlternatives() {
+				if strcase.SnakeCase(use) == f {
+					desc = fmt.Sprintf("Install %s binary", use)
+					break
+				}
+			}
+			for _, shell := range ggbtd.ShellCompletionShells() {
+				if strcase.SnakeCase(shell) == f {
+					desc = fmt.Sprintf("Install %s completion", shell)
+					break
+				}
+			}
+		}
+		pkgMd.Use[0].Flags = append(pkgMd.Use[0].Flags, g2.Flag{
+			Name: f,
+			Text: desc,
+		})
+	}
 
 	for i := range pkgMd.Use {
 		var newFlags []g2.Flag
@@ -746,8 +769,28 @@ func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
 	}
 	args := ggbtd.GenerateGithubWorkflowBase.G2MetadataArgs() + " "
 
-	for _, f := range ggbtd.IUseFlags() {
-		args += fmt.Sprintf("--use-add \"%s:%s\" ", f.Name, f.Text)
+	useFlags := ggbtd.IUseFlags()
+	for _, f := range useFlags {
+		desc := fmt.Sprintf("Enable %s", f)
+		if f == "man" {
+			desc = "Install manual pages"
+		} else if f == "doc" {
+			desc = "Install documentation"
+		} else {
+			for use := range ggbtd.ReverseProgramsAsAlternatives() {
+				if strcase.SnakeCase(use) == f {
+					desc = fmt.Sprintf("Install %s binary", use)
+					break
+				}
+			}
+			for _, shell := range ggbtd.ShellCompletionShells() {
+				if strcase.SnakeCase(shell) == f {
+					desc = fmt.Sprintf("Install %s completion", shell)
+					break
+				}
+			}
+		}
+		args += fmt.Sprintf("--use-add \"%s:%s\" ", f, desc)
 	}
 	return strings.TrimSpace(args)
 }
