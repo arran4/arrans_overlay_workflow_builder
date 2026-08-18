@@ -135,7 +135,11 @@ jobs:
               echo '  xdg_desktop_database_update'
               echo '}'
             } > "$tmp_ebuild_file"
-              if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then
+              clean_version="${version#${{ env.epn }}-}"
+              clean_version="${clean_version%.ebuild}"
+              clean_version="${clean_version%.tmp}"
+              clean_version="${clean_version#v}"
+              if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${clean_version}"); then
                   next_ebuild_file="${ebuild_dir}/${{ env.epn }}-${next_version}.ebuild"
                   echo "Content changed or new version for $version. Writing $next_ebuild_file"
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
