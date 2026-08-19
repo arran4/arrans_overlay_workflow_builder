@@ -560,8 +560,8 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 		switch {
 		case lastProgramName != "":
 			for prefix := range parseProgramFields[lastProgramName] {
-				if strings.HasPrefix(line, prefix) {
-					withoutPrefix := strings.TrimPrefix(line, prefix)
+				if after, ok := strings.CutPrefix(line, prefix); ok {
+					withoutPrefix := after
 					if withoutPrefix != "" && !unicode.IsSpace(rune(withoutPrefix[0])) {
 						continue
 					}
@@ -594,8 +594,8 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 			fallthrough
 		default:
 			for prefix := range parseFields {
-				if strings.HasPrefix(line, prefix) {
-					withoutPrefix := strings.TrimPrefix(line, prefix)
+				if after, ok := strings.CutPrefix(line, prefix); ok {
+					withoutPrefix := after
 					if withoutPrefix != "" && !unicode.IsSpace(rune(withoutPrefix[0])) {
 						continue
 					}
@@ -971,7 +971,7 @@ func parseMapStringListType1(a []string) (map[string][]string, error) {
 		if len(s) != 2 {
 			return nil, fmt.Errorf("entry %d, can't split %#v", i, v)
 		}
-		for _, e := range strings.Split(strings.TrimSpace(s[1]), ">") {
+		for e := range strings.SplitSeq(strings.TrimSpace(s[1]), ">") {
 			result[strings.TrimSpace(s[0])] = append(result[strings.TrimSpace(s[0])], strings.TrimSpace(e))
 		}
 	}
@@ -986,7 +986,7 @@ func parseMapDoubleStringListType1(a []string) (map[string][][]string, error) {
 			return nil, fmt.Errorf("entry %d, can't split %#v", i, v)
 		}
 		var v []string
-		for _, e := range strings.Split(strings.TrimSpace(s[1]), ">") {
+		for e := range strings.SplitSeq(strings.TrimSpace(s[1]), ">") {
 			v = append(v, strings.TrimSpace(e))
 		}
 		result[strings.TrimSpace(s[0])] = append(result[strings.TrimSpace(s[0])], v)
@@ -1005,7 +1005,7 @@ func parseDoubleMapStringListType1(a []string) (map[string]map[string][]string, 
 		if len(kvSplit) != 2 {
 			return nil, fmt.Errorf("entry %d, can't split key %#v", i, kvSplit[0])
 		}
-		for _, eps := range strings.Split(strings.TrimSpace(kvSplit[1]), ">") {
+		for eps := range strings.SplitSeq(strings.TrimSpace(kvSplit[1]), ">") {
 			keySplit1 := strings.TrimSpace(keySplit[0])
 			keySplit2 := strings.TrimSpace(keySplit[1])
 			if _, ok := result[keySplit1]; !ok {
@@ -1047,7 +1047,7 @@ func emptyOrAppendStringArray(o []string, i []string) ([]string, error) {
 	}
 	if len(i) > 0 {
 		for _, e := range i {
-			for _, s := range strings.Split(e, " ") {
+			for s := range strings.SplitSeq(e, " ") {
 				o = append(o, strings.TrimSpace(s))
 			}
 		}

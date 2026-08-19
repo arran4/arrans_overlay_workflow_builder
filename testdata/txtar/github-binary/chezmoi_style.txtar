@@ -1,4 +1,29 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder dev Github Binary Release examples/example.config 2026-08-13 00:00:00 +0000 UTC
+Test correct deduction and non-duplication of USE flags
+-- input.config --
+Type Github Binary Release
+GithubProjectUrl https://github.com/twpayne/chezmoi
+EbuildName chezmoi-bin
+Category app-admin
+Description Manage your dotfiles across multiple diverse machines, securely.
+Homepage https://www.chezmoi.io/
+License MIT License
+Workaround Programs as Alternatives => amd64:glibc amd64:loong64 arm64:android ppc64:le
+ProgramName android
+Binary arm64=>chezmoi_${VERSION}_android_arm64.tar.gz > chezmoi > chezmoi
+ProgramName chezmoi
+Dependencies sys-libs/glibc
+Binary amd64=>chezmoi_${VERSION}_linux-musl_amd64.tar.gz > chezmoi > chezmoi
+Binary arm=>chezmoi_${VERSION}_linux_arm.tar.gz > chezmoi > chezmoi
+Binary arm64=>chezmoi_${VERSION}_linux_arm64.tar.gz > chezmoi > chezmoi
+Binary ppc64=>chezmoi_${VERSION}_linux_ppc64.tar.gz > chezmoi > chezmoi
+ProgramName glibc
+Binary amd64=>chezmoi_${VERSION}_linux-glibc_amd64.tar.gz > chezmoi > chezmoi
+ProgramName le
+Binary ppc64=>chezmoi_${VERSION}_linux_ppc64le.tar.gz > chezmoi > chezmoi
+ProgramName loong64
+Binary amd64=>chezmoi_${VERSION}_linux_loong64.tar.gz > chezmoi > chezmoi
+-- expected.yaml --
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC
 
 name: app-admin/chezmoi-bin update
 
@@ -7,7 +32,7 @@ permissions:
 
 on:
   schedule:
-    - cron: '31 12 * * *'
+    - cron: '24 2 * * *'
   workflow_dispatch:
   push:
     paths:
@@ -20,7 +45,7 @@ env:
   homepage: "https://www.chezmoi.io/"
   github_owner: twpayne
   github_repo: chezmoi
-  keywords: ~amd64 ~arm ~arm64 ~ppc64 ~riscv ~s390 ~x86
+  keywords: ~amd64 ~arm ~arm64 ~ppc64
   workflow_filename: app-admin-chezmoi-bin-update.yaml
   android_binary_installed_name: 'chezmoi'
   android_binary_archived_name_arm64: 'chezmoi'
@@ -34,12 +59,6 @@ env:
   chezmoi_release_name_arm64: 'chezmoi_${version}_linux_arm64.tar.gz'
   chezmoi_binary_archived_name_ppc64: 'chezmoi'
   chezmoi_release_name_ppc64: 'chezmoi_${version}_linux_ppc64.tar.gz'
-  chezmoi_binary_archived_name_riscv: 'chezmoi'
-  chezmoi_release_name_riscv: 'chezmoi_${version}_linux_riscv64.tar.gz'
-  chezmoi_binary_archived_name_s390: 'chezmoi'
-  chezmoi_release_name_s390: 'chezmoi_${version}_linux_s390x.tar.gz'
-  chezmoi_binary_archived_name_x86: 'chezmoi'
-  chezmoi_release_name_x86: 'chezmoi_${version}_linux_i386.tar.gz'
   glibc_binary_installed_name: 'chezmoi'
   glibc_binary_archived_name_amd64: 'chezmoi'
   glibc_release_name_amd64: 'chezmoi_${version}_linux-glibc_amd64.tar.gz'
@@ -119,9 +138,6 @@ jobs:
                 echo "	arm64? ( !android? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_arm64.tar.gz  )  )  "
                 echo "	ppc64? ( !le? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_ppc64.tar.gz  )  )  "
                 echo "	ppc64? ( le? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz  )  )  "
-                echo "	riscv? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_riscv64.tar.gz  )  "
-                echo "	s390? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_s390x.tar.gz  )  "
-                echo "	x86? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_i386.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="MIT License"'
                 echo 'SLOT="0"'
@@ -165,15 +181,6 @@ jobs:
                 echo '  if use ppc64 && use le; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz\" || die \"Can't unpack archive file\""
                 echo '  fi'
-                echo '  if use riscv; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_riscv64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use s390; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_s390x.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use x86; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_i386.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
                 echo '}'
                 echo ''
                 echo 'src_install() {'
@@ -192,15 +199,6 @@ jobs:
                 echo '  fi'
                 echo '  if use ppc64 && ! use le ; then'
                 echo '    newexe "${{ env.chezmoi_binary_archived_name_ppc64 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use riscv; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_riscv }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use s390; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_s390 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use x86; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_x86 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
                 echo '  fi'
                 echo '  if use amd64 && use glibc && ! use loong64 ; then'
                 echo '    newexe "${{ env.glibc_binary_archived_name_amd64 }}" "${{ env.glibc_binary_installed_name }}" || die "Failed to install Binary"'
@@ -232,9 +230,6 @@ jobs:
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_ppc64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_ppc64le.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_riscv64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_s390x.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-chezmoi_${version}_linux_i386.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
