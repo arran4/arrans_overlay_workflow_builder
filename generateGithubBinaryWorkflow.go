@@ -710,11 +710,12 @@ func (ggbtd *GenerateGithubBinaryTemplateData) Metadata() (string, error) {
 	useFlags := ggbtd.IUseFlags()
 	for _, f := range useFlags {
 		desc := fmt.Sprintf("Enable %s", f)
-		if f == "man" {
+		switch f {
+		case "man":
 			desc = "Install manual pages"
-		} else if f == "doc" {
+		case "doc":
 			desc = "Install documentation"
-		} else {
+		default:
 			for use := range ggbtd.ReverseProgramsAsAlternatives() {
 				if strcase.SnakeCase(use) == f {
 					desc = fmt.Sprintf("Install %s binary", use)
@@ -774,11 +775,12 @@ func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
 	useFlags := ggbtd.IUseFlags()
 	for _, f := range useFlags {
 		desc := fmt.Sprintf("Enable %s", f)
-		if f == "man" {
+		switch f {
+		case "man":
 			desc = "Install manual pages"
-		} else if f == "doc" {
+		case "doc":
 			desc = "Install documentation"
-		} else {
+		default:
 			for use := range ggbtd.ReverseProgramsAsAlternatives() {
 				if strcase.SnakeCase(use) == f {
 					desc = fmt.Sprintf("Install %s binary", use)
