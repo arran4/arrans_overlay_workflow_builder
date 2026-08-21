@@ -311,6 +311,8 @@ jobs:
               exit 1
             fi
           fi
+      - name: Run actionlint on generated examples
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@latest examples/.github/workflows/*
   go-vet:
     name: Go vet
     needs:
