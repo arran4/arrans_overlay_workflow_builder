@@ -79,23 +79,16 @@ jobs:
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
               cmake_content=$(curl -sL "https://raw.githubusercontent.com/${{ env.github_owner }}/${{ env.github_repo }}/${tag}/CMakeLists.txt")
-              # shellcheck disable=SC2001
-              # shellcheck disable=SC2001
-              # shellcheck disable=SC2001
+
+                    # shellcheck disable=SC2001
               qt6_components=$(echo "$cmake_content" | grep -i "find_package(Qt6" | tr '()' '  ' | sed 's/find_package  *Qt6//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED|COMPONENTS|CONFIG' | sort -u || true)
-              # shellcheck disable=SC2001
-              # shellcheck disable=SC2001
-              # shellcheck disable=SC2001
+                    # shellcheck disable=SC2001
               kf6_packages=$(echo "$cmake_content" | grep -i "find_package(KF6" | tr '()' '  ' | grep -iv COMPONENTS | awk '{print $2}' | grep -i "^KF6" | sed 's/KF6//i' | sort -u || true)
-              # shellcheck disable=SC2001
-              # shellcheck disable=SC2001
-              # shellcheck disable=SC2001
+                    # shellcheck disable=SC2001
               kf6_components=$(echo "$cmake_content" | grep -i "find_package(KF6" | grep -i COMPONENTS | tr '()' '  ' | sed 's/.*COMPONENTS//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED' | sort -u || true)
               DEPEND=""
               if [ -n "$qt6_components" ]; then
-                # shellcheck disable=SC2001
-                # shellcheck disable=SC2001
-                # shellcheck disable=SC2001
+                            # shellcheck disable=SC2001
                 qt6_flags=$(echo "$qt6_components" | grep -ivE 'Test|Svg' | tr '\n' ',' | sed 's/,$//' | tr '[:upper:]' '[:lower:]')
                 if [ -n "$qt6_flags" ]; then
                   DEPEND="$DEPEND\n\tdev-qt/qtbase:6[$qt6_flags]"

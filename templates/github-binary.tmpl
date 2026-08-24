@@ -96,11 +96,8 @@ jobs:
             originalVersion="${version}"
 [[- if .WorkaroundVersionReplacement ]]
             # shellcheck disable=SC2001
-            # shellcheck disable=SC2001
-            # shellcheck disable=SC2001
             version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
 [[ end ]]
-            # shellcheck disable=SC2001
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             # shellcheck disable=SC2001
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)[0-9]*\)$/\1_\5\3/')"
@@ -109,8 +106,6 @@ jobs:
                 echo "tag / $version doesn't match regexp";
                 continue;
             fi
-            # shellcheck disable=SC2001
-            # shellcheck disable=SC2001
             # shellcheck disable=SC2001
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
             if [[`[[ ! -v releaseTypes[${releaseType:=release}] ]]`]]; then
