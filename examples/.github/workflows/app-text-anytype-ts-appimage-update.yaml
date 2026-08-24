@@ -63,7 +63,6 @@ jobs:
             fi
             # shellcheck disable=SC2034
             originalVersion="${version}"
-            # shellcheck disable=SC2001
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)\(\|\.\?\([0-9]\+\)\)\)$/\1_\5\3\7/')"
             if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "version: $version doesn't match regexp";
@@ -72,13 +71,9 @@ jobs:
             # shellcheck disable=SC2001
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
             if [[ ! -v releaseTypes[${releaseType:=release}] ]]; then
-                if [[ -v releaseTypes[release] ]]; then
-                  echo "Already have a newer main release: ${releaseTypes[release]}"
-                  continue
-                fi
-                releaseTypes[${releaseType:=release}]="${version}"
+                releaseTypes[${releaseType:=release}]="$version"
             else
-                echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
+                echo "Already have a newier ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
@@ -105,7 +100,7 @@ jobs:
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
-                echo '  if use amd64`]]; then'
+                echo '  if use amd64; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.Anytype_release_name_amd64 }}\" \"${{ env.Anytype_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
                 echo '  chmod a+x "${{ env.Anytype_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
@@ -115,10 +110,7 @@ jobs:
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
-                # shellcheck disable=SC2001
-                # shellcheck disable=SC2001
-                # shellcheck disable=SC2001
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/.*"
+                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.Anytype_appimage_installed_name }}:' 'squashfs-root/${{ env.Anytype_desktop_file }}'"
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
                 echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
                 echo '  eapply_user'
@@ -176,7 +168,7 @@ jobs:
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p profiles metadata; if [ ! -f profiles/repo_name ]; then echo "${{ env.github_repo }}" > profiles/repo_name; fi; if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi; if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles metadata; if [ ! -f profiles/repo_name ]; then echo "overlay_name" > profiles/repo_name; fi; if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi; if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "./${ebuild_dir}"
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
             git pull --rebase &&

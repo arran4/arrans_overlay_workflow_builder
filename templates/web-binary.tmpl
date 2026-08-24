@@ -100,6 +100,8 @@ jobs:
             originalVersion="${version}"
 [[- if .WorkaroundVersionReplacement ]]
             # shellcheck disable=SC2001
+            # shellcheck disable=SC2001
+            # shellcheck disable=SC2001
             version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
 [[ end ]]
             # shellcheck disable=SC2001
@@ -110,6 +112,8 @@ jobs:
                 echo "tag / $version doesn't match regexp";
                 continue;
             fi
+            # shellcheck disable=SC2001
+            # shellcheck disable=SC2001
             # shellcheck disable=SC2001
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
             if [[`[[ ! -v releaseTypes[${releaseType:=release}] ]]`]]; then
@@ -313,9 +317,9 @@ jobs:
       - name: Generate Overlay
         run: |
           mkdir -p profiles metadata
-          [ ! -f profiles/repo_name ] && echo "overlay_name" > profiles/repo_name
-          [ ! -f profiles/eapi ] && echo "8" > profiles/eapi
-          [ ! -f metadata/layout.conf ] && wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true
+          if [ ! -f profiles/repo_name ]; then echo "overlay_name" > profiles/repo_name; fi
+          if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi
+          if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi
           if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi
 [[- end ]]
 
@@ -329,7 +333,7 @@ jobs:
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p profiles metadata; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; [ ! -f metadata/layout.conf ] && wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles metadata; if [ ! -f profiles/repo_name ]; then echo "overlay_name" > profiles/repo_name; fi; if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi; if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "./${ebuild_dir}"
           [[ if .FeatureGenerateMd5Cache ]]
           git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true

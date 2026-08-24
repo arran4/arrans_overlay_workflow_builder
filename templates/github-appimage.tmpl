@@ -98,7 +98,6 @@ jobs:
             # shellcheck disable=SC2001
             version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
 [[ end ]]
-            # shellcheck disable=SC2001
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)\(\|\.\?\([0-9]\+\)\)\)$/\1_\5\3\7/')"
 [[ end ]]
@@ -109,13 +108,9 @@ jobs:
             # shellcheck disable=SC2001
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
             if [[`[[ ! -v releaseTypes[${releaseType:=release}] ]]`]]; then
-                if [[`[[ -v releaseTypes[release] ]]`]]; then
-                  echo "Already have a newer main release: ${releaseTypes[release]}"
-                  continue
-                fi
-                releaseTypes[${releaseType:=release}]="${version}"
+                releaseTypes[${releaseType:=release}]="$version"
             else
-                echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
+                echo "Already have a newier ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
@@ -145,7 +140,7 @@ jobs:
                 echo 'src_unpack() {'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
-                echo '  if use [[ $externalResource.Keyword ]]`]]; then'
+                echo '  if use [[ $externalResource.Keyword ]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
   [[ end ]]
@@ -153,11 +148,11 @@ jobs:
 [[- range $pname, $prog := .Programs ]]
 [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
-                echo '  if use [[ $keyword ]]`]]; then'
+                echo '  if use [[ $keyword ]]; then'
                 echo "    mv \"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't move archived file\""
                 echo '  fi'
   [[ else ]]
-                echo '  if use [[ $keyword ]]`]]; then'
+                echo '  if use [[ $keyword ]]; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
   [[ end ]]
@@ -187,10 +182,7 @@ jobs:
 [[- if .HasDesktopFile ]]
   [[- range $pname, $prog := .Programs ]]
     [[- if $prog.HasDesktopFile ]]
-                # shellcheck disable=SC2001
-                # shellcheck disable=SC2001
-                # shellcheck disable=SC2001
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/.*"
+                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}:' 'squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}'"
     [[ end ]]
   [[ end ]]
 [[ end ]]
@@ -275,7 +267,7 @@ jobs:
       - name: Generate Overlay
         run: |
           mkdir -p profiles metadata
-          if [ ! -f profiles/repo_name ]; then echo "${{ env.github_repo }}" > profiles/repo_name; fi
+          if [ ! -f profiles/repo_name ]; then echo "overlay_name" > profiles/repo_name; fi
           if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi
           if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi
           if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi
@@ -291,7 +283,7 @@ jobs:
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p profiles metadata; if [ ! -f profiles/repo_name ]; then echo "${{ env.github_repo }}" > profiles/repo_name; fi; if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi; if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles metadata; if [ ! -f profiles/repo_name ]; then echo "overlay_name" > profiles/repo_name; fi; if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi; if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "./${ebuild_dir}"
           [[ if .FeatureGenerateMd5Cache ]]
           git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true

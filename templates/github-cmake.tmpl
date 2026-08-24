@@ -72,6 +72,8 @@ jobs:
 
 [[- if .WorkaroundVersionReplacement ]]
             # shellcheck disable=SC2001
+            # shellcheck disable=SC2001
+            # shellcheck disable=SC2001
             version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
 [[ end ]]
             # Semantic Version format check (skip invalid tags)
@@ -84,14 +86,22 @@ jobs:
               cmake_content=$(curl -sL "https://raw.githubusercontent.com/${{ env.github_owner }}/${{ env.github_repo }}/${tag}/CMakeLists.txt")
 
               # shellcheck disable=SC2001
+              # shellcheck disable=SC2001
+              # shellcheck disable=SC2001
               qt6_components=$(echo "$cmake_content" | grep -i "find_package(Qt6" | tr '()' '  ' | sed 's/find_package  *Qt6//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED|COMPONENTS|CONFIG' | sort -u || true)
               # shellcheck disable=SC2001
+              # shellcheck disable=SC2001
+              # shellcheck disable=SC2001
               kf6_packages=$(echo "$cmake_content" | grep -i "find_package(KF6" | tr '()' '  ' | grep -iv COMPONENTS | awk '{print $2}' | grep -i "^KF6" | sed 's/KF6//i' | sort -u || true)
+              # shellcheck disable=SC2001
+              # shellcheck disable=SC2001
               # shellcheck disable=SC2001
               kf6_components=$(echo "$cmake_content" | grep -i "find_package(KF6" | grep -i COMPONENTS | tr '()' '  ' | sed 's/.*COMPONENTS//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED' | sort -u || true)
 
               DEPEND=""
               if [ -n "$qt6_components" ]; then
+                # shellcheck disable=SC2001
+                # shellcheck disable=SC2001
                 # shellcheck disable=SC2001
                 qt6_flags=$(echo "$qt6_components" | grep -ivE 'Test|Svg' | tr '\n' ',' | sed 's/,$//' | tr '[:upper:]' '[:lower:]')
                 if [ -n "$qt6_flags" ]; then
@@ -164,7 +174,7 @@ jobs:
       - name: Generate Overlay
         run: |
           mkdir -p profiles metadata
-          if [ ! -f profiles/repo_name ]; then echo "${{ env.github_repo }}" > profiles/repo_name; fi
+          if [ ! -f profiles/repo_name ]; then echo "overlay_name" > profiles/repo_name; fi
           if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi
           if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi
           if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi
@@ -180,7 +190,7 @@ jobs:
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p profiles metadata; if [ ! -f profiles/repo_name ]; then echo "${{ env.github_repo }}" > profiles/repo_name; fi; if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi; if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles metadata; if [ ! -f profiles/repo_name ]; then echo "overlay_name" > profiles/repo_name; fi; if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi; if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "./${ebuild_dir}"
           [[ if .FeatureGenerateMd5Cache ]]
           git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true
