@@ -80,7 +80,7 @@ jobs:
             echo "failed to resolve AppImage redirect" >&2
             exit 1
           fi
-          fname="$(basename "$appimage_url")"
+          fname="${appimage_url##*/}"
           artifact_ext="${fname##*.}"
           if [ -z "$artifact_ext" ] || [ "$artifact_ext" = "$fname" ]; then
             echo "unable to determine artifact extension from $fname" >&2
@@ -221,6 +221,7 @@ jobs:
           [[ if .FeatureGenerateMd5Cache ]]
           git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true
           [[ end ]]
+          # shellcheck disable=SC2015
           if git commit -m "Add ebuild for version ${version}"; then
             git pull --rebase &&
             git push

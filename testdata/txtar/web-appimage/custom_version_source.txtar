@@ -80,7 +80,7 @@ jobs:
             echo "failed to resolve AppImage redirect" >&2
             exit 1
           fi
-          fname="$(basename "$appimage_url")"
+          fname="${appimage_url##*/}"
           artifact_ext="${fname##*.}"
           if [ -z "$artifact_ext" ] || [ "$artifact_ext" = "$fname" ]; then
             echo "unable to determine artifact extension from $fname" >&2
@@ -164,6 +164,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p profiles metadata; [ ! -f profiles/repo_name ] && echo "${{ env.github_repo }}" > profiles/repo_name; [ ! -f profiles/eapi ] && echo "8" > profiles/eapi; [ ! -f metadata/layout.conf ] && wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "${ebuild_dir}"
+          # shellcheck disable=SC2015
           if git commit -m "Add ebuild for version ${version}"; then
             git pull --rebase &&
             git push
