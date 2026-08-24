@@ -31,10 +31,9 @@ This document summarizes observed usability friction, flag handling edge cases, 
 ---
 
 ## 3. Parameter Format Handling for `<version>` in `next-revision`
-* **Observed Behavior**:
-  * Passing pure version `0.1.0` works as expected.
-  * Passing prefixed `<epn>-<version>` (e.g. `pkg-0.1.0`) or suffixed `<version>.ebuild` can lead to unexpected revision target matching or exit behavior depending on input string formatting.
-* **Suggested Enhancement**: Automatically trim leading `<epn>-` prefixes and trailing `.ebuild` / `.tmp` suffixes from `<version>` parameters inside `g2 ebuild next-revision` for robust string handling.
+* **Resolved in g2 v0.0.98**:
+  * `g2 ebuild next-revision` now features first-class dirty-version sanitization natively. It successfully accepts and processes raw versions containing extraneous artifacts like `.ebuild`, `.tmp`, leading `v`, and `<epn>-` prefixes.
+  * Historically, without sanitization, dirty versions failed to match existing revisions, incorrectly causing automation loops that continuously recreated non-revisioned base ebuilds (e.g., `0.1.0.ebuild`) alongside deduplicated instances (e.g., `0.1.0-r1.ebuild`).
 
 ---
 
@@ -42,16 +41,3 @@ This document summarizes observed usability friction, flag handling edge cases, 
 * **Observed Behavior**: When `--inspect` detects that the generated ebuild content is identical to the existing highest revision (i.e. no update needed), `g2` exits with status `1`.
 * **Impact**: Returning a non-zero exit status for non-error control flow ("no content change") requires shell scripts using `set -e` to append explicit checks or `|| true`.
 * **Suggested Enhancement**: Provide a dedicated flag or return status code documentation separating operational errors from "no diff detected" outcomes.
-
-## 5. `g2 ebuild next-revision` version matching ignores exact string literal matching on filename and requires exact GentooVersion match on stripped parameters
-
-* **Observed Behavior**: The workflow generator currently passes unsterilized variable inputs (which may include `v` prefixes, `.ebuild` or `.tmp` suffixes, or even `<epn>-` package name prefixes if incorrectly parsed by custom tag extraction commands) as the `<version>` parameter to `g2 ebuild next-revision`. When this occurs:
-  1. `g2 ebuild next-revision`'s `getNextRevision` function strictly matches the *parsed base Gentoo Version string* against the provided `<version>` string. For instance, if the existing file is `which_browser-0.2.6.44-r1.ebuild`, its parsed base `PV` is `0.2.6.44`. If the `<version>` argument provided is `0.2.6.44.ebuild`, the condition `base == version` evaluates to `"0.2.6.44" == "0.2.6.44.ebuild"`, which is false.
-  2. Finding no matches, `next-revision` silently assumes this is an entirely new base version. It immediately returns the unsterilized, erroneous string (e.g. `0.2.6.44.ebuild`) and exits with a `0` exit code.
-  3. Consequently, workflow scripts construct the next filename dynamically using the returned string (e.g. `which_browser-0.2.6.44.ebuild.ebuild`) or incorrectly recreate base non-revisioned `.ebuild` files, causing an endless cycle of file recreation because it never acknowledges that the `0.2.6.44-r1` revision already exists for that version tag.
-
-* **Impact**: Unsanitized parameters lead to false negatives in revision scanning, directly triggering the constant recreation of unrevisioned (or incorrectly named) ebuild files in automated environments.
-
-* **Suggested Enhancement**:
-  * **Option A (Parameter Sanitization)**: Implement automatic preprocessing within `g2 ebuild next-revision` to aggressively strip common filename artifacts (e.g. `.ebuild`, `.tmp`) and repository-specific prefixes (`v`, `<epn>-`) from the `<version>` argument before evaluating `base == version`.
-  * **Option B (Robust Version Parsing)**: Instead of a strict literal string comparison (`base == version`), parse the incoming `<version>` argument using `g2.ParseGentooVersion(version)`. If valid, compare the parsed output against the `base` of existing ebuilds in the directory, effectively ignoring surrounding noise and enforcing strict semantic/Gentoo version equivalency.

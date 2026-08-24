@@ -1,0 +1,46 @@
+<<<<<<< SEARCH
+//go:embed testdata/config/*.config
+var configCases embed.FS
+=======
+//go:embed testdata/config/*.config
+var configCases embed.FS
+
+func TestWorkflowBuilderUsesUnsanitizedVersion(t *testing.T) {
+	// A focused regression test proving that the generator passes the raw version
+	// down to g2 without doing its own shell-side "clean_version" substitutions.
+	configContent := `Type Github Binary Release
+Category dev-test
+EbuildName raw-version-test
+Description Test
+Homepage https://github.com/foo/bar
+License MIT
+MaintainerEmail a@b.com
+MaintainerName A
+ProgramName foo
+Binary amd64=>foo
+`
+	inputConfig, err := ParseConfigString(configContent)
+	if err != nil {
+		t.Fatalf("ParseConfigString failed: %v", err)
+	}
+
+	// Create mock files to avoid triggering the actual network fetches during test.
+	inputConfig.Type = GithubBinaryRelease
+
+	var buf bytes.Buffer
+	err = GenerateGithubBinaryTemplateData(&buf, inputConfig, "foo", "bar")
+	if err != nil {
+		t.Fatalf("GenerateGithubBinaryTemplateData failed: %v", err)
+	}
+
+	out := buf.String()
+
+	if strings.Contains(out, "clean_version") {
+		t.Errorf("generated output should not contain manual clean_version workaround")
+	}
+
+	if !strings.Contains(out, "g2 ebuild next-revision --inspect \"$tmp_ebuild_file\" \"${ebuild_dir}\" \"${version}\"") {
+		t.Errorf("generated output does not contain the expected raw version call to g2 ebuild next-revision")
+	}
+}
+>>>>>>> REPLACE

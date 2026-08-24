@@ -2,8 +2,8 @@ github.com/CalebQ42/squashfs v1.4.0 h1:LA9/4+80x0JQhPzHzQfqqRmluWtKXUiZ85G6jsrwk
 github.com/CalebQ42/squashfs v1.4.0/go.mod h1:48nUwPN4mjeWhu3It2LJZAq4EkixbzY4pdyZ7gEfHb8=
 github.com/Masterminds/semver v1.5.0 h1:H65muMkzWKEuNDnfl9d70GUjFniHKHRbFPGBuZ3QEww=
 github.com/Masterminds/semver v1.5.0/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
-github.com/arran4/g2 v0.0.82 h1:zKfLYBO8c2Gayo9z+poYktKBszmbpNRRbO8SmqFoNmM=
-github.com/arran4/g2 v0.0.82/go.mod h1:9r9INKbdDYGR9gBhNxrDNuy9JwT2lC44NjntZnvjjBM=
+github.com/arran4/g2 v0.0.98 h1:CuY7bRgPTB4MHEFyqIUYXCPTcg8o6PZZNIySQdKqL2Y=
+github.com/arran4/g2 v0.0.98/go.mod h1:EA+nIgdSqgrfUC+3xtWnMZSSYYbI1GrBBN1Uk5t3E44=
 github.com/creack/pty v1.1.24 h1:bJrF4RRfyJnbTJqzRLHzcGaZK1NeM5kTC9jGgovnR1s=
 github.com/creack/pty v1.1.24/go.mod h1:08sCNb52WyoAwi2QDyzUCTgcvVFhUzewun7wtTfvcwE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

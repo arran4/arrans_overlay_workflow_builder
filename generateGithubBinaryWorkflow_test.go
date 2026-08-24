@@ -4,9 +4,57 @@ import (
 	"bytes"
 	"log"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestWorkflowBuilderUsesUnsanitizedVersion(t *testing.T) {
+	// A focused regression test proving that the generator passes the raw version
+	// down to g2 without doing its own shell-side "clean_version" substitutions.
+	configContent := `Type Github Binary Release
+GithubProjectUrl https://github.com/foo/bar
+Category dev-test
+EbuildName raw-version-test
+Description Test
+Homepage https://github.com/foo/bar
+License MIT
+MaintainerEmail a@b.com
+MaintainerName A
+ProgramName foo
+Binary amd64=>foo
+`
+	configs, err := ParseInputConfigReader(strings.NewReader(configContent))
+	if err != nil {
+		t.Fatalf("ParseInputConfigReader failed: %v", err)
+	}
+
+	var buf bytes.Buffer
+	data := &GenerateGithubBinaryTemplateData{
+		GenerateGithubWorkflowBase: &GenerateGithubWorkflowBase{
+			InputConfig: configs[0],
+			Now:         time.Now(),
+		},
+	}
+	templates, err := ParseWorkflowTemplates()
+	if err != nil {
+		t.Fatalf("ParseWorkflowTemplates failed: %v", err)
+	}
+	err = templates.ExecuteTemplate(&buf, data.TemplateFileName(), data)
+	if err != nil {
+		t.Fatalf("ExecuteTemplate failed: %v", err)
+	}
+
+	out := buf.String()
+
+	if strings.Contains(out, "clean_version") {
+		t.Errorf("generated output should not contain manual clean_version workaround")
+	}
+
+	if !strings.Contains(out, "g2 ebuild next-revision --inspect \"$tmp_ebuild_file\" \"${ebuild_dir}\" \"${version}\"") {
+		t.Errorf("generated output does not contain the expected raw version call to g2 ebuild next-revision")
+	}
+}
 
 func TestGenerateGithubBinaryTemplateData_GetMustHaveUseFlags_and_GetMustHaveUseFlags(t *testing.T) {
 	tests := []struct {

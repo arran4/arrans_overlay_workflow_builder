@@ -15,7 +15,7 @@ require (
 )
 
 require (
-	github.com/arran4/g2 v0.0.82
+	github.com/arran4/g2 v0.0.98
 	golang.org/x/tools v0.48.0
 )
 
