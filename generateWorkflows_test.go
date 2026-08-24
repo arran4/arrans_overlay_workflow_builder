@@ -128,3 +128,18 @@ Workaround Semantic Version Without V`
 		t.Errorf("Expected workaround generated output, but got: %s", actualContent)
 	}
 }
+
+func assertNoDuplicateShellcheckDirectives(t *testing.T, workflow string) {
+	t.Helper()
+
+	previousWasSC2001 := false
+	for _, line := range strings.Split(workflow, "\n") {
+		isSC2001 := strings.TrimSpace(line) == "# shellcheck disable=SC2001"
+
+		if isSC2001 && previousWasSC2001 {
+			t.Errorf("duplicate adjacent SC2001 directive")
+		}
+
+		previousWasSC2001 = isSC2001
+	}
+}
