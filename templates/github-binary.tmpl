@@ -343,6 +343,8 @@ jobs:
           git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true
           [[ end ]]
           # shellcheck disable=SC2015
+          # shellcheck disable=SC2015
+          # shellcheck disable=SC2015
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
             git pull --rebase &&
             git push
