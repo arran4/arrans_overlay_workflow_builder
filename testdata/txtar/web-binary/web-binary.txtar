@@ -212,8 +212,6 @@ jobs:
           fi
           g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "./${ebuild_dir}"
-          # shellcheck disable=SC2015
-          # shellcheck disable=SC2015
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
             git pull --rebase &&
             git push

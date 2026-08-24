@@ -236,8 +236,6 @@ jobs:
           [[ if .FeatureGenerateMd5Cache ]]
           git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true
           [[ end ]]
-          # shellcheck disable=SC2015
-          # shellcheck disable=SC2015
           if git commit -m "Add ebuild for version ${version}"; then
             git pull --rebase &&
             git push
