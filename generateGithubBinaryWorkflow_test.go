@@ -34,6 +34,7 @@ Binary amd64=>foo
 		GenerateGithubWorkflowBase: &GenerateGithubWorkflowBase{
 			InputConfig: configs[0],
 			Now:         time.Now(),
+			Version:     "1.0",
 		},
 	}
 	templates, err := ParseWorkflowTemplates()
