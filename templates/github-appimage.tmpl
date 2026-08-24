@@ -96,7 +96,6 @@ jobs:
             originalVersion="${version}"
 [[- if .WorkaroundVersionReplacement ]]
             # shellcheck disable=SC2001
-            # shellcheck disable=SC2001
             version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
 [[ end ]]
             # shellcheck disable=SC2001
@@ -109,8 +108,14 @@ jobs:
             fi
             # shellcheck disable=SC2001
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
+            if [[`[[ ! -v releaseTypes[${releaseType:=release}] ]]`]]; then
+                if [[`[[ -v releaseTypes[release] ]]`]]; then
+                  echo "Already have a newer main release: ${releaseTypes[release]}"
+                  continue
+                fi
+                releaseTypes[${releaseType:=release}]="${version}"
             else
-                echo "Already have a newier ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
+                echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
@@ -140,7 +145,7 @@ jobs:
                 echo 'src_unpack() {'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
-                echo '  if use [[ $externalResource.Keyword ]]; then'
+                echo '  if use [[ $externalResource.Keyword ]]`]]; then'
                 echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
                 echo '  fi'
   [[ end ]]
@@ -148,11 +153,11 @@ jobs:
 [[- range $pname, $prog := .Programs ]]
 [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
-                echo '  if use [[ $keyword ]]; then'
+                echo '  if use [[ $keyword ]]`]]; then'
                 echo "    mv \"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't move archived file\""
                 echo '  fi'
   [[ else ]]
-                echo '  if use [[ $keyword ]]; then'
+                echo '  if use [[ $keyword ]]`]]; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
   [[ end ]]

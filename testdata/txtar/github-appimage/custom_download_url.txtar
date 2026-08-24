@@ -84,8 +84,14 @@ jobs:
             fi
             # shellcheck disable=SC2001
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
+            if [[ ! -v releaseTypes[${releaseType:=release}] ]]; then
+                if [[ -v releaseTypes[release] ]]; then
+                  echo "Already have a newer main release: ${releaseTypes[release]}"
+                  continue
+                fi
+                releaseTypes[${releaseType:=release}]="${version}"
             else
-                echo "Already have a newier ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
+                echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
@@ -110,7 +116,7 @@ jobs:
                 echo '"'
                 echo ''
                 echo 'src_unpack() {'
-                echo '  if use amd64; then'
+                echo '  if use amd64`]]; then'
                 echo "    cp \"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '  fi'
                 echo '  chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
