@@ -12,6 +12,7 @@ import (
 func TestWorkflowBuilderUsesUnsanitizedVersion(t *testing.T) {
 	// A focused regression test proving that the generator passes the raw version
 	// down to g2 without doing its own shell-side "clean_version" substitutions.
+	// It also tests that no duplicate SC2001 comments or ] && ... || true patterns exist.
 	configContent := `Type Github Binary Release
 GithubProjectUrl https://github.com/foo/bar
 Category dev-test
@@ -54,6 +55,16 @@ Binary amd64=>foo
 
 	if !strings.Contains(out, "g2 ebuild next-revision --inspect \"$tmp_ebuild_file\" \"${ebuild_dir}\" \"${version}\"") {
 		t.Errorf("generated output does not contain the expected raw version call to g2 ebuild next-revision")
+	}
+
+	if strings.Contains(out, "# shellcheck disable=SC2001\n                    # shellcheck disable=SC2001") {
+		t.Errorf("generated output contains duplicated SC2001 suppression")
+	}
+
+	if strings.Contains(out, "] &&") && strings.Contains(out, "|| true") {
+		if strings.Contains(out, "wget") || strings.Contains(out, "echo") {
+			t.Errorf("generated output contains unsafe chained shell commands involving ] && ... || true")
+		}
 	}
 }
 
