@@ -95,8 +95,11 @@ jobs:
             # shellcheck disable=SC2034
             originalVersion="${version}"
 [[- if .WorkaroundVersionReplacement ]]
+            # shellcheck disable=SC2001
+            # shellcheck disable=SC2001
             version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
 [[ end ]]
+            # shellcheck disable=SC2001
 [[- if .WorkaroundSemanticVersionPrereleaseHack1 ]]
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)\(\|\.\?\([0-9]\+\)\)\)$/\1_\5\3\7/')"
 [[ end ]]
@@ -104,9 +107,8 @@ jobs:
                 echo "version: $version doesn't match regexp";
                 continue;
             fi
+            # shellcheck disable=SC2001
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
-            if [[`[[ ! -v releaseTypes[${releaseType:=release}] ]]`]]; then
-                releaseTypes[${releaseType:=release}]="$version"
             else
                 echo "Already have a newier ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
@@ -180,7 +182,10 @@ jobs:
 [[- if .HasDesktopFile ]]
   [[- range $pname, $prog := .Programs ]]
     [[- if $prog.HasDesktopFile ]]
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}:' 'squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}'"
+                # shellcheck disable=SC2001
+                # shellcheck disable=SC2001
+                # shellcheck disable=SC2001
+                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/.*"
     [[ end ]]
   [[ end ]]
 [[ end ]]
