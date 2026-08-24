@@ -129,6 +129,7 @@ func TestWorkflowTemplates(t *testing.T) {
 
 			result := string(normalizeGeneratedWorkflow(out.Bytes()))
 			validateWorkflowStepScripts(t, result)
+			assertNoDuplicateShellcheckDirectives(t, result)
 
 			if *updateTxtar {
 				for i := range ar.Files {
