@@ -1,6 +1,10 @@
 package arrans_overlay_workflow_builder
 
 import (
+	"fmt"
+	"os/exec"
+	"github.com/stretchr/testify/require"
+
 	"bytes"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/stretchr/testify/assert"
@@ -141,5 +145,27 @@ func assertNoDuplicateShellcheckDirectives(t *testing.T, workflow string) {
 		}
 
 		previousWasSC2001 = isSC2001
+	}
+}
+
+func TestBashOverlayNameNormalization(t *testing.T) {
+	cases := []struct {
+		githubRepo string
+		expected   string
+	}{
+		{"owner/normal_overlay", "normal_overlay"},
+		{"owner/my.overlay", "my_overlay"},
+		{"owner/-invalid.start", "_invalid_start"},
+		{"owner/valid-repo-name", "valid-repo-name"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.githubRepo, func(t *testing.T) {
+			script := fmt.Sprintf(`export GITHUB_REPOSITORY="%s"; repo_name="${GITHUB_REPOSITORY#*/}"; repo_name="${repo_name//./_}"; repo_name="${repo_name/#-/_}"; echo "${repo_name}"`, c.githubRepo)
+			cmd := exec.Command("bash", "-c", script)
+			output, err := cmd.Output()
+			require.NoError(t, err)
+			require.Equal(t, c.expected+"\n", string(output))
+		})
 	}
 }
