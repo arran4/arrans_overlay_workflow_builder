@@ -25,7 +25,7 @@ Binary amd64=>foo-${VERSION} > foo`
 		t.Fatalf("ExecuteTemplate: %v", err)
 	}
 	out := buf.String()
-	if !strings.Contains(out, "src_unpack() { :; }") {
+	if !strings.Contains(out, "src_unpack() { : }") {
 		t.Fatalf("expected no-op src_unpack, got:\n%s", out)
 	}
 }

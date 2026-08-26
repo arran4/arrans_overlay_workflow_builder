@@ -77,9 +77,9 @@ jobs:
             fi
             # shellcheck disable=SC2034
             originalVersion="${version}"
-            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
-                echo "tag / $version doesn't match regexp";
-                continue;
+            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$' then
+                echo "tag / $version doesn't match regexp"
+                continue
             fi
             # shellcheck disable=SC2001
             releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
@@ -118,7 +118,7 @@ jobs:
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
-                echo 'src_unpack() { :; }'
+                echo 'src_unpack() { : }'
                 echo ''
                 echo 'src_install() {'
                 echo '  exeinto /opt/bin'
@@ -166,7 +166,25 @@ jobs:
       - name: Commit and push changes
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          mkdir -p profiles metadata; if [ ! -f profiles/repo_name ]; then repo_name="${GITHUB_REPOSITORY#*/}"; repo_name="${repo_name//./_}"; repo_name="${repo_name/#-/_}"; echo "${repo_name}" > profiles/repo_name; fi; if [ ! -f profiles/eapi ]; then echo "8" > profiles/eapi; fi; if [ ! -f metadata/layout.conf ]; then wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true; fi; if ! grep -q "^cache-formats" metadata/layout.conf; then echo "cache-formats = md5-dict" >> metadata/layout.conf; else echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."; fi; g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p profiles metadata
+          if [ ! -f profiles/repo_name ]; then
+            repo_name="${GITHUB_REPOSITORY#*/}"
+            repo_name="${repo_name//./_}"
+            repo_name="${repo_name/#-/_}"
+            echo "${repo_name}" > profiles/repo_name
+          fi
+          if [ ! -f profiles/eapi ]; then
+            echo "8" > profiles/eapi
+          fi
+          if [ ! -f metadata/layout.conf ]; then
+            wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true
+          fi
+          if ! grep -q "^cache-formats" metadata/layout.conf; then
+            echo "cache-formats = md5-dict" >> metadata/layout.conf
+          else
+            echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."
+          fi
+          g2 cache generate "${{ env.ecn }}/${{ env.epn }}"
           git add "./${ebuild_dir}"
           if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
             git pull --rebase &&
