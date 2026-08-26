@@ -116,67 +116,132 @@ func TestLintOutputConditionalIsPresent(t *testing.T) {
 		t.Fatalf("Failed to parse templates: %v", err)
 	}
 
-	ic := &InputConfig{
-		Type:        "Github Binary Release",
-		Category:    "app-misc",
-		EbuildName:  "test-bin",
-		Description: "Test application",
-		Homepage:    "https://example.com",
-		License:     "MIT",
-		GithubRepo:  "user/repo",
-		Programs: map[string]*Program{
-			"test": {
-				ProgramName: "test",
-				Binary: map[string][]string{
-					"amd64": {"test-amd64", "test"},
-				},
-			},
+	testCases := []struct {
+		name              string
+		configType        string
+		expectedCondition string
+		expectedFilename  string
+	}{
+		{
+			name:              "Github Binary Release",
+			configType:        "Github Binary Release",
+			expectedCondition: "if: steps.process_releases.outputs.generated_tag",
+			expectedFilename:  ".github/workflows/app-misc-test-bin-update.yaml",
+		},
+		{
+			name:              "Github AppImage Release",
+			configType:        "Github AppImage Release",
+			expectedCondition: "if: steps.process_releases.outputs.generated_tag",
+			expectedFilename:  ".github/workflows/app-misc-test-appimage-update.yaml",
+		},
+		{
+			name:              "Github Cmake Release",
+			configType:        "Github Cmake Release",
+			expectedCondition: "if: steps.process_releases.outputs.generated_tag",
+			expectedFilename:  ".github/workflows/app-misc-test-update.yaml",
+		},
+		{
+			name:              "Web Binary",
+			configType:        "Web Binary",
+			expectedCondition: "if: steps.process_releases.outputs.generated_tag",
+			expectedFilename:  ".github/workflows/app-misc-test-bin-update.yaml",
+		},
+		{
+			name:              "Web AppImage",
+			configType:        "Web AppImage",
+			expectedCondition: "if: steps.find_appimage.outputs.version",
+			expectedFilename:  ".github/workflows/app-misc-test-appimage-update.yaml",
 		},
 	}
 
-	fs := util.NewMockFS()
-	err = ic.GenerateGithubWorkflow("-", time.Now(), templates, ".github/workflows", "v1.0.0", fs)
-	if err != nil {
-		t.Fatalf("Failed to generate workflow: %v", err)
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ebuildName := "test-bin"
+			if strings.Contains(tc.configType, "AppImage") {
+				ebuildName = "test-appimage"
+			} else if strings.Contains(tc.configType, "Cmake") {
+				ebuildName = "test"
+			}
 
-	if len(fs.Files) == 0 {
-		t.Fatal("No files generated")
-	}
+			ic := &InputConfig{
+				Type:        tc.configType,
+				Category:    "app-misc",
+				EbuildName:  ebuildName,
+				Description: "Test application",
+				Homepage:    "https://example.com",
+				License:     "MIT",
+				GithubRepo:  "user/repo",
+				Programs: map[string]*Program{
+					"test": {
+						ProgramName: "test",
+						Binary: map[string][]string{
+							"amd64": {"test-amd64", "test"},
+						},
+					},
+				},
+				DownloadBaseUrl: "https://example.com/downloads/",
+				CustomVersionSource: "echo 1.0.0",
+			}
 
-	var content string
-	for _, v := range fs.Files {
-		content = string(v)
-		break
-	}
+			if tc.configType == "Web AppImage" {
+				ic.DownloadPageUrl = "https://example.com"
+				ic.DownloadMatch = ".*"
+			}
 
-	if !strings.Contains(content, "- name: Lint output") {
-		t.Fatal("Generated workflow is missing 'Lint output' step")
-	}
+			fs := util.NewMockFS()
+			fixedTime := time.Date(2026, time.July, 12, 0, 0, 0, 0, time.UTC)
+			err = ic.GenerateGithubWorkflow("-", fixedTime, templates, ".github/workflows", "v1.0.0", fs)
+			if err != nil {
+				t.Fatalf("Failed to generate workflow for %s: %v", tc.name, err)
+			}
 
-	// Find the Lint output block
-	lines := strings.Split(content, "\n")
-	foundLint := false
-	hasCondition := false
+			if len(fs.Files) == 0 {
+				t.Fatalf("No files generated for %s", tc.name)
+			}
 
-	for i, line := range lines {
-		if strings.Contains(line, "- name: Lint output") {
-			foundLint = true
-			// Check the next few lines for the condition
-			for j := 1; j <= 2 && i+j < len(lines); j++ {
-				if strings.Contains(lines[i+j], "if: steps.process_releases.outputs.generated_tag") {
-					hasCondition = true
+			contentBytes, ok := fs.Files[tc.expectedFilename]
+			if !ok {
+				t.Fatalf("Expected file %s not found in generated files. Got files: %v", tc.expectedFilename, getKeys(fs.Files))
+			}
+			content := string(contentBytes)
+
+			if !strings.Contains(content, "- name: Lint output") {
+				t.Fatalf("Generated workflow for %s is missing 'Lint output' step", tc.name)
+			}
+
+			// Find the Lint output block
+			lines := strings.Split(content, "\n")
+			foundLint := false
+			hasCondition := false
+
+			for i, line := range lines {
+				if strings.Contains(line, "- name: Lint output") {
+					foundLint = true
+					// Check the next few lines for the condition
+					for j := 1; j <= 2 && i+j < len(lines); j++ {
+						if strings.Contains(lines[i+j], tc.expectedCondition) {
+							hasCondition = true
+							break
+						}
+					}
 					break
 				}
 			}
-			break
-		}
-	}
 
-	if !foundLint {
-		t.Fatal("Generated workflow is missing 'Lint output' step after generation")
+			if !foundLint {
+				t.Fatalf("Generated workflow for %s is missing 'Lint output' step after generation", tc.name)
+			}
+			if !hasCondition {
+				t.Fatalf("Generated workflow for %s is missing conditional check '%s' on 'Lint output' step", tc.name, tc.expectedCondition)
+			}
+		})
 	}
-	if !hasCondition {
-		t.Fatal("Generated workflow is missing conditional check 'if: steps.process_releases.outputs.generated_tag' on 'Lint output' step")
+}
+
+func getKeys(m map[string][]byte) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
 	}
+	return keys
 }
