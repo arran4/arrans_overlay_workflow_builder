@@ -25,15 +25,15 @@ env:
   [[- range $pname, $prog := .Programs ]]
   [[- if $prog.HasDesktopFile ]]
   [[ join (filterEmpty $pname "desktop_file" ) "_" ]]: '[[ $prog.DesktopFile ]]'
-  [[ end ]]
+  [[- end ]]
   [[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]]: '[[ $prog.InstalledFilename ]]'
   [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
   [[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]]: '[[ index $binary 1 | actionvardoublequoted ]]'
-  [[ end ]]
+  [[- end ]]
   [[ join (filterEmpty $pname "release_name" $keyword) "_" ]]: '[[ index $binary 0 | actionvardoublequoted ]]'
-  [[ end ]]
-  [[ end ]]
+  [[- end ]]
+  [[- end ]]
 
 concurrency:
   group: ci-${{ github.ref }}
