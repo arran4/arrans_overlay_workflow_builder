@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"github.com/arran4/arrans_overlay_workflow_builder/util"
 )
 
 func TestSemanticGeneratedEbuildSanity(t *testing.T) {
@@ -106,5 +107,76 @@ Binary arm64=>rustdesk-${TAG}-aarch64.AppImage > rustdesk.AppImage
 		if strings.Contains(line, "`") || strings.Contains(line, "[[") || strings.Contains(line, "]]") {
 			t.Errorf("Template syntax leaked into emitted ebuild conditional: %s", line)
 		}
+	}
+}
+
+func TestLintOutputConditionalIsPresent(t *testing.T) {
+	templates, err := ParseWorkflowTemplates()
+	if err != nil {
+		t.Fatalf("Failed to parse templates: %v", err)
+	}
+
+	ic := &InputConfig{
+		Type:        "Github Binary Release",
+		Category:    "app-misc",
+		EbuildName:  "test-bin",
+		Description: "Test application",
+		Homepage:    "https://example.com",
+		License:     "MIT",
+		GithubRepo:  "user/repo",
+		Programs: map[string]*Program{
+			"test": {
+				ProgramName: "test",
+				Binary: map[string][]string{
+					"amd64": {"test-amd64", "test"},
+				},
+			},
+		},
+	}
+
+	fs := util.NewMockFS()
+	err = ic.GenerateGithubWorkflow("-", time.Now(), templates, ".github/workflows", "v1.0.0", fs)
+	if err != nil {
+		t.Fatalf("Failed to generate workflow: %v", err)
+	}
+
+	if len(fs.Files) == 0 {
+		t.Fatal("No files generated")
+	}
+
+	var content string
+	for _, v := range fs.Files {
+		content = string(v)
+		break
+	}
+
+	if !strings.Contains(content, "- name: Lint output") {
+		t.Fatal("Generated workflow is missing 'Lint output' step")
+	}
+
+	// Find the Lint output block
+	lines := strings.Split(content, "\n")
+	foundLint := false
+	hasCondition := false
+
+	for i, line := range lines {
+		if strings.Contains(line, "- name: Lint output") {
+			foundLint = true
+			// Check the next few lines for the condition
+			for j := 1; j <= 2 && i+j < len(lines); j++ {
+				if strings.Contains(lines[i+j], "if: steps.process_releases.outputs.generated_tag") {
+					hasCondition = true
+					break
+				}
+			}
+			break
+		}
+	}
+
+	if !foundLint {
+		t.Fatal("Generated workflow is missing 'Lint output' step after generation")
+	}
+	if !hasCondition {
+		t.Fatal("Generated workflow is missing conditional check 'if: steps.process_releases.outputs.generated_tag' on 'Lint output' step")
 	}
 }
