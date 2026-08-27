@@ -102,7 +102,7 @@ jobs:
             # shellcheck disable=SC2001
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)\(\|\.\?\([0-9]\+\)\)\)$/\1_\5\3\7/')"
 [[ end ]]
-            if ! echo "${version}" | grep -E '[[- if .WorkaroundGentooVersionRegularExpression ]][[ .WorkaroundGentooVersionRegularExpression ]][[- else ]]^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$[[- end ]]' then
+            if ! echo "${version}" | grep -E '[[- if .WorkaroundGentooVersionRegularExpression ]][[ .WorkaroundGentooVersionRegularExpression ]][[- else ]]^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$[[- end ]]'; then
                 echo "version: $version doesn't match regexp"
                 continue
             fi
@@ -176,7 +176,7 @@ jobs:
 [[ end ]]
                 echo '}'
                 [[ else ]]
-                echo 'src_unpack() { : }'
+                echo 'src_unpack() { :; }'
                 [[ end ]]
                 echo ''
                 echo 'src_prepare() {'
@@ -190,8 +190,8 @@ jobs:
 [[- range $pname, $prog := .Programs ]]
   [[- range $i, $icon := $prog.Icons ]]
     [[- if eq $icon "hicolor-apps" ]]
-                echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \ "
-                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \ "
+                echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
+                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
     [[ end ]]
   [[ end ]]
 [[ end ]]

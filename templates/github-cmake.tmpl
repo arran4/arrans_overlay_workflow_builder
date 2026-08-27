@@ -75,7 +75,7 @@ jobs:
             version="$(echo "${version}" | sed "[[ .WorkaroundVersionReplacement ]]")"
 [[ end ]]
             # Semantic Version format check (skip invalid tags)
-            if ! echo "$version" | egrep -q '[[- if .WorkaroundGentooVersionRegularExpression ]][[ .WorkaroundGentooVersionRegularExpression ]][[- else ]]^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$[[- end ]]' then
+            if ! echo "$version" | egrep -q '[[- if .WorkaroundGentooVersionRegularExpression ]][[ .WorkaroundGentooVersionRegularExpression ]][[- else ]]^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$[[- end ]]'; then
               echo "$tag / $version doesn't match gentoo version regexp skipping"
               continue
             fi
@@ -101,11 +101,11 @@ jobs:
                 fi
 
                 # Handling qt6 components that map to different Gentoo packages if needed
-                if echo "$qt6_components" | grep -iq "Svg"; then DEPEND="$DEPEND\n\tdev-qt/qtsvg:6" fi
+                if echo "$qt6_components" | grep -iq "Svg"; then DEPEND="$DEPEND\n\tdev-qt/qtsvg:6"; fi
               fi
 
               BDEPEND="virtual/pkgconfig\n\tkde-frameworks/extra-cmake-modules:0"
-              if echo "$qt6_components" | grep -iq "Test" then
+              if echo "$qt6_components" | grep -iq "Test"; then
                  BDEPEND="$BDEPEND\n\tdev-qt/qttools:6[linguist]"
               fi
 

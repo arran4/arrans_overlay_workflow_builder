@@ -79,8 +79,8 @@ jobs:
             version="${tag}"
             # shellcheck disable=SC2034
             originalVersion="${version}"
-            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$' then
-                echo "tag / $version doesn't match regexp"
+            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+                echo "tag / $version doesn't match regexp; skipping"
                 continue
             fi
             # shellcheck disable=SC2001

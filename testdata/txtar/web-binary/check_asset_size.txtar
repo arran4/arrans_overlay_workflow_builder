@@ -84,7 +84,7 @@ jobs:
           # shellcheck disable=SC2086
           for tag in $tags; do
             version="${tag#v}"
-            if echo "$tag" | grep -qE '^v?[0-9]' then
+            if echo "$tag" | grep -qE '^v?[0-9]'; then
                 version="${tag#v}"
             elif [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no v removed skipping"
@@ -92,8 +92,8 @@ jobs:
             fi
             # shellcheck disable=SC2034
             originalVersion="${version}"
-            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$' then
-                echo "tag / $version doesn't match regexp"
+            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+                echo "tag / $version doesn't match regexp; skipping"
                 continue
             fi
             # shellcheck disable=SC2001

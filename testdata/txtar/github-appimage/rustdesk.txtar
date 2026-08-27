@@ -85,7 +85,7 @@ jobs:
             fi
             # shellcheck disable=SC2034
             originalVersion="${version}"
-            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$' then
+            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
                 echo "version: $version doesn't match regexp"
                 continue
             fi
@@ -135,8 +135,8 @@ jobs:
                 echo ''
                 echo 'src_prepare() {'
                 echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.rustdesk_appimage_installed_name }}:' 'squashfs-root/${{ env.rustdesk_desktop_file }}'"
-                echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \ "
-                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \ "
+                echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
+                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
                 echo '  eapply_user'
                 echo '}'
                 echo ''

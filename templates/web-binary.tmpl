@@ -89,7 +89,7 @@ jobs:
 [[ else ]]
           for tag in $tags; do
             version="${tag#[[- .WorkaroundTagPrefix ]]v}"
-            if echo "$tag" | grep -qE '^v?[0-9]' then
+            if echo "$tag" | grep -qE '^v?[0-9]'; then
                 version="${tag#v}"
             elif [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no [[- .WorkaroundTagPrefix ]] v removed skipping"
@@ -106,8 +106,8 @@ jobs:
             # shellcheck disable=SC2001
             version="$(echo "${version}" | sed 's/^\([0-9]\+\(\.[0-9]\+\)*\)\(-r[0-9]*\)\?\([-_]\(alpha\|beta\|rc\|p\)[0-9]*\)$/\1_\5\3/')"
 [[ end ]]
-            if ! echo "${version}" | grep -E '[[- if .WorkaroundGentooVersionRegularExpression ]][[ .WorkaroundGentooVersionRegularExpression ]][[- else ]]^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$[[- end ]]' then
-                echo "tag / $version doesn't match regexp"
+            if ! echo "${version}" | grep -E '[[- if .WorkaroundGentooVersionRegularExpression ]][[ .WorkaroundGentooVersionRegularExpression ]][[- else ]]^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$[[- end ]]'; then
+                echo "tag / $version doesn't match regexp; skipping"
                 continue
             fi
             # shellcheck disable=SC2001
@@ -192,7 +192,7 @@ jobs:
 [[ end ]]
                 echo '}'
                 [[ else ]]
-                echo 'src_unpack() { : }'
+                echo 'src_unpack() { :; }'
                 [[ end ]]
                 echo ''
                 echo 'src_install() {'
