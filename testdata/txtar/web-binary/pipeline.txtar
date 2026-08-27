@@ -6,7 +6,7 @@ Category app-misc
 Description Example using Web Binary and RSS extraction
 Homepage https://example.com
 License MIT
-DownloadBaseUrl https://example.com/downloads/example-${VERSION}.tar.gz${VERSION}
+DownloadBaseUrl https://example.com/downloads/example-${VERSION}.tar.gz
 VersionPipeline get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))
 ProgramName example
 Binary amd64=>example-${VERSION}.tar.gz > example > example
@@ -105,7 +105,7 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  https://example.com/downloads/example-\${PV}.tar.gz\${PV}\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
+                echo "	amd64? (  https://example.com/downloads/example-\${PV}.tar.gz\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
@@ -145,7 +145,7 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://example.com/downloads/example-${version}.tar.gz${version}${version}" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://example.com/downloads/example-${version}.tar.gz${version}" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
