@@ -251,3 +251,48 @@ grab the current build number, which we don't. This will remain unsupported for 
 * I will be concerned mostly with the apps of my interest, the list can be found here: https://github.com/arran4/arrans_overlay/blob/main/current.config
 * The entire `main.go` is to completely rebuilt with generated code. But until then do what is necessary but in a way which is compatible with that idea
 * I am considering generating more files such as the metadata.xml file too
+## Custom Web Extractors (Web AppImage / Web Binary)
+
+For non-GitHub releases, the generator supports the `Web AppImage` and `Web Binary` types. By default, these rely on HTML scraping or static URLs, but can be highly customized to extract dynamic versions and downloads from index pages, JSON APIs, or RSS feeds.
+
+### Pipeline Directives
+
+Instead of using Bash-dependent tools, you can use the built-in python extraction pipeline. You define pipelines in your configuration for version parsing and download resolution.
+
+* `Version Pipeline` - A chained command string used to extract all release versions from the web.
+* `Download Pipeline` - A chained command string used to extract the specific binary download URL for a given tag.
+* `Download Redirect` (AppImages only) - Resolves AppImage URLs by following `HTTP 302` redirects natively, bypassing HTML scraping.
+* `Download Regex` (Legacy fallback) - Equivalent to `get(URL) | html_links | regex(PATTERN) | first`.
+* `Download XPath` (Legacy fallback) - Not recommended, use `Version Pipeline` and `Download Pipeline` instead.
+
+### Pipeline Syntax
+
+The extraction pipeline supports piping commands (`|`) to incrementally parse data (like jq or sed, but using python standard libraries).
+
+Available commands:
+* `get(url)` - Fetches data from a URL using `urllib`. Note: URL should be plain text, variables like `${TAG}` are injected.
+* `rss` or `atom` - Parses XML and returns a list of items/entries.
+* `json(path.to.key)` - Parses JSON data and navigates down to the specified key.
+* `html_links` - Simple regex based extraction of all `href="..."` targets from raw HTML text.
+* `regex(pattern)` - Applies a regex pattern to extract a matching group. If applied to a list, it filters the list.
+* `link` - Extracts the `<link>` target (from RSS/Atom).
+* `url.basename` - Extracts the file path basename from a URL string.
+* `replace('search', 'replace')` - Simple string replacement.
+* `first` / `last` - Grabs the first or last element of a list.
+
+### Example: RSS Feed Extraction
+
+For a project updating its versions via an RSS feed, you can easily extract the version by chaining `get`, `rss`, `first` and `regex`.
+
+```
+Type Web Binary
+EbuildName example-bin
+Category app-misc
+Description Example using Web Binary and RSS extraction
+Homepage https://example.com
+License MIT
+Download Base URL https://example.com/downloads/example-${VERSION}.tar.gz
+Version Pipeline get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))
+ProgramName example
+Binary amd64=>example-${VERSION}.tar.gz > example > example
+```

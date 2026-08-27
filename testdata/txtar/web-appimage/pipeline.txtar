@@ -1,23 +1,19 @@
-This fixture evaluates the complete Web AppImage workflow, including deterministic page scraping,
-redirect resolution, desktop integration, runtime dependencies, manifest creation, and installation.
-
+Pipeline Web AppImage Extraction Test
 -- input.config --
 Type Web AppImage
-DownloadPageUrl https://downloads.example.com/example/
+GithubProjectUrl https://github.com/example/example
 Category net-im
 EbuildName example-appimage
-Description Example self-contained desktop client
-Homepage https://www.example.com/
+Description Example using Web AppImage and RSS extraction
+Homepage https://example.com
 License MIT
-Workaround Check Asset Size
-MaintainerEmail maintainer@example.com
-MaintainerName Example Maintainer
+DownloadPageUrl https://example.com/downloads
+DownloadPipeline get(https://example.com/downloads) | html_links | regex(v(.*\.AppImage)) | first
 ProgramName example
 DesktopFile example.desktop
-Icons hicolor-apps
-Dependencies sys-libs/glibc sys-libs/zlib
-Binary amd64=>example-${VERSION}-x86_64.AppImage > example.AppImage
-
+Icons hicolor-apps root
+Binary amd64=>example-${VERSION}.AppImage > example.AppImage
+-- .github/workflows/net-im-example-appimage-update.yaml --
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web AppImage test.config 2026-07-12 00:00:00 +0000 UTC
 
@@ -37,8 +33,8 @@ on:
 env:
   ecn: net-im
   epn: example-appimage
-  description: "Example self-contained desktop client"
-  homepage: "https://www.example.com/"
+  description: "Example using Web AppImage and RSS extraction"
+  homepage: "https://example.com"
   keywords: ~amd64
   workflow_filename: net-im-example-appimage-update.yaml
   example_desktop_file: 'example.desktop'
@@ -72,12 +68,8 @@ jobs:
         id: find_appimage
         run: |
           set -euo pipefail
-          source_url="$(curl -sL 'https://downloads.example.com/example/' | htmlq -a href 'a' | grep -iE '\.AppImage$' | sort -V | tail -n1)"
-          if [ -z "$source_url" ]; then
-            echo "failed to find AppImage link" >&2
-            exit 1
-          fi
-          appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' "$source_url")"
+          printf "%s" "aW1wb3J0IHN5cwppbXBvcnQgdXJsbGliLnJlcXVlc3QKaW1wb3J0IHJlCmltcG9ydCBqc29uCmltcG9ydCB4bWwuZXRyZWUuRWxlbWVudFRyZWUgYXMgRVQKZnJvbSB1cmxsaWIucGFyc2UgaW1wb3J0IHVybHBhcnNlCgpkZWYgZXhlY3V0ZV9waXBlbGluZShwaXBlbGluZV9zdHIpOgogICAgY29tbWFuZHMgPSBbY21kLnN0cmlwKCkgZm9yIGNtZCBpbiBwaXBlbGluZV9zdHIuc3BsaXQoJ3wnKV0KICAgIGRhdGEgPSBOb25lCiAgICAKICAgIGZvciBjbWQgaW4gY29tbWFuZHM6CiAgICAgICAgaWYgY21kLnN0YXJ0c3dpdGgoJ2dldCgnKToKICAgICAgICAgICAgdXJsID0gY21kWzQ6LTFdCiAgICAgICAgICAgIHJlcSA9IHVybGxpYi5yZXF1ZXN0LlJlcXVlc3QodXJsLCBoZWFkZXJzPXsnVXNlci1BZ2VudCc6ICdNb3ppbGxhLzUuMCd9KQogICAgICAgICAgICB3aXRoIHVybGxpYi5yZXF1ZXN0LnVybG9wZW4ocmVxKSBhcyByZXNwb25zZToKICAgICAgICAgICAgICAgIGRhdGEgPSByZXNwb25zZS5yZWFkKCkuZGVjb2RlKCd1dGYtOCcpCiAgICAgICAgZWxpZiBjbWQgaW4gKCdyc3MnLCAnYXRvbScpOgogICAgICAgICAgICB0cnk6CiAgICAgICAgICAgICAgICByb290ID0gRVQuZnJvbXN0cmluZyhkYXRhKQogICAgICAgICAgICAgICAgaXRlbXMgPSByb290LmZpbmRhbGwoJy4vL2l0ZW0nKSArIHJvb3QuZmluZGFsbCgnLi8ve2h0dHA6Ly93d3cudzMub3JnLzIwMDUvQXRvbX1lbnRyeScpCiAgICAgICAgICAgICAgICBkYXRhID0gaXRlbXMKICAgICAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgICAgIGRhdGEgPSBbXQogICAgICAgIGVsaWYgY21kID09ICdmaXJzdCc6CiAgICAgICAgICAgIGRhdGEgPSBkYXRhWzBdIGlmIGRhdGEgYW5kIGlzaW5zdGFuY2UoZGF0YSwgbGlzdCkgZWxzZSBkYXRhCiAgICAgICAgZWxpZiBjbWQgPT0gJ2xhc3QnOgogICAgICAgICAgICBkYXRhID0gZGF0YVstMV0gaWYgZGF0YSBhbmQgaXNpbnN0YW5jZShkYXRhLCBsaXN0KSBlbHNlIGRhdGEKICAgICAgICBlbGlmIGNtZCA9PSAnbGluayc6CiAgICAgICAgICAgIGlmIGRhdGEgaXMgbm90IE5vbmU6CiAgICAgICAgICAgICAgICBsaW5rID0gZGF0YS5maW5kKCdsaW5rJykKICAgICAgICAgICAgICAgIGlmIGxpbmsgaXMgbm90IE5vbmU6CiAgICAgICAgICAgICAgICAgICAgaWYgbGluay50ZXh0IGFuZCBsaW5rLnRleHQuc3RyaXAoKToKICAgICAgICAgICAgICAgICAgICAgICAgZGF0YSA9IGxpbmsudGV4dC5zdHJpcCgpCiAgICAgICAgICAgICAgICAgICAgZWxzZToKICAgICAgICAgICAgICAgICAgICAgICAgZGF0YSA9IGxpbmsuZ2V0KCdocmVmJywgJycpCiAgICAgICAgICAgICAgICBlbHNlOgogICAgICAgICAgICAgICAgICAgIGxpbmsgPSBkYXRhLmZpbmQoJ3todHRwOi8vd3d3LnczLm9yZy8yMDA1L0F0b219bGluaycpCiAgICAgICAgICAgICAgICAgICAgaWYgbGluayBpcyBub3QgTm9uZToKICAgICAgICAgICAgICAgICAgICAgICAgZGF0YSA9IGxpbmsuZ2V0KCdocmVmJywgJycpCiAgICAgICAgICAgICAgICAgICAgZWxzZToKICAgICAgICAgICAgICAgICAgICAgICAgZGF0YSA9ICcnCiAgICAgICAgZWxpZiBjbWQgPT0gJ3VybC5iYXNlbmFtZSc6CiAgICAgICAgICAgIGlmIGRhdGEgYW5kIGlzaW5zdGFuY2UoZGF0YSwgc3RyKToKICAgICAgICAgICAgICAgIHBhdGggPSB1cmxwYXJzZShkYXRhKS5wYXRoCiAgICAgICAgICAgICAgICBkYXRhID0gcGF0aC5zcGxpdCgnLycpWy0xXSBpZiBwYXRoIGVsc2UgJycKICAgICAgICBlbGlmIGNtZC5zdGFydHN3aXRoKCdyZWdleCgnKToKICAgICAgICAgICAgcGF0dGVybiA9IGNtZFs2Oi0xXQogICAgICAgICAgICBpZiBpc2luc3RhbmNlKGRhdGEsIGxpc3QpOgogICAgICAgICAgICAgICAgcmVzID0gW10KICAgICAgICAgICAgICAgIGZvciBpdGVtIGluIGRhdGE6CiAgICAgICAgICAgICAgICAgICAgaXRlbV9zdHIgPSBFVC50b3N0cmluZyhpdGVtLCBlbmNvZGluZz0ndW5pY29kZScpIGlmIGlzaW5zdGFuY2UoaXRlbSwgRVQuRWxlbWVudCkgZWxzZSBzdHIoaXRlbSkKICAgICAgICAgICAgICAgICAgICBtID0gcmUuc2VhcmNoKHBhdHRlcm4sIGl0ZW1fc3RyKQogICAgICAgICAgICAgICAgICAgIGlmIG06CiAgICAgICAgICAgICAgICAgICAgICAgIHJlcy5hcHBlbmQobS5ncm91cCgxKSBpZiBtLmdyb3VwcygpIGVsc2UgbS5ncm91cCgwKSkKICAgICAgICAgICAgICAgIGRhdGEgPSByZXMKICAgICAgICAgICAgZWxpZiBkYXRhOgogICAgICAgICAgICAgICAgZGF0YV9zdHIgPSBFVC50b3N0cmluZyhkYXRhLCBlbmNvZGluZz0ndW5pY29kZScpIGlmIGlzaW5zdGFuY2UoZGF0YSwgRVQuRWxlbWVudCkgZWxzZSBzdHIoZGF0YSkKICAgICAgICAgICAgICAgIG0gPSByZS5zZWFyY2gocGF0dGVybiwgZGF0YV9zdHIpCiAgICAgICAgICAgICAgICBpZiBtOgogICAgICAgICAgICAgICAgICAgIGRhdGEgPSBtLmdyb3VwKDEpIGlmIG0uZ3JvdXBzKCkgZWxzZSBtLmdyb3VwKDApCiAgICAgICAgICAgICAgICBlbHNlOgogICAgICAgICAgICAgICAgICAgIGRhdGEgPSAiIgogICAgICAgIGVsaWYgY21kLnN0YXJ0c3dpdGgoJ2pzb24oJyk6CiAgICAgICAgICAgIHBhdGggPSBjbWRbNTotMV0KICAgICAgICAgICAgb2JqID0ganNvbi5sb2FkcyhkYXRhKQogICAgICAgICAgICBmb3IgcGFydCBpbiBwYXRoLnNwbGl0KCcuJyk6CiAgICAgICAgICAgICAgICBpZiBwYXJ0IGFuZCBpc2luc3RhbmNlKG9iaiwgZGljdCk6CiAgICAgICAgICAgICAgICAgICAgb2JqID0gb2JqLmdldChwYXJ0KQogICAgICAgICAgICAgICAgZWxpZiBwYXJ0LmlzZGlnaXQoKSBhbmQgaXNpbnN0YW5jZShvYmosIGxpc3QpOgogICAgICAgICAgICAgICAgICAgIG9iaiA9IG9ialtpbnQocGFydCldCiAgICAgICAgICAgIGRhdGEgPSBvYmoKICAgICAgICBlbGlmIGNtZC5zdGFydHN3aXRoKCdyZXBsYWNlKCcpOgogICAgICAgICAgICBhcmdzID0gY21kWzg6LTFdLnNwbGl0KCcsJykKICAgICAgICAgICAgaWYgbGVuKGFyZ3MpID49IDIgYW5kIGRhdGEgYW5kIGlzaW5zdGFuY2UoZGF0YSwgc3RyKToKICAgICAgICAgICAgICAgIGRhdGEgPSBkYXRhLnJlcGxhY2UoYXJnc1swXS5zdHJpcCgiJ1wiIiksIGFyZ3NbMV0uc3RyaXAoIidcIiIpKQogICAgICAgIGVsaWYgY21kID09ICd0cmltJzoKICAgICAgICAgICAgIGlmIGlzaW5zdGFuY2UoZGF0YSwgc3RyKToKICAgICAgICAgICAgICAgICAgZGF0YSA9IGRhdGEuc3RyaXAoKQogICAgICAgIGVsaWYgY21kID09ICdodG1sX2xpbmtzJzoKICAgICAgICAgICAgIGlmIGlzaW5zdGFuY2UoZGF0YSwgc3RyKToKICAgICAgICAgICAgICAgICBkYXRhID0gcmUuZmluZGFsbChyJ2hyZWY9W1wnIl0/KFteXCciID5dKyknLCBkYXRhKQogICAgCiAgICBpZiBpc2luc3RhbmNlKGRhdGEsIGxpc3QpOgogICAgICAgIGZvciBpdGVtIGluIGRhdGE6CiAgICAgICAgICAgIGlmIGl0ZW06IHByaW50KGl0ZW0pCiAgICBlbGlmIGRhdGE6CiAgICAgICAgcHJpbnQoZGF0YSkKCmlmIF9fbmFtZV9fID09ICdfX21haW5fXyc6CiAgICBpZiBsZW4oc3lzLmFyZ3YpID4gMToKICAgICAgICBleGVjdXRlX3BpcGVsaW5lKHN5cy5hcmd2WzFdKQo=" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
+          source_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
           if [ -z "$appimage_url" ]; then
             echo "failed to resolve AppImage redirect" >&2
             exit 1
@@ -99,7 +91,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "maintainer@example.com:Example Maintainer:person" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" "$metadata_file"
           tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
             # shellcheck disable=SC2016
             {
@@ -112,7 +104,7 @@ jobs:
               echo 'KEYWORDS="${{ env.keywords }}"'
               echo 'IUSE=""'
               echo 'DEPEND=""'
-              echo 'RDEPEND="sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
+              echo 'RDEPEND="sys-fs/fuse:0"'
               echo 'S="${WORKDIR}"'
               echo 'RESTRICT="strip"'
               echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
@@ -124,12 +116,15 @@ jobs:
               echo '  chmod a+x "${P}.${appimage_extension}" || die "Can'"'"'t chmod archive file"'
               echo '  "./${P}.${appimage_extension}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'
               echo '  "./${P}.${appimage_extension}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
+              echo '  "./${P}.${appimage_extension}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
               echo '  exeinto /opt/bin'
               echo '  newexe "${P}.${appimage_extension}" "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
               echo '  insinto /usr/share/applications'
               echo '  doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'
               echo '  insinto /usr/share/icons'
               echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
+              echo '  insinto /usr/share/pixmaps'
+              echo '  doins squashfs-root/*.png || die "Failed to install icons"'
               echo '}'
               echo 'pkg_postinst() {'
               echo '  xdg_desktop_database_update'
@@ -141,29 +136,9 @@ jobs:
                   mv "$tmp_ebuild_file" "$next_ebuild_file"
                   ebuild_file="$next_ebuild_file"
               else
-                  highest_rev_ebuild=$(find "${ebuild_dir}" -maxdepth 1 \( -name "${{ env.epn }}-${version}.ebuild" -o -name "${{ env.epn }}-${version}-r*.ebuild" \) 2>/dev/null | sort -V | tail -n 1)
-                  highest_rev_file=$(basename "$highest_rev_ebuild")
-                  highest_rev_p="${highest_rev_file%.ebuild}"
-                  remote_size=$(curl -sL --head "${appimage_url}\${PV}" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
-                  local_distfile="${highest_rev_p}-${P}.${appimage_extension}"
-                  local_size=$(grep "DIST $local_distfile " "${ebuild_dir}/Manifest" | awk '{print $3}')
-                  if [ -n "$remote_size" ] && [ -n "$local_size" ] && [ "$remote_size" != "$local_size" ]; then
-                      echo "Size mismatch for ${version}: remote $remote_size, local $local_size. RC bumping."
-                      if [[ "$highest_rev_file" =~ -r([0-9]+)\.ebuild$ ]]; then
-                          current_rev="${BASH_REMATCH[1]}"
-                          next_rev=$((current_rev + 1))
-                          revision_suffix="-r${next_rev}"
-                      else
-                          revision_suffix="-r1"
-                      fi
-                      ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}${revision_suffix}.ebuild"
-                      mv "$highest_rev_ebuild" "$ebuild_file"
-                      rm -f "$tmp_ebuild_file"
-                  else
-                      echo "Matches existing ebuild. Skipping."
-                      rm -f "$tmp_ebuild_file"
-                      exit 0
-                  fi
+                  echo "Matches existing ebuild. Skipping."
+                  rm -f "$tmp_ebuild_file"
+                  exit 0
               fi
 
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"

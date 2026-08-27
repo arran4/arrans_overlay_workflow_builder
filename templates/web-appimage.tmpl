@@ -47,9 +47,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget jq coreutils
-          [[- if not .DownloadRedirect ]]
-          curl -sfL https://github.com/mgdm/htmlq/releases/download/v0.4.0/htmlq-x86_64-linux.tar.gz | sudo tar xz -C /usr/local/bin htmlq
-          [[- end ]]
+
 
       - name: Install g2
         uses: arran4/g2-action@v1.2
@@ -68,6 +66,9 @@ jobs:
           appimage_url="[[ .CustomDownloadUrl | actionvardoublequoted ]]"
           [[- else if .DownloadRedirect ]]
           appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' '[[ .DownloadRedirect ]]')"
+          [[- else if .GetDownloadPipeline ]]
+          printf "%s" "[[ .PipelineScriptBase64 ]]" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
+          source_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
           [[- else ]]
           source_url="$(curl -sL '[[ .DownloadPageUrl ]]' | htmlq -a href 'a' | grep -iE '[[ if .DownloadMatch ]][[ .DownloadMatch ]][[ else ]]\.AppImage$[[ end ]]' | sort -V | tail -n1)"
           if [ -z "$source_url" ]; then

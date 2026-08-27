@@ -2,6 +2,7 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
+	"encoding/base64"
 	"embed"
 	"encoding/xml"
 	"fmt"
@@ -20,7 +21,7 @@ import (
 )
 
 var (
-	//go:embed "templates/*.tmpl" "templates/_partials/*.tmpl"
+	//go:embed "templates/*.tmpl" "templates/_partials/*.tmpl" "templates/_partials/pipeline.py"
 	templateFiles embed.FS
 )
 
@@ -483,4 +484,12 @@ func (b *GenerateGithubWorkflowBase) FeatureGenerateMd5Cache() bool {
 
 func (b *GenerateGithubWorkflowBase) FeatureGenerateOverlay() bool {
 	return b.GlobalGenerateOverlay || b.InputConfig.FeatureGenerateOverlay()
+}
+
+func (b *GenerateGithubWorkflowBase) PipelineScriptBase64() string {
+	bytes, err := templateFiles.ReadFile("templates/_partials/pipeline.py")
+	if err != nil {
+		panic(err)
+	}
+	return base64.StdEncoding.EncodeToString(bytes)
 }

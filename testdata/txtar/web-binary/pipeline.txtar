@@ -1,20 +1,16 @@
-This fixture tests Web Binary rendering with all custom injection points.
-
+Pipeline Web Binary Extraction Test
 -- input.config --
 Type Web Binary
 EbuildName example-bin
 Category app-misc
-Description Example Bin
-Homepage https://example.com/
+Description Example using Web Binary and RSS extraction
+Homepage https://example.com
 License MIT
-DownloadBaseUrl https://example.com/downloads/
-PreVersionSteps echo "Fetching RSS feed to extract latest tag" > /tmp/log
-TagsCommand curl -sL https://example.com/feed.xml | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*'
-CustomDownloadUrl https://example.com/archive/${version}/example.tar.gz
-CustomBuildSteps echo "Built successfully"
+DownloadBaseUrl https://example.com/downloads/example-${VERSION}.tar.gz${VERSION}
+VersionPipeline get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))
 ProgramName example
-Binary amd64=>example-linux-amd64.tar.gz > example > example
-
+Binary amd64=>example-${VERSION}.tar.gz > example > example
+-- .github/workflows/app-misc-example-bin-update.yaml --
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web Binary test.config 2026-07-12 00:00:00 +0000 UTC
 
@@ -34,15 +30,15 @@ on:
 env:
   ecn: app-misc
   epn: example-bin
-  description: "Example Bin"
-  homepage: "https://example.com/"
+  description: "Example using Web Binary and RSS extraction"
+  homepage: "https://example.com"
   github_owner:
   github_repo: example-bin
   keywords: ~amd64
   workflow_filename: app-misc-example-bin-update.yaml
   example_binary_installed_name: 'example'
   example_binary_archived_name_amd64: 'example'
-  example_release_name_amd64: 'example-linux-amd64.tar.gz'
+  example_release_name_amd64: 'example-${version}.tar.gz'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -71,12 +67,8 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" "$metadata_file"
           declare -A releaseTypes=()
-          echo "Fetching RSS feed to extract latest tag" > /tmp/log
-          if [ -z "curl -sL https://example.com/feed.xml | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*'" ]; then
-             echo "TagsCommand, CustomVersionSource, VersionPipeline, DownloadRegex, or DownloadXPath is required for Web Binary configurations" >&2
-             exit 1
-          fi
-          tags=$(curl -sL https://example.com/feed.xml | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*')
+          printf "%s" "aW1wb3J0IHN5cwppbXBvcnQgdXJsbGliLnJlcXVlc3QKaW1wb3J0IHJlCmltcG9ydCBqc29uCmltcG9ydCB4bWwuZXRyZWUuRWxlbWVudFRyZWUgYXMgRVQKZnJvbSB1cmxsaWIucGFyc2UgaW1wb3J0IHVybHBhcnNlCgpkZWYgZXhlY3V0ZV9waXBlbGluZShwaXBlbGluZV9zdHIpOgogICAgY29tbWFuZHMgPSBbY21kLnN0cmlwKCkgZm9yIGNtZCBpbiBwaXBlbGluZV9zdHIuc3BsaXQoJ3wnKV0KICAgIGRhdGEgPSBOb25lCiAgICAKICAgIGZvciBjbWQgaW4gY29tbWFuZHM6CiAgICAgICAgaWYgY21kLnN0YXJ0c3dpdGgoJ2dldCgnKToKICAgICAgICAgICAgdXJsID0gY21kWzQ6LTFdCiAgICAgICAgICAgIHJlcSA9IHVybGxpYi5yZXF1ZXN0LlJlcXVlc3QodXJsLCBoZWFkZXJzPXsnVXNlci1BZ2VudCc6ICdNb3ppbGxhLzUuMCd9KQogICAgICAgICAgICB3aXRoIHVybGxpYi5yZXF1ZXN0LnVybG9wZW4ocmVxKSBhcyByZXNwb25zZToKICAgICAgICAgICAgICAgIGRhdGEgPSByZXNwb25zZS5yZWFkKCkuZGVjb2RlKCd1dGYtOCcpCiAgICAgICAgZWxpZiBjbWQgaW4gKCdyc3MnLCAnYXRvbScpOgogICAgICAgICAgICB0cnk6CiAgICAgICAgICAgICAgICByb290ID0gRVQuZnJvbXN0cmluZyhkYXRhKQogICAgICAgICAgICAgICAgaXRlbXMgPSByb290LmZpbmRhbGwoJy4vL2l0ZW0nKSArIHJvb3QuZmluZGFsbCgnLi8ve2h0dHA6Ly93d3cudzMub3JnLzIwMDUvQXRvbX1lbnRyeScpCiAgICAgICAgICAgICAgICBkYXRhID0gaXRlbXMKICAgICAgICAgICAgZXhjZXB0IEV4Y2VwdGlvbjoKICAgICAgICAgICAgICAgIGRhdGEgPSBbXQogICAgICAgIGVsaWYgY21kID09ICdmaXJzdCc6CiAgICAgICAgICAgIGRhdGEgPSBkYXRhWzBdIGlmIGRhdGEgYW5kIGlzaW5zdGFuY2UoZGF0YSwgbGlzdCkgZWxzZSBkYXRhCiAgICAgICAgZWxpZiBjbWQgPT0gJ2xhc3QnOgogICAgICAgICAgICBkYXRhID0gZGF0YVstMV0gaWYgZGF0YSBhbmQgaXNpbnN0YW5jZShkYXRhLCBsaXN0KSBlbHNlIGRhdGEKICAgICAgICBlbGlmIGNtZCA9PSAnbGluayc6CiAgICAgICAgICAgIGlmIGRhdGEgaXMgbm90IE5vbmU6CiAgICAgICAgICAgICAgICBsaW5rID0gZGF0YS5maW5kKCdsaW5rJykKICAgICAgICAgICAgICAgIGlmIGxpbmsgaXMgbm90IE5vbmU6CiAgICAgICAgICAgICAgICAgICAgaWYgbGluay50ZXh0IGFuZCBsaW5rLnRleHQuc3RyaXAoKToKICAgICAgICAgICAgICAgICAgICAgICAgZGF0YSA9IGxpbmsudGV4dC5zdHJpcCgpCiAgICAgICAgICAgICAgICAgICAgZWxzZToKICAgICAgICAgICAgICAgICAgICAgICAgZGF0YSA9IGxpbmsuZ2V0KCdocmVmJywgJycpCiAgICAgICAgICAgICAgICBlbHNlOgogICAgICAgICAgICAgICAgICAgIGxpbmsgPSBkYXRhLmZpbmQoJ3todHRwOi8vd3d3LnczLm9yZy8yMDA1L0F0b219bGluaycpCiAgICAgICAgICAgICAgICAgICAgaWYgbGluayBpcyBub3QgTm9uZToKICAgICAgICAgICAgICAgICAgICAgICAgZGF0YSA9IGxpbmsuZ2V0KCdocmVmJywgJycpCiAgICAgICAgICAgICAgICAgICAgZWxzZToKICAgICAgICAgICAgICAgICAgICAgICAgZGF0YSA9ICcnCiAgICAgICAgZWxpZiBjbWQgPT0gJ3VybC5iYXNlbmFtZSc6CiAgICAgICAgICAgIGlmIGRhdGEgYW5kIGlzaW5zdGFuY2UoZGF0YSwgc3RyKToKICAgICAgICAgICAgICAgIHBhdGggPSB1cmxwYXJzZShkYXRhKS5wYXRoCiAgICAgICAgICAgICAgICBkYXRhID0gcGF0aC5zcGxpdCgnLycpWy0xXSBpZiBwYXRoIGVsc2UgJycKICAgICAgICBlbGlmIGNtZC5zdGFydHN3aXRoKCdyZWdleCgnKToKICAgICAgICAgICAgcGF0dGVybiA9IGNtZFs2Oi0xXQogICAgICAgICAgICBpZiBpc2luc3RhbmNlKGRhdGEsIGxpc3QpOgogICAgICAgICAgICAgICAgcmVzID0gW10KICAgICAgICAgICAgICAgIGZvciBpdGVtIGluIGRhdGE6CiAgICAgICAgICAgICAgICAgICAgaXRlbV9zdHIgPSBFVC50b3N0cmluZyhpdGVtLCBlbmNvZGluZz0ndW5pY29kZScpIGlmIGlzaW5zdGFuY2UoaXRlbSwgRVQuRWxlbWVudCkgZWxzZSBzdHIoaXRlbSkKICAgICAgICAgICAgICAgICAgICBtID0gcmUuc2VhcmNoKHBhdHRlcm4sIGl0ZW1fc3RyKQogICAgICAgICAgICAgICAgICAgIGlmIG06CiAgICAgICAgICAgICAgICAgICAgICAgIHJlcy5hcHBlbmQobS5ncm91cCgxKSBpZiBtLmdyb3VwcygpIGVsc2UgbS5ncm91cCgwKSkKICAgICAgICAgICAgICAgIGRhdGEgPSByZXMKICAgICAgICAgICAgZWxpZiBkYXRhOgogICAgICAgICAgICAgICAgZGF0YV9zdHIgPSBFVC50b3N0cmluZyhkYXRhLCBlbmNvZGluZz0ndW5pY29kZScpIGlmIGlzaW5zdGFuY2UoZGF0YSwgRVQuRWxlbWVudCkgZWxzZSBzdHIoZGF0YSkKICAgICAgICAgICAgICAgIG0gPSByZS5zZWFyY2gocGF0dGVybiwgZGF0YV9zdHIpCiAgICAgICAgICAgICAgICBpZiBtOgogICAgICAgICAgICAgICAgICAgIGRhdGEgPSBtLmdyb3VwKDEpIGlmIG0uZ3JvdXBzKCkgZWxzZSBtLmdyb3VwKDApCiAgICAgICAgICAgICAgICBlbHNlOgogICAgICAgICAgICAgICAgICAgIGRhdGEgPSAiIgogICAgICAgIGVsaWYgY21kLnN0YXJ0c3dpdGgoJ2pzb24oJyk6CiAgICAgICAgICAgIHBhdGggPSBjbWRbNTotMV0KICAgICAgICAgICAgb2JqID0ganNvbi5sb2FkcyhkYXRhKQogICAgICAgICAgICBmb3IgcGFydCBpbiBwYXRoLnNwbGl0KCcuJyk6CiAgICAgICAgICAgICAgICBpZiBwYXJ0IGFuZCBpc2luc3RhbmNlKG9iaiwgZGljdCk6CiAgICAgICAgICAgICAgICAgICAgb2JqID0gb2JqLmdldChwYXJ0KQogICAgICAgICAgICAgICAgZWxpZiBwYXJ0LmlzZGlnaXQoKSBhbmQgaXNpbnN0YW5jZShvYmosIGxpc3QpOgogICAgICAgICAgICAgICAgICAgIG9iaiA9IG9ialtpbnQocGFydCldCiAgICAgICAgICAgIGRhdGEgPSBvYmoKICAgICAgICBlbGlmIGNtZC5zdGFydHN3aXRoKCdyZXBsYWNlKCcpOgogICAgICAgICAgICBhcmdzID0gY21kWzg6LTFdLnNwbGl0KCcsJykKICAgICAgICAgICAgaWYgbGVuKGFyZ3MpID49IDIgYW5kIGRhdGEgYW5kIGlzaW5zdGFuY2UoZGF0YSwgc3RyKToKICAgICAgICAgICAgICAgIGRhdGEgPSBkYXRhLnJlcGxhY2UoYXJnc1swXS5zdHJpcCgiJ1wiIiksIGFyZ3NbMV0uc3RyaXAoIidcIiIpKQogICAgICAgIGVsaWYgY21kID09ICd0cmltJzoKICAgICAgICAgICAgIGlmIGlzaW5zdGFuY2UoZGF0YSwgc3RyKToKICAgICAgICAgICAgICAgICAgZGF0YSA9IGRhdGEuc3RyaXAoKQogICAgICAgIGVsaWYgY21kID09ICdodG1sX2xpbmtzJzoKICAgICAgICAgICAgIGlmIGlzaW5zdGFuY2UoZGF0YSwgc3RyKToKICAgICAgICAgICAgICAgICBkYXRhID0gcmUuZmluZGFsbChyJ2hyZWY9W1wnIl0/KFteXCciID5dKyknLCBkYXRhKQogICAgCiAgICBpZiBpc2luc3RhbmNlKGRhdGEsIGxpc3QpOgogICAgICAgIGZvciBpdGVtIGluIGRhdGE6CiAgICAgICAgICAgIGlmIGl0ZW06IHByaW50KGl0ZW0pCiAgICBlbGlmIGRhdGE6CiAgICAgICAgcHJpbnQoZGF0YSkKCmlmIF9fbmFtZV9fID09ICdfX21haW5fXyc6CiAgICBpZiBsZW4oc3lzLmFyZ3YpID4gMToKICAgICAgICBleGVjdXRlX3BpcGVsaW5lKHN5cy5hcmd2WzFdKQo=" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
+          tags="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
           # shellcheck disable=SC2086
           for tag in $tags; do
             version="${tag#v}"
@@ -113,7 +105,7 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  https://example.com/archive/${version}/example.tar.gz -> \${P}-example-linux-amd64.tar.gz  )  "
+                echo "	amd64? (  https://example.com/downloads/example-\${PV}.tar.gz\${PV}\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
@@ -131,7 +123,7 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '  if use amd64; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-example-linux-amd64.tar.gz\" || die \"Can't unpack archive file\""
+                echo "    unpack \"\${DISTDIR}/\${P}-example-\${PV}.tar.gz\" || die \"Can't unpack archive file\""
                 echo '  fi'
                 echo '}'
                 echo ''
@@ -153,13 +145,12 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://example.com/archive/${version}/example.tar.gz" "${{ env.epn }}-${version}-example-linux-amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://example.com/downloads/example-${version}.tar.gz${version}${version}" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
                   continue
               fi
-              echo "Built successfully"
               echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
           done
 

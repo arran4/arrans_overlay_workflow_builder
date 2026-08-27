@@ -10,3 +10,10 @@ type GenerateWebAppImageTemplateData struct {
 func (gwatd *GenerateWebAppImageTemplateData) TemplateFileName() string {
 	return "web-appimage.tmpl"
 }
+
+func (gwatd *GenerateWebAppImageTemplateData) PipelineScriptBase64() string {
+	return gwatd.GenerateGithubAppImageTemplateData.PipelineScriptBase64()
+}
+func (gwatd *GenerateWebAppImageTemplateData) GetDownloadPipeline() string {
+	return gwatd.InputConfig.GetDownloadPipeline()
+}

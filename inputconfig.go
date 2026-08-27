@@ -221,6 +221,10 @@ type InputConfig struct {
 	DownloadRedirect    string
 	DownloadBaseUrl     string
 	DownloadMatch       string
+	VersionPipeline     string
+	DownloadPipeline    string
+	DownloadRegex       string
+	DownloadXPath       string
 	TagsCommand         string
 	CustomDownloadUrl   string
 	CustomVersionSource string
@@ -505,6 +509,10 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"DownloadRedirect":      nil,
 				"DownloadBaseUrl":       nil,
 				"DownloadMatch":         nil,
+					"VersionPipeline":     nil,
+					"DownloadPipeline":    nil,
+					"DownloadRegex":       nil,
+					"DownloadXPath":       nil,
 				"CustomDownloadUrl":     nil,
 				"CustomVersionSource":   nil,
 				"CustomBuildSteps":      nil,
@@ -677,6 +685,22 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			}
 		}
 		currentConfig.DownloadMatch, err = emptyOrOnlyOrFail(parsedFields["DownloadMatch"])
+			if err != nil {
+				return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
+			}
+			currentConfig.VersionPipeline, err = emptyOrOnlyOrFail(parsedFields["VersionPipeline"])
+			if err != nil {
+				return nil, fmt.Errorf("on VersionPipeline: %v: %w", parsedFields["VersionPipeline"], err)
+			}
+			currentConfig.DownloadPipeline, err = emptyOrOnlyOrFail(parsedFields["DownloadPipeline"])
+			if err != nil {
+				return nil, fmt.Errorf("on DownloadPipeline: %v: %w", parsedFields["DownloadPipeline"], err)
+			}
+			currentConfig.DownloadRegex, err = emptyOrOnlyOrFail(parsedFields["DownloadRegex"])
+			if err != nil {
+				return nil, fmt.Errorf("on DownloadRegex: %v: %w", parsedFields["DownloadRegex"], err)
+			}
+			currentConfig.DownloadXPath, err = emptyOrOnlyOrFail(parsedFields["DownloadXPath"])
 		if err != nil {
 			return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
 		}
@@ -686,6 +710,22 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			return nil, fmt.Errorf("on DownloadBaseUrl: %v: %w", parsedFields["DownloadBaseUrl"], err)
 		}
 		currentConfig.DownloadMatch, err = emptyOrOnlyOrFail(parsedFields["DownloadMatch"])
+			if err != nil {
+				return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
+			}
+			currentConfig.VersionPipeline, err = emptyOrOnlyOrFail(parsedFields["VersionPipeline"])
+			if err != nil {
+				return nil, fmt.Errorf("on VersionPipeline: %v: %w", parsedFields["VersionPipeline"], err)
+			}
+			currentConfig.DownloadPipeline, err = emptyOrOnlyOrFail(parsedFields["DownloadPipeline"])
+			if err != nil {
+				return nil, fmt.Errorf("on DownloadPipeline: %v: %w", parsedFields["DownloadPipeline"], err)
+			}
+			currentConfig.DownloadRegex, err = emptyOrOnlyOrFail(parsedFields["DownloadRegex"])
+			if err != nil {
+				return nil, fmt.Errorf("on DownloadRegex: %v: %w", parsedFields["DownloadRegex"], err)
+			}
+			currentConfig.DownloadXPath, err = emptyOrOnlyOrFail(parsedFields["DownloadXPath"])
 		if err != nil {
 			return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
 		}
@@ -748,8 +788,8 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 		return nil, fmt.Errorf("on MaintainerName: %v: %w", parsedFields["MaintainerName"], err)
 	}
 	if currentConfig.Type == "Web Binary" {
-		if currentConfig.TagsCommand == "" && currentConfig.CustomVersionSource == "" {
-			return nil, fmt.Errorf("TagsCommand or CustomVersionSource is required for Web Binary configurations")
+		if currentConfig.TagsCommand == "" && currentConfig.CustomVersionSource == "" && currentConfig.VersionPipeline == "" && currentConfig.DownloadRegex == "" && currentConfig.DownloadXPath == "" {
+			return nil, fmt.Errorf("TagsCommand, CustomVersionSource, VersionPipeline, DownloadRegex, or DownloadXPath is required for Web Binary configurations")
 		}
 	}
 	if currentConfig.Type == "Github AppImage Release" || currentConfig.Type == "Github Binary Release" || currentConfig.Type == "Github Cmake Release" {
@@ -1264,4 +1304,33 @@ func (ic *InputConfig) FeatureGenerateOverlay() bool {
 	}
 	_, ok := ic.Features["Generate Overlay"]
 	return ok
+}
+
+func (ic *InputConfig) GetVersionPipeline() string {
+	if ic.VersionPipeline != "" {
+		return ic.VersionPipeline
+	}
+	if ic.DownloadRegex != "" && ic.DownloadPageUrl != "" {
+		return fmt.Sprintf("get(%s) | regex(%s)", ic.DownloadPageUrl, ic.DownloadRegex)
+	}
+	if ic.DownloadXPath != "" && ic.DownloadPageUrl != "" {
+		return fmt.Sprintf("get(%s) | xml | xpath(%s)", ic.DownloadPageUrl, ic.DownloadXPath)
+	}
+	return ""
+}
+
+func (ic *InputConfig) GetDownloadPipeline() string {
+	if ic.DownloadPipeline != "" {
+		return ic.DownloadPipeline
+	}
+	if ic.DownloadRegex != "" && ic.DownloadPageUrl != "" {
+		return fmt.Sprintf("get(%s) | html_links | regex(%s) | last", ic.DownloadPageUrl, ic.DownloadRegex)
+	}
+	if ic.DownloadXPath != "" && ic.DownloadPageUrl != "" {
+		return fmt.Sprintf("get(%s) | xml | xpath(%s)", ic.DownloadPageUrl, ic.DownloadXPath)
+	}
+	if ic.DownloadMatch != "" && ic.DownloadPageUrl != "" {
+		return fmt.Sprintf("get(%s) | html_links | regex(%s) | last", ic.DownloadPageUrl, ic.DownloadMatch)
+	}
+	return ""
 }
