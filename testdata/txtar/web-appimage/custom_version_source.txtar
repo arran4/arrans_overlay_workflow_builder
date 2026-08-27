@@ -145,7 +145,6 @@ jobs:
             g2 manifest upsert-from-url "$appimage_url" "${{ env.epn }}-${version}.${appimage_extension}" "${ebuild_dir}/Manifest"
             touch built.txt
             echo "generated_tag=${version}" >> $GITHUB_OUTPUT
-          fi
 
       - name: Deduplicate ebuilds
         run: |
