@@ -54,10 +54,11 @@ jobs:
 
       - name: Determine latest AppImage
         id: find_appimage
-        env:
-          G2_PIPELINE: "[[ if .GetDownloadPipeline ]][[ .GetDownloadPipeline | actionvardoublequoted ]][[ else ]]''[[ end ]]"
         run: |
           set -euo pipefail
+          [[- if .GetDownloadPipeline ]]
+          printf "%s" "[[ .PipelineScriptBase64 ]]" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
+          [[- end ]]
           [[- if .PreVersionSteps ]]
           [[ .PreVersionSteps | actionvardoublequoted ]]
           [[- end ]]

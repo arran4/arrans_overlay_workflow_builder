@@ -143,7 +143,7 @@ directory after being modified. Remember to add: `Category` with the appropriate
 
 ## Configuration Variables
 
-When defining URLs or filenames in directives like `Binary`, `Custom Download URL`, or `Download Base URL`, you can use the following variables, which the generator will automatically replace with appropriate bash variables during workflow generation:
+When defining URLs or filenames in directives like `Binary`, `Custom Download URL`, or `DownloadBaseUrl`, you can use the following variables, which the generator will automatically replace with appropriate bash variables during workflow generation:
 
 * `${TAG}` - Replaced by `${tag}` in the generated bash script. Used to represent the original release tag string.
 * `${VERSION}` - Replaced by `${version}` or `\${PV}` (in `SRC_URI`), depending on the context. Used to represent the version string (e.g. `1.2.3`).
@@ -259,11 +259,11 @@ For non-GitHub releases, the generator supports the `Web AppImage` and `Web Bina
 
 Instead of using Bash-dependent tools, you can use the built-in python extraction pipeline. You define pipelines in your configuration for version parsing and download resolution.
 
-* `Version Pipeline` - A chained command string used to extract all release versions from the web.
-* `Download Pipeline` - A chained command string used to extract the specific binary download URL for a given tag.
+* `VersionPipeline` - A chained command string used to extract all release versions from the web.
+* `DownloadPipeline` - A chained command string used to extract the specific binary download URL for a given tag.
 * `Download Redirect` (AppImages only) - Resolves AppImage URLs by following `HTTP 302` redirects natively, bypassing HTML scraping.
-* `Download Regex` (Legacy fallback) - Equivalent to `get(URL) | html_links | regex(PATTERN) | first`.
-* `Download XPath` (Legacy fallback) - Not recommended, use `Version Pipeline` and `Download Pipeline` instead.
+* `DownloadRegex` (Legacy fallback) - Equivalent to `get(URL) | html_links | regex(PATTERN) | first`.
+* `DownloadXPath` (Legacy fallback) - Not recommended, use `VersionPipeline` and `DownloadPipeline` instead.
 
 ### Pipeline Syntax
 
@@ -291,8 +291,8 @@ Category app-misc
 Description Example using Web Binary and RSS extraction
 Homepage https://example.com
 License MIT
-Download Base URL https://example.com/downloads/example-${VERSION}.tar.gz
-Version Pipeline get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))
+DownloadBaseUrl https://example.com/downloads/example-${VERSION}.tar.gz
+VersionPipeline get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))
 ProgramName example
 Binary amd64=>example-${VERSION}.tar.gz > example > example
 ```
