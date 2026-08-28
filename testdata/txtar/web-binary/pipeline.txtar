@@ -98,6 +98,19 @@ jobs:
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            # Resolve download URLs once per external resource
+            declare -A resolved_download_urls=()
+            # Evaluate pipeline for resource index 0
+            export G2_PIPELINE="get(https://example.com/downloads/${version}) | html_links | first"
+            G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"
+            G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"
+            G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/example-${VERSION}.tar.gz}"
+            resolved_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
+            if [ -z "$resolved_url" ]; then
+                echo "Failed to resolve download URL for $version and resource 0" >&2
+                continue
+            fi
+            resolved_download_urls["0"]="$resolved_url"
 
               # shellcheck disable=SC2016
               {
@@ -106,7 +119,7 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  $(G2_PIPELINE="get(https://example.com/downloads/${version}) | html_links | first"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/example-${VERSION}.tar.gz}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
+                echo "	amd64? (  ${resolved_download_urls["0"]}\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
@@ -146,7 +159,7 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "$(G2_PIPELINE="get(https://example.com/downloads/${version}) | html_links | first"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/example-${VERSION}.tar.gz}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${resolved_download_urls["0"]}" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

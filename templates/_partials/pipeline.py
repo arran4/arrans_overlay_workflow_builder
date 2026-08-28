@@ -7,23 +7,63 @@ import xml.etree.ElementTree as ET
 from urllib.parse import urlparse, urljoin
 
 def tokenize_pipeline(pipeline_str):
-    # We can't just split on '|' because regexes might contain '|'
-    # We need to split by '|' only outside of parentheses
     commands = []
     current_cmd = ""
     paren_depth = 0
+    in_quote = None
+    escape_next = False
+
     for char in pipeline_str:
-        if char == '(':
-            paren_depth += 1
-        elif char == ')':
-            paren_depth -= 1
-        elif char == '|' and paren_depth == 0:
-            commands.append(current_cmd.strip())
-            current_cmd = ""
+        if escape_next:
+            current_cmd += char
+            escape_next = False
             continue
+
+        if char == '\\':
+            escape_next = True
+            current_cmd += char
+            continue
+
+        if char in ("'", '"'):
+            if in_quote == char:
+                in_quote = None
+            elif not in_quote:
+                in_quote = char
+            current_cmd += char
+            continue
+
+        if not in_quote:
+            if char == '(':
+                paren_depth += 1
+            elif char == ')':
+                paren_depth -= 1
+                if paren_depth < 0:
+                    print("Error: Unbalanced parentheses in pipeline", file=sys.stderr)
+                    sys.exit(1)
+            elif char == '|' and paren_depth == 0:
+                cmd = current_cmd.strip()
+                if not cmd:
+                    print("Error: Empty pipeline stage", file=sys.stderr)
+                    sys.exit(1)
+                commands.append(cmd)
+                current_cmd = ""
+                continue
+
         current_cmd += char
-    if current_cmd:
-        commands.append(current_cmd.strip())
+
+    if in_quote:
+        print("Error: Unterminated quote in pipeline", file=sys.stderr)
+        sys.exit(1)
+    if paren_depth > 0:
+        print("Error: Unbalanced parentheses in pipeline", file=sys.stderr)
+        sys.exit(1)
+
+    cmd = current_cmd.strip()
+    if not cmd:
+        print("Error: Empty pipeline stage", file=sys.stderr)
+        sys.exit(1)
+    commands.append(cmd)
+
     return commands
 
 def execute_pipeline(pipeline_str):
@@ -42,13 +82,19 @@ def execute_pipeline(pipeline_str):
             except Exception as e:
                 print(f"Error fetching URL {url}: {e}", file=sys.stderr)
                 sys.exit(1)
-        elif cmd in ('rss', 'atom', 'xml'):
+        elif cmd in ('rss', 'atom'):
             try:
                 root = ET.fromstring(data)
                 items = root.findall('.//item') + root.findall('.//{http://www.w3.org/2005/Atom}entry')
                 data = items
             except Exception as e:
                 print(f"Error parsing XML/RSS: {e}", file=sys.stderr)
+                sys.exit(1)
+        elif cmd == 'xml':
+            try:
+                data = ET.fromstring(data)
+            except Exception as e:
+                print(f"Error parsing XML: {e}", file=sys.stderr)
                 sys.exit(1)
         elif cmd.startswith('xpath('):
             xpath_query = cmd[6:-1].strip("'\"")
@@ -113,15 +159,34 @@ def execute_pipeline(pipeline_str):
                 sys.exit(1)
         elif cmd.startswith('replace('):
             args_str = cmd[8:-1]
-            # Use shlex to correctly parse comma separated arguments even if they have spaces or commas inside quotes
             try:
-                # We can replace commas with spaces and use shlex.split
-                # But it's safer to just use csv parsing or a custom loop
-                lexer = shlex.shlex(args_str, posix=True)
-                lexer.whitespace = ','
-                lexer.whitespace_split = True
-                args = list(lexer)
-                if len(args) >= 2 and data and isinstance(data, str):
+                # Need to properly parse arguments without dropping space or quotes incorrectly.
+                # Just manual tokenizing for replace arguments
+                args = []
+                current_arg = ""
+                in_quote = None
+                for char in args_str:
+                    if char in ("'", '"'):
+                        if not in_quote:
+                            in_quote = char
+                        elif in_quote == char:
+                            in_quote = None
+                    elif char == ',' and not in_quote:
+                        args.append(current_arg)
+                        current_arg = ""
+                        continue
+                    current_arg += char
+                args.append(current_arg)
+                args = [a.strip().strip("'\"") for a in args]
+                if len(args) != 2:
+                    print(f"Error: replace requires exactly 2 arguments, got {len(args)}", file=sys.stderr)
+                    sys.exit(1)
+                if data and isinstance(data, str):
+                    data = data.replace(args[0], args[1])
+            except Exception as e:
+                print(f"Error parsing replace arguments {args_str}: {e}", file=sys.stderr)
+                sys.exit(1)
+                if data and isinstance(data, str):
                     data = data.replace(args[0], args[1])
             except Exception as e:
                 print(f"Error parsing replace arguments {args_str}: {e}", file=sys.stderr)
