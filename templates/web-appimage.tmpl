@@ -54,6 +54,8 @@ jobs:
 
       - name: Determine latest AppImage
         id: find_appimage
+        env:
+          G2_PIPELINE: "[[ if .GetDownloadPipeline ]][[ .GetDownloadPipeline | actionvardoublequoted ]][[ else ]]''[[ end ]]"
         run: |
           set -euo pipefail
           [[- if .PreVersionSteps ]]

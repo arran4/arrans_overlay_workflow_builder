@@ -65,6 +65,8 @@ jobs:
 
       - name: Process each release
         id: process_releases
+        env:
+          G2_PIPELINE: "''"
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"

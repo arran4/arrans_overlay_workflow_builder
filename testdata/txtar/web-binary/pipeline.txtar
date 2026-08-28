@@ -61,6 +61,8 @@ jobs:
 
       - name: Process each release
         id: process_releases
+        env:
+          G2_PIPELINE: "get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))"
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
