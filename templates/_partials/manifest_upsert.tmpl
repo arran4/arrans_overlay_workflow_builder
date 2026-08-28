@@ -5,8 +5,8 @@
               if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl -]]
                   [[- $.CustomDownloadUrl | actionvardoublequoted -]]
               [[- else -]]
-                  [[- if $.HasDownloadPipeline -]]
-                      $(G2_PIPELINE="[[ $.GetDownloadPipeline ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
+                  [[- if $.DownloadPipeline -]]
+                      $(G2_PIPELINE="[[ $.DownloadPipeline | actionvardoublequoted ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
                   [[- else if $.DownloadBaseUrl -]]
                       [[- $.DownloadBaseUrl | actionvardoublequoted -]]
                       [[- if $externalResource.ReleaseFilename -]]
@@ -27,11 +27,11 @@
               if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl -]]
                   [[- $.CustomDownloadUrl | actionvardoublequoted -]]
               [[- else -]]
-                  [[- if $.HasDownloadPipeline -]]
-                      $(G2_PIPELINE="[[ $.GetDownloadPipeline ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
+                  [[- if $.DownloadPipeline -]]
+                      $(G2_PIPELINE="[[ $.DownloadPipeline | actionvardoublequoted ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
                   [[- else if $.DownloadBaseUrl -]]
                       [[- $.DownloadBaseUrl | actionvardoublequoted -]]
-                      [[- if not $.HasDownloadPipeline -]]
+                      [[- if not $.DownloadPipeline -]]
                           [[- if $externalResource.ReleaseFilename -]]
                               [[- $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" -]]
                           [[- else -]]
@@ -40,7 +40,7 @@
                       [[- end -]]
                   [[- else -]]
                       [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
-                      [[- if not $.HasDownloadPipeline -]]
+                      [[- if not $.DownloadPipeline -]]
                           [[- if $externalResource.ReleaseFilename -]]
                               [[- $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" -]]
                           [[- else -]]
@@ -55,8 +55,8 @@
               if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl -]]
                   [[- $.CustomDownloadUrl | actionvardoublequoted -]]
               [[- else -]]
-                  [[- if $.HasDownloadPipeline -]]
-                      $(G2_PIPELINE="[[ $.GetDownloadPipeline ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
+                  [[- if $.DownloadPipeline -]]
+                      $(G2_PIPELINE="[[ $.DownloadPipeline | actionvardoublequoted ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
                   [[- else if $.DownloadBaseUrl -]]
                       [[- $.DownloadBaseUrl | actionvardoublequoted -]]
                   [[- else -]]
@@ -68,14 +68,14 @@
               if ! g2 manifest upsert-from-url "[[ if $.CustomDownloadUrl -]]
                   [[- $.CustomDownloadUrl | actionvardoublequoted -]]
               [[- else -]]
-                  [[- if $.HasDownloadPipeline -]]
-                      $(G2_PIPELINE="[[ $.GetDownloadPipeline ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
+                  [[- if $.DownloadPipeline -]]
+                      $(G2_PIPELINE="[[ $.DownloadPipeline | actionvardoublequoted ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
                   [[- else if $.DownloadBaseUrl -]]
                       [[- $.DownloadBaseUrl | actionvardoublequoted -]]
                   [[- else -]]
                       [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                   [[- end -]]
-                  [[- if not $.HasDownloadPipeline -]]
+                  [[- if not $.DownloadPipeline -]]
                       [[- $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" -]]
                   [[- end -]]
               [[- end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi

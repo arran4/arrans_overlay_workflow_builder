@@ -71,6 +71,8 @@ jobs:
 
       - name: Determine latest AppImage
         id: find_appimage
+        env:
+          G2_PIPELINE: "''"
         run: |
           set -euo pipefail
           version=$(echo "v1.2.3")

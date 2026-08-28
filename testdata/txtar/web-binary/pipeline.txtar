@@ -106,7 +106,7 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  $(G2_PIPELINE="<no value>"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/example-${VERSION}.tar.gz}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
+                echo "	amd64? (  $(G2_PIPELINE="get(https://example.com/downloads/${version}) | html_links | first"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/example-${VERSION}.tar.gz}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
@@ -146,7 +146,7 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "$(G2_PIPELINE="<no value>"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/example-${VERSION}.tar.gz}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "$(G2_PIPELINE="get(https://example.com/downloads/${version}) | html_links | first"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/example-${VERSION}.tar.gz}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

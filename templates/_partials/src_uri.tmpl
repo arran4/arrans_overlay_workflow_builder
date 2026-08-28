@@ -48,8 +48,8 @@
                 echo "	[[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
-                    [[- if $.HasDownloadPipeline -]]
-                        $(G2_PIPELINE="[[ $.GetDownloadPipeline ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
+                    [[- if $.DownloadPipeline -]]
+                        $(G2_PIPELINE="[[ $.DownloadPipeline | actionvardoublequoted ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
                     [[- else if $.DownloadBaseUrl -]]
                         [[- $.DownloadBaseUrl | ebuildvardoublequoted -]]
                     [[- else -]]
@@ -61,8 +61,8 @@
                 echo "	[[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
-                    [[- if $.HasDownloadPipeline -]]
-                        $(G2_PIPELINE="[[ $.GetDownloadPipeline ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
+                    [[- if $.DownloadPipeline -]]
+                        $(G2_PIPELINE="[[ $.DownloadPipeline | actionvardoublequoted ]]"; G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"; G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"; G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"; python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")
                     [[- else if $.DownloadBaseUrl -]]
                         [[- $.DownloadBaseUrl | ebuildvardoublequoted -]]
                     [[- else -]]
