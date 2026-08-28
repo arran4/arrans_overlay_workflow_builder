@@ -64,6 +64,9 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
+          [[- if or .GetVersionPipeline .InputConfig.DownloadPipeline ]]
+          printf "%s" "[[ .PipelineScriptBase64 ]]" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
+          [[- end ]]
           [[ if .PreVersionSteps ]]
           [[ .PreVersionSteps | actionvardoublequoted ]]
           [[ end ]]
