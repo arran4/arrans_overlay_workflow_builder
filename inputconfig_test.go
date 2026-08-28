@@ -431,3 +431,25 @@ Binary x86=>goreleaser_Linux_i386.tar.gz > goreleaser > goreleaser
 		})
 	}
 }
+
+func TestGetDownloadPipeline_Legacy(t *testing.T) {
+	// Test legacy DownloadRegex mapping
+	configRegex := &InputConfig{
+		DownloadRegex: "test-(.*)\\.tar\\.gz",
+		DownloadPageUrl: "${DOWNLOAD_PAGE_URL}",
+	}
+	expectedRegex := "get(${DOWNLOAD_PAGE_URL}) | html_links | regex(test-(.*)\\.tar\\.gz) | last"
+	if configRegex.GetDownloadPipeline() != expectedRegex {
+		t.Errorf("Expected %q, got %q", expectedRegex, configRegex.GetDownloadPipeline())
+	}
+
+	// Test legacy DownloadXPath mapping
+	configXPath := &InputConfig{
+		DownloadXPath: ".//a",
+		DownloadPageUrl: "${DOWNLOAD_PAGE_URL}",
+	}
+	expectedXPath := "get(${DOWNLOAD_PAGE_URL}) | xml | xpath(.//a)"
+	if configXPath.GetDownloadPipeline() != expectedXPath {
+		t.Errorf("Expected %q, got %q", expectedXPath, configXPath.GetDownloadPipeline())
+	}
+}

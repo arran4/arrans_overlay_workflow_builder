@@ -2,7 +2,6 @@ import sys
 import urllib.request
 import re
 import json
-import shlex
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse, urljoin
 
@@ -157,40 +156,22 @@ def execute_pipeline(pipeline_str):
             except Exception as e:
                 print(f"Error parsing JSON path {path}: {e}", file=sys.stderr)
                 sys.exit(1)
-        elif cmd.startswith('replace('):
-            args_str = cmd[8:-1]
+        elif cmd.startswith("replace(") and cmd.endswith(")"):
+            args_str = cmd[len("replace("):-1]
             try:
-                # Need to properly parse arguments without dropping space or quotes incorrectly.
-                # Just manual tokenizing for replace arguments
-                args = []
-                current_arg = ""
-                in_quote = None
-                for char in args_str:
-                    if char in ("'", '"'):
-                        if not in_quote:
-                            in_quote = char
-                        elif in_quote == char:
-                            in_quote = None
-                    elif char == ',' and not in_quote:
-                        args.append(current_arg)
-                        current_arg = ""
-                        continue
-                    current_arg += char
-                args.append(current_arg)
-                args = [a.strip().strip("'\"") for a in args]
-                if len(args) != 2:
-                    print(f"Error: replace requires exactly 2 arguments, got {len(args)}", file=sys.stderr)
-                    sys.exit(1)
-                if data and isinstance(data, str):
-                    data = data.replace(args[0], args[1])
-            except Exception as e:
-                print(f"Error parsing replace arguments {args_str}: {e}", file=sys.stderr)
+                import ast
+                args = ast.literal_eval(f"({args_str},)")
+                if not isinstance(args, tuple) or len(args) != 2:
+                    raise ValueError("replace requires exactly 2 arguments")
+                if not all(isinstance(arg, str) for arg in args):
+                    raise ValueError("replace arguments must be strings")
+                old, new = args
+            except (SyntaxError, ValueError) as e:
+                print(f"Error parsing replace arguments: {e}", file=sys.stderr)
                 sys.exit(1)
-                if data and isinstance(data, str):
-                    data = data.replace(args[0], args[1])
-            except Exception as e:
-                print(f"Error parsing replace arguments {args_str}: {e}", file=sys.stderr)
-                sys.exit(1)
+
+            if isinstance(data, str):
+                data = data.replace(old, new)
         elif cmd == 'trim':
              if isinstance(data, str):
                   data = data.strip()

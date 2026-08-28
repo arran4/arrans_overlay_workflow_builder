@@ -273,12 +273,20 @@ Available commands:
 * `get(url)` - Fetches data from a URL using `urllib`. Note: URL should be plain text, variables like `${TAG}` are injected.
 * `rss` or `atom` - Parses XML and returns a list of items/entries.
 * `json(path.to.key)` - Parses JSON data and navigates down to the specified key.
-* `html_links` - Simple regex based extraction of all `href="..."` targets from raw HTML text.
+* `html_links` - Extracts `href` attributes from HTML `<a>` tags and automatically resolves them against the fetching URL using `urljoin`.
 * `regex(pattern)` - Applies a regex pattern to extract a matching group. If applied to a list, it filters the list.
 * `link` - Extracts the `<link>` target (from RSS/Atom).
 * `url.basename` - Extracts the file path basename from a URL string.
-* `replace('search', 'replace')` - Simple string replacement.
+* `replace('search', 'replace')` - Simple string replacement using `ast.literal_eval` for parsing tuple arguments.
+* `xml` - Parses XML inputs natively for xpath extraction.
+* `xpath(query)` - Executes standard ElementTree xpath subset queries on parsed XML.
 * `first` / `last` - Grabs the first or last element of a list.
+
+### Pipeline Substitutions
+The pipeline supports native templating substitutions during workflow execution for precise resource fetching:
+* `${VERSION}`: Replaced with the current mapped iteration release version (e.g. `1.0.0`)
+* `${TAG}`: Replaced with the current mapped iteration repository tag (e.g. `v1.0.0`)
+* `${RELEASE_FILENAME}`: Replaced with the evaluated architecture-specific resource filename mapping (e.g. `example-amd64-1.0.0.tar.gz`)
 
 ### Example: RSS Feed Extraction
 
