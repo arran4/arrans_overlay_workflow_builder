@@ -70,6 +70,8 @@ jobs:
 
       - name: Determine latest AppImage
         id: find_appimage
+        env:
+          G2_PIPELINE_TMPL: "''"
         run: |
           set -euo pipefail
           source_url="$(curl -sL 'https://downloads.example.com/example/' | htmlq -a href 'a' | grep -iE '\.AppImage$' | sort -V | tail -n1)"

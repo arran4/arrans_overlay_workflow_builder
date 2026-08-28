@@ -62,17 +62,24 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
+          [[- if or .GetVersionPipeline .InputConfig.GetDownloadPipeline ]]
+          printf "%s" "[[ .PipelineScriptBase64 ]]" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
+          [[- end ]]
           [[ if .PreVersionSteps ]]
           [[ .PreVersionSteps | actionvardoublequoted ]]
           [[ end ]]
           [[ if .CustomVersionSource ]]
           tags=$([[ .CustomVersionSource | actionvardoublequoted ]])
           [[ else ]]
-          if [ -z "[[ .TagsCommand | actionvardoublequoted ]]" ]; then
-             echo "TagsCommand is required for Web Binary configurations" >&2
-             exit 1
-          fi
+          [[- if .GetVersionPipeline ]]
+          export G2_PIPELINE="[[ .GetVersionPipeline | actionvardoublequoted ]]"
+          tags="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
+          [[- else if .TagsCommand ]]
           tags=$([[ .TagsCommand | actionvardoublequoted ]])
+          [[- else ]]
+          echo "TagsCommand or VersionPipeline is required for Web Binary configurations" >&2
+          exit 1
+          [[- end ]]
           [[ end ]]
           # shellcheck disable=SC2086
 [[- if .WorkaroundSemanticVersionWithoutV ]]
@@ -123,6 +130,25 @@ jobs:
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            # Resolve download URLs once per external resource
+            declare -A resolved_download_urls=()
+[[- range $i, $externalResource := .ExternalResources ]]
+            [[- if $.InputConfig.GetDownloadPipeline ]]
+            export G2_PIPELINE="[[ $.InputConfig.GetDownloadPipeline | actionvardoublequoted ]]"
+            resolved_filename="[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | actionvardoublequoted ]][[ else ]][[ $i | actionvardoublequoted ]][[ end ]]"
+            resolved_filename="${resolved_filename//\${VERSION}/${originalVersion}}"
+            resolved_filename="${resolved_filename//\${TAG}/${tag}}"
+            G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/${resolved_filename}}"
+            G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"
+            G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"
+            resolved_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
+            if [ -z "$resolved_url" ]; then
+                echo "Failed to resolve download URL for $version and resource [[ $i ]]" >&2
+                continue
+            fi
+            resolved_download_urls["[[ $i ]]"]="$resolved_url"
+            [[- end ]]
+[[- end ]]
 
               # shellcheck disable=SC2016
               {
@@ -130,7 +156,7 @@ jobs:
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
-[[- template "src_uri" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
+[[- template "src_uri" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadPipeline" $.InputConfig.GetDownloadPipeline "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
                 echo 'LICENSE="[[ .License ]]"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -289,10 +315,10 @@ jobs:
 [[- end ]]
               } > "$tmp_ebuild_file"
 
-[[- template "ebuild_revision_and_manifest" (dict "WorkaroundCheckAssetSize" $.WorkaroundCheckAssetSize "ExitOnMatch" false "ExternalResources" .ExternalResources "DownloadBaseUrl" $.DownloadBaseUrl "CustomDownloadUrl" "" "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 ) ]]
+[[- template "ebuild_revision_and_manifest" (dict "WorkaroundCheckAssetSize" $.WorkaroundCheckAssetSize "ExitOnMatch" false "ExternalResources" .ExternalResources "DownloadBaseUrl" $.DownloadBaseUrl "DownloadPipeline" $.InputConfig.GetDownloadPipeline "CustomDownloadUrl" "" "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 ) ]]
 
               failed=0
-[[- template "manifest_upsert" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
+[[- template "manifest_upsert" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadPipeline" $.InputConfig.GetDownloadPipeline "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

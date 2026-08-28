@@ -56,6 +56,8 @@ jobs:
 
       - name: Determine latest AppImage
         id: find_appimage
+        env:
+          G2_PIPELINE_TMPL: "[[ if .GetDownloadPipeline ]][[ .GetDownloadPipeline | actionvardoublequoted ]][[ else ]]''[[ end ]]"
         run: |
           set -euo pipefail
           [[- if .PreVersionSteps ]]
@@ -68,6 +70,16 @@ jobs:
           appimage_url="[[ .CustomDownloadUrl | actionvardoublequoted ]]"
           [[- else if .DownloadRedirect ]]
           appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' '[[ .DownloadRedirect ]]')"
+          [[- else if .GetDownloadPipeline ]]
+          G2_PIPELINE="${G2_PIPELINE_TMPL}"
+          resolved_filename="[[ .InputConfig.Type | actionvardoublequoted ]]"
+          resolved_filename="${resolved_filename//\${VERSION}/${originalVersion}}"
+          resolved_filename="${resolved_filename//\${TAG}/${tag}}"
+          G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/${resolved_filename}}"
+          G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"
+          G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"
+          source_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
+          appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' "$source_url")"
           [[- else ]]
           source_url="$(curl -sL '[[ .DownloadPageUrl ]]' | htmlq -a href 'a' | grep -iE '[[ if .DownloadMatch ]][[ .DownloadMatch ]][[ else ]]\.AppImage$[[ end ]]' | sort -V | tail -n1)"
           if [ -z "$source_url" ]; then
@@ -100,6 +112,9 @@ jobs:
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
+          [[- if or .GetVersionPipeline .InputConfig.GetDownloadPipeline ]]
+          printf "%s" "[[ .PipelineScriptBase64 ]]" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
+          [[- end ]]
           tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
             # shellcheck disable=SC2016
             {

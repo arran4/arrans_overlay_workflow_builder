@@ -702,7 +702,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			}
 			currentConfig.DownloadXPath, err = emptyOrOnlyOrFail(parsedFields["DownloadXPath"])
 		if err != nil {
-			return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
+			return nil, fmt.Errorf("on DownloadXPath: %v: %w", parsedFields["DownloadXPath"], err)
 		}
 	case "Web Binary":
 		currentConfig.DownloadBaseUrl, _ = emptyOrOnlyOrFail(parsedFields["DownloadBaseUrl"])
@@ -724,7 +724,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			}
 			currentConfig.DownloadXPath, err = emptyOrOnlyOrFail(parsedFields["DownloadXPath"])
 		if err != nil {
-			return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
+			return nil, fmt.Errorf("on DownloadXPath: %v: %w", parsedFields["DownloadXPath"], err)
 		}
 	default:
 		currentConfig.GithubProjectUrl, err = onlyOrFail(parsedFields["GithubProjectUrl"])

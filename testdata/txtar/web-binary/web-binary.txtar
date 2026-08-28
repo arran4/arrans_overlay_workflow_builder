@@ -75,10 +75,6 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" "$metadata_file"
           declare -A releaseTypes=()
-          if [ -z "curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text="[0-9]+\.[0-9]+\.[0-9]+' | cut -d '"' -f 2" ]; then
-             echo "TagsCommand is required for Web Binary configurations" >&2
-             exit 1
-          fi
           tags=$(curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text="[0-9]+\.[0-9]+\.[0-9]+' | cut -d '"' -f 2)
           # shellcheck disable=SC2086
           for tag in $tags; do
@@ -108,6 +104,8 @@ jobs:
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            # Resolve download URLs once per external resource
+            declare -A resolved_download_urls=()
 
               # shellcheck disable=SC2016
               {
