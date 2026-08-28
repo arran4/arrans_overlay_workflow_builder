@@ -48,7 +48,9 @@
                 echo "	[[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
-                    [[- if $.DownloadBaseUrl -]]
+                    [[- if $.HasDownloadPipeline -]]
+                        ${download_url}
+                    [[- else if $.DownloadBaseUrl -]]
                         [[- $.DownloadBaseUrl | ebuildvardoublequoted -]]
                     [[- else -]]
                         [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
@@ -59,7 +61,9 @@
                 echo "	[[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
-                    [[- if $.DownloadBaseUrl -]]
+                    [[- if $.HasDownloadPipeline -]]
+                        ${download_url}
+                    [[- else if $.DownloadBaseUrl -]]
                         [[- $.DownloadBaseUrl | ebuildvardoublequoted -]]
                     [[- else -]]
                         [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]

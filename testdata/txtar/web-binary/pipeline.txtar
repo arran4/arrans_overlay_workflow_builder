@@ -6,7 +6,7 @@ Category app-misc
 Description Example using Web Binary and RSS extraction
 Homepage https://example.com
 License MIT
-DownloadBaseUrl https://example.com/downloads/example-${VERSION}.tar.gz
+DownloadPipeline get(https://example.com/downloads/${VERSION}) | html_links | first
 VersionPipeline get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))
 ProgramName example
 Binary amd64=>example-${VERSION}.tar.gz > example > example
@@ -99,6 +99,15 @@ jobs:
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            export G2_PIPELINE="get(https://example.com/downloads/${version}) | html_links | first"
+            # Substitute variables
+            G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${version}}"
+            G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"
+            download_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
+            if [ -z "$download_url" ]; then
+                echo "Failed to resolve download URL for $version" >&2
+                continue
+            fi
 
               # shellcheck disable=SC2016
               {
@@ -107,7 +116,7 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI="'
-                echo "	amd64? (  https://example.com/downloads/example-\${PV}.tar.gz\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
+                echo "	amd64? (  ${download_url}\${PV} -> \${P}-example-\${PV}.tar.gz  )  "
                 echo '"'
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
@@ -147,7 +156,7 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://example.com/downloads/example-${version}.tar.gz${version}" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${download_url}" "${{ env.epn }}-${version}-example-${version}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
