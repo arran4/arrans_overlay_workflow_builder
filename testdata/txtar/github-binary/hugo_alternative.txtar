@@ -129,7 +129,7 @@ jobs:
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
-                echo -n 'extended? ( || ( amd64 arm64  ) ) '
+                echo -n 'extended? ( || ( arm64 amd64  ) ) '
                 echo '"'
                 echo ''
                 echo -n 'RDEPEND="'

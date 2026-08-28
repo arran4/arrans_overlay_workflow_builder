@@ -56,27 +56,20 @@ jobs:
 
       - name: Process each release
         id: process_releases
-        env:
-          G2_PIPELINE: "[[ if .GetVersionPipeline ]][[ .GetVersionPipeline | actionvardoublequoted ]][[ else ]]''[[ end ]]"
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
-          [[- if or .GetVersionPipeline .InputConfig.DownloadPipeline ]]
-          printf "%s" "[[ .PipelineScriptBase64 ]]" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
-          [[- end ]]
           [[ if .PreVersionSteps ]]
           [[ .PreVersionSteps | actionvardoublequoted ]]
           [[ end ]]
           [[ if .CustomVersionSource ]]
           tags=$([[ .CustomVersionSource | actionvardoublequoted ]])
-          [[- else if .GetVersionPipeline ]]
-          tags="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
-          [[- else ]]
+          [[ else ]]
           if [ -z "[[ .TagsCommand | actionvardoublequoted ]]" ]; then
-             echo "TagsCommand, CustomVersionSource, VersionPipeline, DownloadRegex, or DownloadXPath is required for Web Binary configurations" >&2
+             echo "TagsCommand is required for Web Binary configurations" >&2
              exit 1
           fi
           tags=$([[ .TagsCommand | actionvardoublequoted ]])
@@ -131,31 +124,13 @@ jobs:
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
 
-[[- if .InputConfig.GetDownloadPipeline ]]
-            # Resolve download URLs once per external resource
-            declare -A resolved_download_urls=()
-[[- range $i, $externalResource := .ExternalResources ]]
-            # Evaluate pipeline for resource index [[ $i ]]
-            export G2_PIPELINE="[[ $.InputConfig.GetDownloadPipeline | actionvardoublequoted ]]"
-            G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"
-            G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"
-            G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/[[ $externalResource.ReleaseFilename ]]}"
-            resolved_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
-            if [ -z "$resolved_url" ]; then
-                echo "Failed to resolve download URL for $version and resource [[ $i ]]" >&2
-                continue
-            fi
-            resolved_download_urls["[[ $i ]]"]="$resolved_url"
-[[- end ]]
-[[- end ]]
-
               # shellcheck disable=SC2016
               {
                 echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
-[[- template "src_uri" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" $.DownloadBaseUrl "DownloadPipeline" $.InputConfig.GetDownloadPipeline ) ]]
+[[- template "src_uri" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
                 echo 'LICENSE="[[ .License ]]"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -317,7 +292,7 @@ jobs:
 [[- template "ebuild_revision_and_manifest" (dict "WorkaroundCheckAssetSize" $.WorkaroundCheckAssetSize "ExitOnMatch" false "ExternalResources" .ExternalResources "DownloadBaseUrl" $.DownloadBaseUrl "CustomDownloadUrl" "" "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 ) ]]
 
               failed=0
-[[- template "manifest_upsert" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" $.DownloadBaseUrl "DownloadPipeline" $.InputConfig.GetDownloadPipeline ) ]]
+[[- template "manifest_upsert" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

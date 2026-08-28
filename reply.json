@@ -1,6 +1,0 @@
-[
-    {
-        "comment_id": "5450168790",
-        "reply": "Understood. Will address these remaining concrete regressions right away. I'm focusing on structural fixes to src_uri and manifest generation to ensure URLs resolved via pipeline are strictly used as-is, correcting the effective getter conditions, fixing substitution order, and comprehensively improving testing and documentation."
-    }
-]

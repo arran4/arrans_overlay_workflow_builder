@@ -65,8 +65,6 @@ jobs:
 
       - name: Process each release
         id: process_releases
-        env:
-          G2_PIPELINE: "''"
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
@@ -75,7 +73,7 @@ jobs:
           declare -A releaseTypes=()
           echo "Fetching RSS feed to extract latest tag" > /tmp/log
           if [ -z "curl -sL https://example.com/feed.xml | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*'" ]; then
-             echo "TagsCommand, CustomVersionSource, VersionPipeline, DownloadRegex, or DownloadXPath is required for Web Binary configurations" >&2
+             echo "TagsCommand is required for Web Binary configurations" >&2
              exit 1
           fi
           tags=$(curl -sL https://example.com/feed.xml | grep -o 'v[0-9]*\.[0-9]*\.[0-9]*')

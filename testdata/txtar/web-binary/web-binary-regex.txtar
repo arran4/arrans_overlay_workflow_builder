@@ -68,8 +68,6 @@ jobs:
 
       - name: Process each release
         id: process_releases
-        env:
-          G2_PIPELINE: "''"
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
@@ -77,7 +75,7 @@ jobs:
           g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" "$metadata_file"
           declare -A releaseTypes=()
           if [ -z "curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text="[0-9]+\.[0-9]+\.[0-9]+' | cut -d '"' -f 2" ]; then
-             echo "TagsCommand, CustomVersionSource, VersionPipeline, DownloadRegex, or DownloadXPath is required for Web Binary configurations" >&2
+             echo "TagsCommand is required for Web Binary configurations" >&2
              exit 1
           fi
           tags=$(curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text="[0-9]+\.[0-9]+\.[0-9]+' | cut -d '"' -f 2)
