@@ -2,8 +2,8 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
-	"encoding/base64"
 	"embed"
+	"encoding/base64"
 	"encoding/xml"
 	"fmt"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
@@ -218,6 +218,10 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					dict[key] = values[i+1]
 				}
 				return dict, nil
+			},
+			"stringsContains": strings.Contains,
+			"fail": func(msg string) (string, error) {
+				return "", fmt.Errorf("%s", msg)
 			},
 			"exitOnMatch": func(v any) bool {
 				if d, ok := v.(map[string]any); ok {

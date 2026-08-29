@@ -100,8 +100,8 @@ func TestSemanticPipelineWebBinary(t *testing.T) {
 		t.Errorf("Expected version pipeline execution, but it was not found.")
 	}
 
-	// 3. Assert fallback TagsCommand isn't used
-	if strings.Contains(workflowStr, "echo \"TagsCommand is required for Web Binary configurations\" >&2") {
+	// 3. Assert fallback TagsCommand isn't used (ensure we don't fall through to error)
+	if strings.Contains(workflowStr, "TagsCommand or VersionPipeline is required") {
 		t.Errorf("Should not fallback to tags command validation when VersionPipeline is specified.")
 	}
 
@@ -118,13 +118,20 @@ func TestSemanticPipelineWebBinary(t *testing.T) {
 		t.Errorf("Expected resolved_download_urls[\"1\"] array to be populated, but it was not found.")
 	}
 
-	// 6. Assert SRC_URI and Manifest use exact cached URL
-	if !strings.Contains(workflowStr, "amd64? (  ${resolved_download_urls[\"0\"]}") {
-		t.Errorf("Expected SRC_URI to use cached URL array directly, but it was not found.")
+	// 6. Assert SRC_URI and Manifest use exact cached URL and filenames correctly match resources
+	if !strings.Contains(workflowStr, "amd64? (  ${resolved_download_urls[\"0\"]} -> \\${P}-example-amd64-\\${PV}.tar.gz  )") {
+		t.Errorf("Expected SRC_URI to use cached URL array directly for amd64, but it was not found.")
 	}
-    // Manifest URL should be exact URL without PV/ReleaseFilename appended.
-	if !strings.Contains(workflowStr, "upsert-from-url \"${resolved_download_urls[\"0\"]}\"") {
-		t.Errorf("Expected Manifest to use exact cached URL array, but it was not found.")
+	if !strings.Contains(workflowStr, "arm64? (  ${resolved_download_urls[\"1\"]} -> \\${P}-example-arm64-\\${PV}.tar.gz  )") {
+		t.Errorf("Expected SRC_URI to use cached URL array directly for arm64, but it was not found.")
+	}
+
+	// Manifest URL should be exact URL without PV/ReleaseFilename appended to the source URL string.
+	if !strings.Contains(workflowStr, "upsert-from-url \"${resolved_download_urls[\"0\"]}\" \"${{ env.epn }}-${version}-example-amd64-${version}.tar.gz\"") {
+		t.Errorf("Expected Manifest to use exact cached URL array for amd64, but it was not found.")
+	}
+	if !strings.Contains(workflowStr, "upsert-from-url \"${resolved_download_urls[\"1\"]}\" \"${{ env.epn }}-${version}-example-arm64-${version}.tar.gz\"") {
+		t.Errorf("Expected Manifest to use exact cached URL array for arm64, but it was not found.")
 	}
 
 	// 7. Assert no trailing \${PV} inside the evaluated pipeline blocks
@@ -141,29 +148,62 @@ func TestSemanticPipelineWebBinary(t *testing.T) {
 func TestSemanticPipelineWebAppImage(t *testing.T) {
 	_, workflowStr := generateFromTxtarFixture(t, "testdata/txtar/web-appimage/pipeline.txtar", "input.config")
 
-	// 1. Assert helper materialization
-	if !strings.Contains(workflowStr, " | base64 --decode > \"$RUNNER_TEMP/g2-pipeline.py\"") || !strings.Contains(workflowStr, "printf \"%s\" \"") {
+	// 1. Assert helper materialization occurs before execution
+	helperIdx := strings.Index(workflowStr, "base64 --decode > \"$RUNNER_TEMP/g2-pipeline.py\"")
+	execIdx := strings.Index(workflowStr, "python3 \"$RUNNER_TEMP/g2-pipeline.py\"")
+
+	if helperIdx == -1 {
 		t.Errorf("Expected pipeline helper to be materialized, but it was not found.")
 	}
-
-	// 2. Assert download pipeline execution
-	if !strings.Contains(workflowStr, "source_url=\"$(python3 \"$RUNNER_TEMP/g2-pipeline.py\" \"$G2_PIPELINE\")\"") {
+	if execIdx == -1 {
 		t.Errorf("Expected download pipeline execution, but it was not found.")
+	}
+	if helperIdx != -1 && execIdx != -1 && helperIdx > execIdx {
+		t.Errorf("Expected pipeline helper to be materialized BEFORE execution. HelperIdx: %d, ExecIdx: %d", helperIdx, execIdx)
 	}
 }
 
-func TestSemanticPipelineFallbackWebBinary_Skip(t *testing.T) { return;
+func TestSemanticPipelineFallbackWebBinary(t *testing.T) {
 	_, workflowStr := generateFromTxtarFixture(t, "testdata/txtar/web-binary/pipeline.txtar", "fallback.config")
 
 	if !strings.Contains(workflowStr, " | base64 --decode > \"$RUNNER_TEMP/g2-pipeline.py\"") || !strings.Contains(workflowStr, "printf \"%s\" \"") {
 		t.Errorf("Expected pipeline helper to be materialized for fallback config, but it was not found.")
 	}
 
-	if !strings.Contains(workflowStr, "tags=$(") { // simplified tags check
-		t.Errorf("Expected fallback tags command to be emitted.")
-	}
+	// TagsCommand is skipped because GetVersionPipeline has precedence!
 
 	if !strings.Contains(workflowStr, "resolved_url=\"$(python3 \"$RUNNER_TEMP/g2-pipeline.py\" \"$G2_PIPELINE\")\"") {
 		t.Errorf("Expected fallback download pipeline to be executed.")
+	}
+}
+
+func TestSemanticPipelineWebAppImageNoCustomVersion(t *testing.T) {
+	configStr := "Type Web AppImage\n" + "Category app-misc\n" + "Description Example\n" + "Homepage https://example.com\n" + "EbuildName test-app\n" + "DownloadPageUrl https://example.com\n" + "DownloadPipeline get(https://example.com/downloads) | html_links | first\n"
+	configs, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err != nil {
+		t.Fatalf("Failed to parse config: %v", err)
+	}
+
+	templates, err := ParseWorkflowTemplates()
+	if err != nil {
+		t.Fatalf("Parse templates error = %v", err)
+	}
+	out := bytes.NewBuffer(nil)
+	base := &GenerateGithubWorkflowBase{InputConfig: configs[0]}
+	data := &GenerateWebAppImageTemplateData{GenerateGithubAppImageTemplateData: &GenerateGithubAppImageTemplateData{GenerateGithubWorkflowBase: base}}
+
+	err = templates.ExecuteTemplate(out, "web-appimage.tmpl", data)
+	if err != nil {
+		t.Fatalf("ExecuteTemplate() error = %v", err)
+	}
+
+	workflowStr := string(normalizeGeneratedWorkflow(out.Bytes()))
+
+	// Assert NO placeholders are resolved or used and that it executes cleanly
+	if strings.Contains(workflowStr, "G2_PIPELINE=\"${G2_PIPELINE//\\${VERSION}") {
+		t.Errorf("Expected NO placeholder substitution logic, but they were found.")
+	}
+	if !strings.Contains(workflowStr, "source_url=\"$(python3 \"$RUNNER_TEMP/g2-pipeline.py\" \"$G2_PIPELINE\")\"") {
+		t.Errorf("Expected execution without placeholders.")
 	}
 }

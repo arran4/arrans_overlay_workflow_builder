@@ -325,6 +325,27 @@ func (ic *InputConfig) String() string {
 		if ic.DownloadBaseUrl != "" {
 			fmt.Fprintf(&sb, "DownloadBaseUrl %s\n", ic.DownloadBaseUrl)
 		}
+		if ic.DownloadPageUrl != "" {
+			fmt.Fprintf(&sb, "DownloadPageUrl %s\n", ic.DownloadPageUrl)
+		}
+		if ic.DownloadPageUrl != "" {
+			fmt.Fprintf(&sb, "DownloadPageUrl %s\n", ic.DownloadPageUrl)
+		}
+		if ic.DownloadMatch != "" {
+			fmt.Fprintf(&sb, "DownloadMatch %s\n", ic.DownloadMatch)
+		}
+		if ic.VersionPipeline != "" {
+			fmt.Fprintf(&sb, "VersionPipeline %s\n", ic.VersionPipeline)
+		}
+		if ic.DownloadPipeline != "" {
+			fmt.Fprintf(&sb, "DownloadPipeline %s\n", ic.DownloadPipeline)
+		}
+		if ic.DownloadRegex != "" {
+			fmt.Fprintf(&sb, "DownloadRegex %s\n", ic.DownloadRegex)
+		}
+		if ic.DownloadXPath != "" {
+			fmt.Fprintf(&sb, "DownloadXPath %s\n", ic.DownloadXPath)
+		}
 	}
 	switch ic.Type {
 	case "Github AppImage Release", "Web AppImage":
@@ -509,10 +530,10 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"DownloadRedirect":      nil,
 				"DownloadBaseUrl":       nil,
 				"DownloadMatch":         nil,
-					"VersionPipeline":     nil,
-					"DownloadPipeline":    nil,
-					"DownloadRegex":       nil,
-					"DownloadXPath":       nil,
+				"VersionPipeline":       nil,
+				"DownloadPipeline":      nil,
+				"DownloadRegex":         nil,
+				"DownloadXPath":         nil,
 				"CustomDownloadUrl":     nil,
 				"CustomVersionSource":   nil,
 				"CustomBuildSteps":      nil,
@@ -685,44 +706,51 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			}
 		}
 		currentConfig.DownloadMatch, err = emptyOrOnlyOrFail(parsedFields["DownloadMatch"])
-			if err != nil {
-				return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
-			}
-			currentConfig.VersionPipeline, err = emptyOrOnlyOrFail(parsedFields["VersionPipeline"])
-			if err != nil {
-				return nil, fmt.Errorf("on VersionPipeline: %v: %w", parsedFields["VersionPipeline"], err)
-			}
-			currentConfig.DownloadPipeline, err = emptyOrOnlyOrFail(parsedFields["DownloadPipeline"])
-			if err != nil {
-				return nil, fmt.Errorf("on DownloadPipeline: %v: %w", parsedFields["DownloadPipeline"], err)
-			}
-			currentConfig.DownloadRegex, err = emptyOrOnlyOrFail(parsedFields["DownloadRegex"])
-			if err != nil {
-				return nil, fmt.Errorf("on DownloadRegex: %v: %w", parsedFields["DownloadRegex"], err)
-			}
-			currentConfig.DownloadXPath, err = emptyOrOnlyOrFail(parsedFields["DownloadXPath"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
+		}
+		currentConfig.VersionPipeline, err = emptyOrOnlyOrFail(parsedFields["VersionPipeline"])
+		if err != nil {
+			return nil, fmt.Errorf("on VersionPipeline: %v: %w", parsedFields["VersionPipeline"], err)
+		}
+		currentConfig.DownloadPipeline, err = emptyOrOnlyOrFail(parsedFields["DownloadPipeline"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadPipeline: %v: %w", parsedFields["DownloadPipeline"], err)
+		}
+		currentConfig.DownloadRegex, err = emptyOrOnlyOrFail(parsedFields["DownloadRegex"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadRegex: %v: %w", parsedFields["DownloadRegex"], err)
+		}
+		currentConfig.DownloadXPath, err = emptyOrOnlyOrFail(parsedFields["DownloadXPath"])
 		if err != nil {
 			return nil, fmt.Errorf("on DownloadXPath: %v: %w", parsedFields["DownloadXPath"], err)
 		}
 	case "Web Binary":
-		currentConfig.DownloadBaseUrl, _ = emptyOrOnlyOrFail(parsedFields["DownloadBaseUrl"])
+		currentConfig.DownloadBaseUrl, err = emptyOrOnlyOrFail(parsedFields["DownloadBaseUrl"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadBaseUrl: %v: %w", parsedFields["DownloadBaseUrl"], err)
+		}
+		currentConfig.DownloadPageUrl, err = emptyOrOnlyOrFail(parsedFields["DownloadPageUrl"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadPageUrl: %v: %w", parsedFields["DownloadPageUrl"], err)
+		}
 		currentConfig.DownloadMatch, err = emptyOrOnlyOrFail(parsedFields["DownloadMatch"])
-			if err != nil {
-				return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
-			}
-			currentConfig.VersionPipeline, err = emptyOrOnlyOrFail(parsedFields["VersionPipeline"])
-			if err != nil {
-				return nil, fmt.Errorf("on VersionPipeline: %v: %w", parsedFields["VersionPipeline"], err)
-			}
-			currentConfig.DownloadPipeline, err = emptyOrOnlyOrFail(parsedFields["DownloadPipeline"])
-			if err != nil {
-				return nil, fmt.Errorf("on DownloadPipeline: %v: %w", parsedFields["DownloadPipeline"], err)
-			}
-			currentConfig.DownloadRegex, err = emptyOrOnlyOrFail(parsedFields["DownloadRegex"])
-			if err != nil {
-				return nil, fmt.Errorf("on DownloadRegex: %v: %w", parsedFields["DownloadRegex"], err)
-			}
-			currentConfig.DownloadXPath, err = emptyOrOnlyOrFail(parsedFields["DownloadXPath"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadMatch: %v: %w", parsedFields["DownloadMatch"], err)
+		}
+		currentConfig.VersionPipeline, err = emptyOrOnlyOrFail(parsedFields["VersionPipeline"])
+		if err != nil {
+			return nil, fmt.Errorf("on VersionPipeline: %v: %w", parsedFields["VersionPipeline"], err)
+		}
+		currentConfig.DownloadPipeline, err = emptyOrOnlyOrFail(parsedFields["DownloadPipeline"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadPipeline: %v: %w", parsedFields["DownloadPipeline"], err)
+		}
+		currentConfig.DownloadRegex, err = emptyOrOnlyOrFail(parsedFields["DownloadRegex"])
+		if err != nil {
+			return nil, fmt.Errorf("on DownloadRegex: %v: %w", parsedFields["DownloadRegex"], err)
+		}
+		currentConfig.DownloadXPath, err = emptyOrOnlyOrFail(parsedFields["DownloadXPath"])
 		if err != nil {
 			return nil, fmt.Errorf("on DownloadXPath: %v: %w", parsedFields["DownloadXPath"], err)
 		}
@@ -789,6 +817,31 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			return nil, fmt.Errorf("TagsCommand, CustomVersionSource, VersionPipeline, DownloadRegex, or DownloadXPath is required for Web Binary configurations")
 		}
 	}
+
+	if currentConfig.DownloadPageUrl == "" {
+		if currentConfig.DownloadRegex != "" {
+			return nil, fmt.Errorf("DownloadRegex requires DownloadPageUrl to be set")
+		}
+		if currentConfig.DownloadXPath != "" {
+			return nil, fmt.Errorf("DownloadXPath requires DownloadPageUrl to be set")
+		}
+		if currentConfig.DownloadMatch != "" {
+			return nil, fmt.Errorf("DownloadMatch requires DownloadPageUrl to be set")
+		}
+	}
+
+	if currentConfig.DownloadPageUrl == "" {
+		if currentConfig.DownloadRegex != "" {
+			return nil, fmt.Errorf("DownloadRegex requires DownloadPageUrl to be set")
+		}
+		if currentConfig.DownloadXPath != "" {
+			return nil, fmt.Errorf("DownloadXPath requires DownloadPageUrl to be set")
+		}
+		if currentConfig.DownloadMatch != "" {
+			return nil, fmt.Errorf("DownloadMatch requires DownloadPageUrl to be set")
+		}
+	}
+
 	if currentConfig.Type == "Github AppImage Release" || currentConfig.Type == "Github Binary Release" || currentConfig.Type == "Github Cmake Release" {
 		currentConfig.GithubOwner, currentConfig.GithubRepo, err = util.ExtractGithubOwnerRepo(currentConfig.GithubProjectUrl)
 		if err != nil {
