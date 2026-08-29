@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"strings"
 	"testing"
 )
 
@@ -451,5 +452,35 @@ func TestGetDownloadPipeline_Legacy(t *testing.T) {
 	expectedXPath := "get(${DOWNLOAD_PAGE_URL}) | xml | xpath(.//a)"
 	if configXPath.GetDownloadPipeline() != expectedXPath {
 		t.Errorf("Expected %q, got %q", expectedXPath, configXPath.GetDownloadPipeline())
+	}
+}
+
+func TestWebBinaryConfigRoundTrip(t *testing.T) {
+	configStr := "Type Web Binary\n" +
+		"Category app-misc\n" +
+		"EbuildName test-bin\n" +
+		"Description A test description\n" +
+		"Homepage https://example.com/\n" +
+		"DownloadPageUrl https://example.com/downloads/\n" +
+		"DownloadBaseUrl https://example.com/downloads/base/\n" +
+		"DownloadRegex example-amd64-(.*)\\.tar\\.gz\n" +
+		"VersionPipeline get(https://example.com) | html_links | first\n" +
+		"DownloadPipeline get(https://example.com/${VERSION}) | html_links | first\n" +
+		"DownloadXPath .//a\n"
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err != nil {
+		t.Fatalf("Failed to parse config: %v", err)
+	}
+
+	serialized := configs[0].String()
+
+	configs2, err2 := ParseInputConfigReader(strings.NewReader(serialized))
+	if err2 != nil {
+		t.Fatalf("Failed to parse serialized config: %v\nSerialized was:\n%s", err2, serialized)
+	}
+
+	if configs2[0].String() != serialized {
+		t.Errorf("Round trip serialization failed. Expected:\n%s\nGot:\n%s", serialized, configs2[0].String())
 	}
 }

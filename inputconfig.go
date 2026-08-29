@@ -328,9 +328,6 @@ func (ic *InputConfig) String() string {
 		if ic.DownloadPageUrl != "" {
 			fmt.Fprintf(&sb, "DownloadPageUrl %s\n", ic.DownloadPageUrl)
 		}
-		if ic.DownloadPageUrl != "" {
-			fmt.Fprintf(&sb, "DownloadPageUrl %s\n", ic.DownloadPageUrl)
-		}
 		if ic.DownloadMatch != "" {
 			fmt.Fprintf(&sb, "DownloadMatch %s\n", ic.DownloadMatch)
 		}
@@ -817,16 +814,9 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 			return nil, fmt.Errorf("TagsCommand, CustomVersionSource, VersionPipeline, DownloadRegex, or DownloadXPath is required for Web Binary configurations")
 		}
 	}
-
-	if currentConfig.DownloadPageUrl == "" {
-		if currentConfig.DownloadRegex != "" {
-			return nil, fmt.Errorf("DownloadRegex requires DownloadPageUrl to be set")
-		}
-		if currentConfig.DownloadXPath != "" {
-			return nil, fmt.Errorf("DownloadXPath requires DownloadPageUrl to be set")
-		}
-		if currentConfig.DownloadMatch != "" {
-			return nil, fmt.Errorf("DownloadMatch requires DownloadPageUrl to be set")
+	if currentConfig.Type == "Web AppImage" {
+		if currentConfig.VersionPipeline != "" {
+			return nil, fmt.Errorf("VersionPipeline is not supported for Web AppImage. Use CustomVersionSource or allow URL resolution to define the version.")
 		}
 	}
 

@@ -665,6 +665,9 @@ func (ggbtd *GenerateGithubBinaryTemplateData) ReverseProgramsAsAlternatives() m
 			ggbtd._reverseProgramsAsAlternatives[prog] = append(ggbtd._reverseProgramsAsAlternatives[prog], arch)
 		}
 	}
+	for _, archs := range ggbtd._reverseProgramsAsAlternatives {
+		sort.Strings(archs)
+	}
 	return ggbtd._reverseProgramsAsAlternatives
 }
 
@@ -758,4 +761,26 @@ func (ggbtd *GenerateGithubBinaryTemplateData) G2MetadataArgs() string {
 		args += fmt.Sprintf("--use-add \"%s:%s\" ", f.Name, f.Text)
 	}
 	return strings.TrimSpace(args)
+}
+
+type ReverseProgramAlternative struct {
+	UseFlag       string
+	Architectures []string
+}
+
+func (ggbtd *GenerateGithubBinaryTemplateData) SortedReverseProgramsAsAlternatives() []ReverseProgramAlternative {
+	alts := ggbtd.ReverseProgramsAsAlternatives()
+	keys := make([]string, 0, len(alts))
+	for k := range alts {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	var res []ReverseProgramAlternative
+	for _, k := range keys {
+		archs := alts[k]
+		sort.Strings(archs)
+		res = append(res, ReverseProgramAlternative{UseFlag: k, Architectures: archs})
+	}
+	return res
 }

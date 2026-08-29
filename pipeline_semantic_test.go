@@ -177,33 +177,43 @@ func TestSemanticPipelineFallbackWebBinary(t *testing.T) {
 	}
 }
 
-func TestSemanticPipelineWebAppImageNoCustomVersion(t *testing.T) {
-	configStr := "Type Web AppImage\n" + "Category app-misc\n" + "Description Example\n" + "Homepage https://example.com\n" + "EbuildName test-app\n" + "DownloadPageUrl https://example.com\n" + "DownloadPipeline get(https://example.com/downloads) | html_links | first\n"
-	configs, err := ParseInputConfigReader(strings.NewReader(configStr))
-	if err != nil {
-		t.Fatalf("Failed to parse config: %v", err)
+func executeWebAppImageTemplateForTest(t *testing.T, pipeline string, customVersion bool) error {
+	config := &InputConfig{
+		Type:             "Web AppImage",
+		EbuildName:       "test",
+		Category:         "app-misc",
+		DownloadPageUrl:  "https://example.com",
+		DownloadPipeline: pipeline,
+	}
+	if customVersion {
+		config.CustomVersionSource = "curl | grep"
 	}
 
-	templates, err := ParseWorkflowTemplates()
-	if err != nil {
-		t.Fatalf("Parse templates error = %v", err)
-	}
+	templates, _ := ParseWorkflowTemplates()
 	out := bytes.NewBuffer(nil)
-	base := &GenerateGithubWorkflowBase{InputConfig: configs[0]}
+	base := &GenerateGithubWorkflowBase{InputConfig: config}
 	data := &GenerateWebAppImageTemplateData{GenerateGithubAppImageTemplateData: &GenerateGithubAppImageTemplateData{GenerateGithubWorkflowBase: base}}
+	return templates.ExecuteTemplate(out, "web-appimage.tmpl", data)
+}
 
-	err = templates.ExecuteTemplate(out, "web-appimage.tmpl", data)
-	if err != nil {
-		t.Fatalf("ExecuteTemplate() error = %v", err)
+func TestSemanticPipelineWebAppImagePlaceholders(t *testing.T) {
+	err1 := executeWebAppImageTemplateForTest(t, "get(https://example.com/downloads) | html_links | regex(${RELEASE_FILENAME})", false)
+	if err1 == nil || !strings.Contains(err1.Error(), "RELEASE_FILENAME is not supported for Web AppImage pipeline generation") {
+		t.Errorf("Expected failure for RELEASE_FILENAME, got: %v", err1)
 	}
 
-	workflowStr := string(normalizeGeneratedWorkflow(out.Bytes()))
-
-	// Assert NO placeholders are resolved or used and that it executes cleanly
-	if strings.Contains(workflowStr, "G2_PIPELINE=\"${G2_PIPELINE//\\${VERSION}") {
-		t.Errorf("Expected NO placeholder substitution logic, but they were found.")
+	err2 := executeWebAppImageTemplateForTest(t, "get(https://example.com/downloads) | html_links | regex(${TAG})", false)
+	if err2 == nil || !strings.Contains(err2.Error(), "TAG is not supported for Web AppImage pipeline generation before download discovery") {
+		t.Errorf("Expected failure for TAG, got: %v", err2)
 	}
-	if !strings.Contains(workflowStr, "source_url=\"$(python3 \"$RUNNER_TEMP/g2-pipeline.py\" \"$G2_PIPELINE\")\"") {
-		t.Errorf("Expected execution without placeholders.")
+
+	err3 := executeWebAppImageTemplateForTest(t, "get(https://example.com/downloads/${VERSION}) | html_links", false)
+	if err3 == nil || !strings.Contains(err3.Error(), "VERSION placeholder used in pipeline but no CustomVersionSource is configured") {
+		t.Errorf("Expected failure for VERSION without source, got: %v", err3)
+	}
+
+	err4 := executeWebAppImageTemplateForTest(t, "get(https://example.com/downloads/${VERSION}) | html_links", true)
+	if err4 != nil {
+		t.Errorf("Expected success for VERSION with CustomVersionSource, got: %v", err4)
 	}
 }

@@ -255,7 +255,7 @@ Description Example Fallback Binary
 Homepage https://example.com/
 DownloadPageUrl https://example.com/downloads/
 TagsCommand curl -sL https://example.com/downloads/ | htmlq -a href a | grep -oP 'v\d+\.\d+\.\d+'
-DownloadRegex example-amd64-(.*)\.tar\.gz
+DownloadMatch example-amd64-(.*)\.tar\.gz
 ProgramName example
 Binary amd64=>example-${VERSION}.tar.gz > example > example
 -- .github/workflows/app-misc-example-fallback-bin-update.yaml --

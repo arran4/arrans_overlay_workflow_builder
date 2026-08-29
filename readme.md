@@ -262,7 +262,7 @@ Instead of using Bash-dependent tools, you can use the built-in python extractio
 * `VersionPipeline` - A chained command string used to extract all release versions from the web.
 * `DownloadPipeline` - A chained command string used to extract the specific binary download URL for a given tag.
 * `Download Redirect` (AppImages only) - Resolves AppImage URLs by following `HTTP 302` redirects natively, bypassing HTML scraping.
-* `DownloadRegex` (Legacy fallback) - Equivalent to `get(URL) | html_links | regex(PATTERN) | first`.
+* `DownloadRegex` (Legacy fallback) - Equivalent to `get(URL) | html_links | regex(PATTERN) | last`.
 * `DownloadXPath` (Legacy fallback) - Not recommended, use `VersionPipeline` and `DownloadPipeline` instead.
 
 ### Pipeline Syntax
@@ -283,10 +283,10 @@ Available commands:
 * `first` / `last` - Grabs the first or last element of a list.
 
 ### Pipeline Substitutions
-The pipeline supports native templating substitutions during workflow execution for precise resource fetching:
-* `${VERSION}`: Replaced with the current mapped iteration release version (e.g. `1.0.0`)
-* `${TAG}`: Replaced with the current mapped iteration repository tag (e.g. `v1.0.0`)
-* `${RELEASE_FILENAME}`: Replaced with the evaluated architecture-specific resource filename mapping (e.g. `example-amd64-1.0.0.tar.gz`)
+The pipeline supports native templating substitutions during workflow execution for precise resource fetching. Note that substitutions are heavily restricted depending on configuration type to enforce correct lifecycle resolution:
+* `${VERSION}`: Supported unconditionally in `Web Binary` to access the current mapped iteration version. In `Web AppImage`, it is **only** supported if `CustomVersionSource` is explicitly specified.
+* `${TAG}`: Supported natively in `Web Binary` iteration loops. **Unsupported** in `Web AppImage` pipeline generation.
+* `${RELEASE_FILENAME}`: Replaced with the evaluated architecture-specific resource filename mapping within `ExternalResources`. **Unsupported** in `Web AppImage` generation.
 
 ### Example: RSS Feed Extraction
 
