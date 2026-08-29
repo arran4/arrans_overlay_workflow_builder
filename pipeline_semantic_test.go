@@ -2,6 +2,7 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -224,5 +225,32 @@ func TestSemanticPipelineWebAppImagePlaceholders(t *testing.T) {
 	err4 := executeWebAppImageTemplateForTest(t, "get(https://example.com/downloads/${VERSION}) | html_links", true)
 	if err4 != nil {
 		t.Errorf("Expected success for VERSION with CustomVersionSource, got: %v", err4)
+	}
+}
+
+func TestSemanticPipelineBashExecution(t *testing.T) {
+	// A semantic test that executes the generated bash string logic directly in bash!
+	bashScript := `
+	originalVersion="1.2.3"
+	tag="v1.2.3"
+	G2_PIPELINE="$(printf '%s' "Z2V0KGh0dHBzOi8vZXhhbXBsZS5jb20vZG93bmxvYWRzLyR7VkVSU0lPTn0pIHwgaHRtbF9saW5rcyB8IHJlZ2V4KCR7UkVMRUFTRV9GSUxFTkFNRX0pIHwgZmlyc3Q=" | base64 --decode)"
+	resolved_filename="example-amd64-\${VERSION}.tar.gz"
+	resolved_filename="${resolved_filename//\${VERSION\}/${originalVersion}}"
+	resolved_filename="${resolved_filename//\${TAG\}/${tag}}"
+	G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME\}/${resolved_filename}}"
+	G2_PIPELINE="${G2_PIPELINE//\${VERSION\}/${originalVersion}}"
+	G2_PIPELINE="${G2_PIPELINE//\${TAG\}/${tag}}"
+	echo "$G2_PIPELINE"
+	`
+	cmd := exec.Command("bash", "-c", bashScript)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to execute bash snippet: %v\nOutput: %s", err, out)
+	}
+
+	result := strings.TrimSpace(string(out))
+	expected := "get(https://example.com/downloads/1.2.3) | html_links | regex(example-amd64-1.2.3.tar.gz) | first"
+	if result != expected {
+		t.Errorf("Bash placeholder replacement failed. Expected: %q, Got: %q", expected, result)
 	}
 }

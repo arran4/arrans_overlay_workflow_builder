@@ -50,6 +50,9 @@ def tokenize_pipeline(pipeline_str):
 
         current_cmd += char
 
+    if escape_next:
+        print("Error: Dangling escape in pipeline", file=sys.stderr)
+        sys.exit(1)
     if in_quote:
         print("Error: Unterminated quote in pipeline", file=sys.stderr)
         sys.exit(1)

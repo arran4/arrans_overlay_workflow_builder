@@ -72,7 +72,7 @@ jobs:
           tags=$([[ .CustomVersionSource | actionvardoublequoted ]])
           [[ else ]]
           [[- if .GetVersionPipeline ]]
-          export G2_PIPELINE="[[ .GetVersionPipeline | actionvardoublequoted ]]"
+          G2_PIPELINE="$(printf '%s' "[[ .GetVersionPipelineBase64 ]]" | base64 --decode)"
           tags="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
           [[- else if .TagsCommand ]]
           tags=$([[ .TagsCommand | actionvardoublequoted ]])
@@ -134,13 +134,13 @@ jobs:
             declare -A resolved_download_urls=()
 [[- range $i, $externalResource := .ExternalResources ]]
             [[- if $.InputConfig.GetDownloadPipeline ]]
-            export G2_PIPELINE="[[ $.InputConfig.GetDownloadPipeline | actionvardoublequoted ]]"
+            G2_PIPELINE="$(printf '%s' "[[ $.GetDownloadPipelineBase64 ]]" | base64 --decode)"
             resolved_filename="[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | actionvardoublequoted ]][[ else ]][[ $i | actionvardoublequoted ]][[ end ]]"
-            resolved_filename="${resolved_filename//\${VERSION}/${originalVersion}}"
-            resolved_filename="${resolved_filename//\${TAG}/${tag}}"
-            G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME}/${resolved_filename}}"
-            G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${originalVersion}}"
-            G2_PIPELINE="${G2_PIPELINE//\${TAG}/${tag}}"
+            resolved_filename="${resolved_filename//\${VERSION\}/${originalVersion}}"
+            resolved_filename="${resolved_filename//\${TAG\}/${tag}}"
+            G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME\}/${resolved_filename}}"
+            G2_PIPELINE="${G2_PIPELINE//\${VERSION\}/${originalVersion}}"
+            G2_PIPELINE="${G2_PIPELINE//\${TAG\}/${tag}}"
             resolved_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
             if [ -z "$resolved_url" ]; then
                 echo "Failed to resolve download URL for $version and resource [[ $i ]]" >&2

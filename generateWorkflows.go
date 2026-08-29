@@ -497,3 +497,11 @@ func (b *GenerateGithubWorkflowBase) PipelineScriptBase64() string {
 	}
 	return base64.StdEncoding.EncodeToString(bytes)
 }
+
+func (b *GenerateGithubWorkflowBase) GetVersionPipelineBase64() string {
+	return base64.StdEncoding.EncodeToString([]byte(b.InputConfig.GetVersionPipeline()))
+}
+
+func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
+	return base64.StdEncoding.EncodeToString([]byte(b.InputConfig.GetDownloadPipeline()))
+}

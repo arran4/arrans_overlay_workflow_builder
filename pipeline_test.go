@@ -62,6 +62,7 @@ func TestPythonPipeline(t *testing.T) {
 		{"Fail Unknown", "unknown_cmd", "", true},
 		{"Fail Empty", "get(" + ts.URL + "/rss) | ", "", true},
 		{"Fail Unbalanced", "get(" + ts.URL + "/rss | trim", "", true},
+		{"Fail Dangling Escape", "get(" + ts.URL + "/rss) | regex(v\\\\", "", true},
 		{"Fail Replace Args", "get(" + ts.URL + "/rss) | replace('a')", "", true},
 	}
 

@@ -56,8 +56,7 @@ jobs:
 
       - name: Determine latest AppImage
         id: find_appimage
-        env:
-          G2_PIPELINE_TMPL: "[[ if .GetDownloadPipeline ]][[ .GetDownloadPipeline | actionvardoublequoted ]][[ else ]]''[[ end ]]"
+
         run: |
           set -euo pipefail
           [[- if .GetDownloadPipeline ]]
@@ -80,7 +79,7 @@ jobs:
           [[- end ]]
           [[- if stringsContains .GetDownloadPipeline "${VERSION}" ]]
              [[- if .CustomVersionSource ]]
-          G2_PIPELINE="${G2_PIPELINE//\${VERSION}/${version}}"
+          G2_PIPELINE="${G2_PIPELINE//\${VERSION\}/${version}}"
              [[- else ]]
              [[- fail "VERSION placeholder used in pipeline but no CustomVersionSource is configured" ]]
              [[- end ]]
