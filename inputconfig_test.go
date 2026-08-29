@@ -484,3 +484,11 @@ func TestWebBinaryConfigRoundTrip(t *testing.T) {
 		t.Errorf("Round trip serialization failed. Expected:\n%s\nGot:\n%s", serialized, configs2[0].String())
 	}
 }
+
+func TestWebAppImageVersionPipelineValidation(t *testing.T) {
+	configStr := "Type Web AppImage\nCategory app-misc\nEbuildName example\nDownloadPageUrl a\nVersionPipeline get()\n"
+	_, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err == nil || !strings.Contains(err.Error(), "version pipeline is not supported for web appimage") {
+		t.Errorf("Expected error for VersionPipeline on Web AppImage, got: %v", err)
+	}
+}

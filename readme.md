@@ -259,7 +259,7 @@ For non-GitHub releases, the generator supports the `Web AppImage` and `Web Bina
 
 Instead of using Bash-dependent tools, you can use the built-in python extraction pipeline. You define pipelines in your configuration for version parsing and download resolution.
 
-* `VersionPipeline` - A chained command string used to extract all release versions from the web.
+* `VersionPipeline` (Web Binary only) - A chained command string used to extract all release versions from the web. Web AppImage derives versions dynamically via AppImage artifact names or `CustomVersionSource`.
 * `DownloadPipeline` - A chained command string used to extract the specific binary download URL for a given tag.
 * `Download Redirect` (AppImages only) - Resolves AppImage URLs by following `HTTP 302` redirects natively, bypassing HTML scraping.
 * `DownloadRegex` (Legacy fallback) - Equivalent to `get(URL) | html_links | regex(PATTERN) | last`.

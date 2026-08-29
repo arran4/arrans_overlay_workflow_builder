@@ -816,7 +816,7 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	}
 	if currentConfig.Type == "Web AppImage" {
 		if currentConfig.VersionPipeline != "" {
-			return nil, fmt.Errorf("VersionPipeline is not supported for Web AppImage. Use CustomVersionSource or allow URL resolution to define the version.")
+			return nil, fmt.Errorf("version pipeline is not supported for web appimage, use CustomVersionSource or allow URL resolution to define the version")
 		}
 	}
 

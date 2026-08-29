@@ -170,7 +170,13 @@ func TestSemanticPipelineFallbackWebBinary(t *testing.T) {
 		t.Errorf("Expected pipeline helper to be materialized for fallback config, but it was not found.")
 	}
 
-	// TagsCommand is skipped because GetVersionPipeline has precedence!
+	if !strings.Contains(workflowStr, "tags=$(curl -sL https://example.com/downloads/ | htmlq -a href a | grep -oP 'v\\d+\\.\\d+\\.\\d+')") {
+		t.Errorf("Expected TagsCommand to be rendered for version discovery.")
+	}
+
+	if strings.Contains(workflowStr, "tags=\"$(python3 \"$RUNNER_TEMP/g2-pipeline.py\"") {
+		t.Errorf("Expected VersionPipeline NOT to be synthesized and executed since TagsCommand and DownloadMatch exist.")
+	}
 
 	if !strings.Contains(workflowStr, "resolved_url=\"$(python3 \"$RUNNER_TEMP/g2-pipeline.py\" \"$G2_PIPELINE\")\"") {
 		t.Errorf("Expected fallback download pipeline to be executed.")
@@ -189,7 +195,10 @@ func executeWebAppImageTemplateForTest(t *testing.T, pipeline string, customVers
 		config.CustomVersionSource = "curl | grep"
 	}
 
-	templates, _ := ParseWorkflowTemplates()
+	templates, err := ParseWorkflowTemplates()
+	if err != nil {
+		t.Fatalf("ParseWorkflowTemplates() failed: %v", err)
+	}
 	out := bytes.NewBuffer(nil)
 	base := &GenerateGithubWorkflowBase{InputConfig: config}
 	data := &GenerateWebAppImageTemplateData{GenerateGithubAppImageTemplateData: &GenerateGithubAppImageTemplateData{GenerateGithubWorkflowBase: base}}
