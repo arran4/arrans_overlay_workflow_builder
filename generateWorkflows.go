@@ -220,8 +220,8 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 				return dict, nil
 			},
 			"stringsContains": strings.Contains,
-			"base64": func(v string) string {
-				return base64.StdEncoding.EncodeToString([]byte(v))
+			"base64": func(v any) string {
+				return base64.StdEncoding.EncodeToString([]byte(fmt.Sprint(v)))
 			},
 			"fail": func(msg string) (string, error) {
 				return "", fmt.Errorf("%s", msg)

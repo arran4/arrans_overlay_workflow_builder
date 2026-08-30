@@ -308,3 +308,54 @@ Binary amd64=>example-amd64-${VERSION}.tar.gz > example > example`
 		t.Errorf("Expected %q, got %q", expected, result)
 	}
 }
+
+func TestWebBinaryReleaseFilenameFallback(t *testing.T) {
+	configStr := `Type Web Binary
+Category app-misc
+EbuildName example-multi
+Description Example Multi Binary
+Homepage https://example.com/
+DownloadBaseUrl https://example.com/downloads/
+VersionPipeline get(https://example.com/downloads/) | html_links | regex(v\d+\.\d+\.\d+)
+DownloadPipeline get(https://example.com/downloads/${VERSION}) | html_links | regex(${RELEASE_FILENAME}) | first
+ProgramName example
+Binary amd64=>example > example > example`
+
+	config, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err != nil {
+		t.Fatalf("Failed to parse config: %v", err)
+	}
+
+	base := &GenerateGithubWorkflowBase{InputConfig: config[0]}
+	b_tmpl := &GenerateWebBinaryTemplateData{
+		GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
+			GenerateGithubWorkflowBase: base,
+		},
+	}
+	b_tmpl.InputConfig.Programs = map[string]*Program{
+		"example": {
+			ProgramName: "example",
+			Binary: map[string][]string{
+				"amd64": {"", "example", "example"},
+			},
+		},
+	}
+
+	tmpl, err := ParseWorkflowTemplates()
+	if err != nil {
+		t.Fatalf("Failed to parse templates: %v", err)
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "web-binary.tmpl", b_tmpl)
+	if err != nil {
+		t.Fatalf("Failed to execute template: %v", err)
+	}
+
+	yamlOutput := buf.String()
+
+	// We want to verify that the template generated the fallback integer. "MA==" is base64 of "0"
+	if !strings.Contains(yamlOutput, "resolved_filename=\"$(printf '%s' \"MA==\" | base64 --decode)\"") {
+		t.Fatalf("Could not find fallback base64 encoded index in generated YAML. output:\n%s", yamlOutput)
+	}
+}
