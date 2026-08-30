@@ -526,3 +526,23 @@ func TestWebBinaryConfigRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestWebAppImageVersionPipelineValidation(t *testing.T) {
+	configStr := "Type Web AppImage\n" +
+		"Category app-misc\n" +
+		"EbuildName test-appimage\n" +
+		"Description A test description\n" +
+		"Homepage https://example.com/\n" +
+		"DownloadPageUrl https://example.com/downloads/\n" +
+		"VersionPipeline get(https://example.com) | html_links | first\n"
+
+	_, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err == nil {
+		t.Fatalf("Expected parsing to fail when VersionPipeline is defined for Web AppImage")
+	}
+
+	expectedErr := "version pipeline is not supported for web appimage"
+	if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("Expected error containing %q, got %q", expectedErr, err.Error())
+	}
+}

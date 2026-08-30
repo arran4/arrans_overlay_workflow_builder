@@ -246,15 +246,12 @@ Binary amd64=>example-amd64-${VERSION}.tar.gz > example > example`
 	}
 
 	base := &GenerateGithubWorkflowBase{InputConfig: config[0]}
-
-	// Construct the correct template data wrapper based on the type
-	b := &GenerateWebBinaryTemplateData{
+	b_tmpl := &GenerateWebBinaryTemplateData{
 		GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
 			GenerateGithubWorkflowBase: base,
 		},
 	}
-	// We need to initialize external resources for the template logic
-	b.InputConfig.Programs = map[string]*Program{
+	b_tmpl.Programs = map[string]*Program{
 		"example": {
 			ProgramName: "example",
 			Binary: map[string][]string{
@@ -269,7 +266,7 @@ Binary amd64=>example-amd64-${VERSION}.tar.gz > example > example`
 	}
 
 	var buf bytes.Buffer
-	err = tmpl.ExecuteTemplate(&buf, "web-binary.tmpl", b)
+	err = tmpl.ExecuteTemplate(&buf, "web-binary.tmpl", b_tmpl)
 	if err != nil {
 		t.Fatalf("Failed to execute template: %v", err)
 	}
@@ -279,7 +276,7 @@ Binary amd64=>example-amd64-${VERSION}.tar.gz > example > example`
 	var snippet string
 	lines := strings.Split(yamlOutput, "\n")
 	for i, line := range lines {
-		// Find the DownloadPipeline base64 snippet specifically, which is inside the inner loop and sets resolved_filename
+		// Find the DownloadPipeline base64 snippet specifically
 		if strings.Contains(line, "resolved_filename=\"$(printf '%s'") {
 			snippet = strings.Join(lines[i-1:i+6], "\n")
 			break
@@ -309,6 +306,98 @@ Binary amd64=>example-amd64-${VERSION}.tar.gz > example > example`
 	}
 }
 
+func TestWebAppImagePipelineBashExecution(t *testing.T) {
+	configStr := `Type Web AppImage
+Category app-misc
+EbuildName example-appimage
+Description Example AppImage
+Homepage https://example.com/
+DownloadPageUrl https://example.com/downloads/
+CustomVersionSource echo 1.2.3-beta1
+DownloadPipeline get(https://example.com/downloads/${VERSION}) | html_links | regex(v\d+\.\d+\.\d+) | first
+ProgramName example
+Binary amd64=>test.AppImage > example`
+
+	config, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err != nil {
+		t.Fatalf("Failed to parse config: %v", err)
+	}
+
+	base := &GenerateGithubWorkflowBase{InputConfig: config[0]}
+	b_tmpl := &GenerateWebAppImageTemplateData{
+		GenerateGithubAppImageTemplateData: &GenerateGithubAppImageTemplateData{
+			GenerateGithubWorkflowBase: base,
+		},
+	}
+	b_tmpl.Programs = map[string]*Program{
+		"example": {
+			ProgramName: "example",
+			Binary: map[string][]string{
+				"amd64": {"test.AppImage", "example"},
+			},
+		},
+	}
+
+	tmpl, err := ParseWorkflowTemplates()
+	if err != nil {
+		t.Fatalf("Failed to parse templates: %v", err)
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "web-appimage.tmpl", b_tmpl)
+	if err != nil {
+		t.Fatalf("Failed to execute template: %v", err)
+	}
+
+	yamlOutput := buf.String()
+
+	if strings.Contains(yamlOutput, "G2_PIPELINE_TMPL") {
+	    t.Fatalf("Generated YAML contains G2_PIPELINE_TMPL")
+	}
+
+	var snippet string
+	lines := strings.Split(yamlOutput, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "G2_PIPELINE=\"$(printf '%s'") {
+			snippet = strings.Join(lines[i:i+4], "\n")
+			break
+		}
+	}
+
+	if snippet == "" {
+		t.Fatalf("Could not find pipeline bash snippet in generated YAML")
+	}
+
+
+	var snippet2 string
+	lines2 := strings.Split(snippet, "\n")
+	for i, line := range lines2 {
+		if strings.Contains(line, "source_url=") {
+			snippet2 = strings.Join(lines2[:i], "\n")
+			break
+		}
+	}
+
+    bashScript := "set -euo pipefail\n" +
+	    "originalVersion=\"1.2.3-beta1\"\n" +
+		"version=\"1.2.3_beta1\"\n" +
+		"tag=\"v1.2.3-beta1\"\n" +
+		snippet2 + "\n" +
+		"echo \"$G2_PIPELINE\"\n"
+
+	cmd := exec.Command("bash", "-c", bashScript)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to execute bash snippet: %v\nOutput: %s\nScript:\n%s", err, out, bashScript)
+	}
+
+	result := strings.TrimSpace(string(out))
+	expected := "get(https://example.com/downloads/1.2.3_beta1) | html_links | regex(v\\d+\\.\\d+\\.\\d+) | first"
+	if result != expected {
+		t.Errorf("Expected %q, got %q", expected, result)
+	}
+}
+
 func TestWebBinaryReleaseFilenameFallback(t *testing.T) {
 	configStr := `Type Web Binary
 Category app-misc
@@ -332,7 +421,7 @@ Binary amd64=>example > example > example`
 			GenerateGithubWorkflowBase: base,
 		},
 	}
-	b_tmpl.InputConfig.Programs = map[string]*Program{
+	b_tmpl.Programs = map[string]*Program{
 		"example": {
 			ProgramName: "example",
 			Binary: map[string][]string{
