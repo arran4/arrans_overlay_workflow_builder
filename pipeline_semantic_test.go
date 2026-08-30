@@ -229,28 +229,82 @@ func TestSemanticPipelineWebAppImagePlaceholders(t *testing.T) {
 }
 
 func TestSemanticPipelineBashExecution(t *testing.T) {
-	// A semantic test that executes the generated bash string logic directly in bash!
-	bashScript := `
-	originalVersion="1.2.3"
-	tag="v1.2.3"
-	G2_PIPELINE="$(printf '%s' "Z2V0KGh0dHBzOi8vZXhhbXBsZS5jb20vZG93bmxvYWRzLyR7VkVSU0lPTn0pIHwgaHRtbF9saW5rcyB8IHJlZ2V4KCR7UkVMRUFTRV9GSUxFTkFNRX0pIHwgZmlyc3Q=" | base64 --decode)"
-	resolved_filename="example-amd64-\${VERSION}.tar.gz"
-	resolved_filename="${resolved_filename//\${VERSION\}/${originalVersion}}"
-	resolved_filename="${resolved_filename//\${TAG\}/${tag}}"
-	G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME\}/${resolved_filename}}"
-	G2_PIPELINE="${G2_PIPELINE//\${VERSION\}/${originalVersion}}"
-	G2_PIPELINE="${G2_PIPELINE//\${TAG\}/${tag}}"
-	echo "$G2_PIPELINE"
-	`
+	configStr := `Type Web Binary
+Category app-misc
+EbuildName example-multi
+Description Example Multi Binary
+Homepage https://example.com/
+DownloadBaseUrl https://example.com/downloads/
+VersionPipeline get(https://example.com/downloads/) | html_links | regex(v\d+\.\d+\.\d+)
+DownloadPipeline get(https://example.com/downloads/${VERSION}) | html_links | regex(${RELEASE_FILENAME}) | first
+ProgramName example
+Binary amd64=>example-amd64-${VERSION}.tar.gz > example > example`
+
+	config, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err != nil {
+		t.Fatalf("Failed to parse config: %v", err)
+	}
+
+	base := &GenerateGithubWorkflowBase{InputConfig: config[0]}
+
+	// Construct the correct template data wrapper based on the type
+	b := &GenerateWebBinaryTemplateData{
+		GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
+			GenerateGithubWorkflowBase: base,
+		},
+	}
+	// We need to initialize external resources for the template logic
+	b.InputConfig.Programs = map[string]*Program{
+		"example": {
+			ProgramName: "example",
+			Binary: map[string][]string{
+				"amd64": {"example-amd64-${VERSION}.tar.gz", "example", "example"},
+			},
+		},
+	}
+
+	tmpl, err := ParseWorkflowTemplates()
+	if err != nil {
+		t.Fatalf("Failed to parse templates: %v", err)
+	}
+
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "web-binary.tmpl", b)
+	if err != nil {
+		t.Fatalf("Failed to execute template: %v", err)
+	}
+
+	yamlOutput := buf.String()
+
+	var snippet string
+	lines := strings.Split(yamlOutput, "\n")
+	for i, line := range lines {
+		// Find the DownloadPipeline base64 snippet specifically, which is inside the inner loop and sets resolved_filename
+		if strings.Contains(line, "resolved_filename=\"$(printf '%s'") {
+			snippet = strings.Join(lines[i-1:i+6], "\n")
+			break
+		}
+	}
+
+	if snippet == "" {
+		t.Fatalf("Could not find pipeline bash snippet in generated YAML")
+	}
+
+	bashScript := "originalVersion=\"1.2.3-beta1\"\n" +
+		"version=\"1.2.3_beta1\"\n" +
+		"tag=\"v1.2.3-beta1\"\n" +
+		snippet + "\n" +
+		"echo \"$G2_PIPELINE\"\n"
+
 	cmd := exec.Command("bash", "-c", bashScript)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("Failed to execute bash snippet: %v\nOutput: %s", err, out)
+		t.Fatalf("Failed to execute bash snippet: %v\nOutput: %s\nScript:\n%s", err, out, bashScript)
 	}
 
 	result := strings.TrimSpace(string(out))
-	expected := "get(https://example.com/downloads/1.2.3) | html_links | regex(example-amd64-1.2.3.tar.gz) | first"
+	expected := "get(https://example.com/downloads/1.2.3-beta1) | html_links | regex(example-amd64-1.2.3-beta1.tar.gz) | first"
 	if result != expected {
-		t.Errorf("Bash placeholder replacement failed. Expected: %q, Got: %q", expected, result)
+		t.Errorf("Expected %q, got %q", expected, result)
 	}
 }

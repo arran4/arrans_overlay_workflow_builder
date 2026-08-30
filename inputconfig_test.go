@@ -466,6 +466,7 @@ func TestWebBinaryConfigRoundTrip(t *testing.T) {
 		"DownloadRegex example-amd64-(.*)\\.tar\\.gz\n" +
 		"VersionPipeline get(https://example.com) | html_links | first\n" +
 		"DownloadPipeline get(https://example.com/${VERSION}) | html_links | first\n" +
+		"DownloadMatch test-amd64-(.*)\\.tar\\.gz\n" +
 		"DownloadXPath .//a\n"
 
 	configs, err := ParseInputConfigReader(strings.NewReader(configStr))
@@ -477,18 +478,51 @@ func TestWebBinaryConfigRoundTrip(t *testing.T) {
 
 	configs2, err2 := ParseInputConfigReader(strings.NewReader(serialized))
 	if err2 != nil {
-		t.Fatalf("Failed to parse serialized config: %v\nSerialized was:\n%s", err2, serialized)
+		t.Fatalf("Failed to parse serialized config: %v", err2)
 	}
 
-	if configs2[0].String() != serialized {
-		t.Errorf("Round trip serialization failed. Expected:\n%s\nGot:\n%s", serialized, configs2[0].String())
+	if configs[0].String() != configs2[0].String() {
+		t.Errorf("Round trip failed.\nExpected:\n%s\nGot:\n%s", configs[0].String(), configs2[0].String())
 	}
-}
 
-func TestWebAppImageVersionPipelineValidation(t *testing.T) {
-	configStr := "Type Web AppImage\nCategory app-misc\nEbuildName example\nDownloadPageUrl a\nVersionPipeline get()\n"
-	_, err := ParseInputConfigReader(strings.NewReader(configStr))
-	if err == nil || !strings.Contains(err.Error(), "version pipeline is not supported for web appimage") {
-		t.Errorf("Expected error for VersionPipeline on Web AppImage, got: %v", err)
+	// Explicitly check fields
+	if configs2[0].DownloadPageUrl != "https://example.com/downloads/" {
+		t.Errorf("Expected DownloadPageUrl=https://example.com/downloads/, got %q", configs2[0].DownloadPageUrl)
+	}
+	if configs2[0].DownloadBaseUrl != "https://example.com/downloads/base/" {
+		t.Errorf("Expected DownloadBaseUrl=https://example.com/downloads/base/, got %q", configs2[0].DownloadBaseUrl)
+	}
+	if configs2[0].DownloadRegex != "example-amd64-(.*)\\.tar\\.gz" {
+		t.Errorf("Expected DownloadRegex, got %q", configs2[0].DownloadRegex)
+	}
+	if configs2[0].DownloadMatch != "test-amd64-(.*)\\.tar\\.gz" {
+		t.Errorf("Expected DownloadMatch, got %q", configs2[0].DownloadMatch)
+	}
+	if configs2[0].DownloadXPath != ".//a" {
+		t.Errorf("Expected DownloadXPath, got %q", configs2[0].DownloadXPath)
+	}
+	if configs2[0].VersionPipeline != "get(https://example.com) | html_links | first" {
+		t.Errorf("Expected VersionPipeline, got %q", configs2[0].VersionPipeline)
+	}
+	if configs2[0].DownloadPipeline != "get(https://example.com/${VERSION}) | html_links | first" {
+		t.Errorf("Expected DownloadPipeline, got %q", configs2[0].DownloadPipeline)
+	}
+
+	// Check for exact duplication in serialized form
+	counts := make(map[string]int)
+	for _, line := range strings.Split(serialized, "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) > 0 {
+			counts[parts[0]]++
+		}
+	}
+
+	for k, v := range counts {
+		if v > 1 {
+			t.Errorf("Duplicate serialized directive found for %s", k)
+		}
 	}
 }

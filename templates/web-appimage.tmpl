@@ -73,7 +73,7 @@ jobs:
           [[- else if .DownloadRedirect ]]
           appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' '[[ .DownloadRedirect ]]')"
 [[- else if .GetDownloadPipeline ]]
-          G2_PIPELINE="${G2_PIPELINE_TMPL}"
+          G2_PIPELINE="$(printf '%s' "[[ .GetDownloadPipelineBase64 ]]" | base64 --decode)"
           [[- if stringsContains .GetDownloadPipeline "${RELEASE_FILENAME}" ]]
              [[- fail "RELEASE_FILENAME is not supported for Web AppImage pipeline generation" ]]
           [[- end ]]

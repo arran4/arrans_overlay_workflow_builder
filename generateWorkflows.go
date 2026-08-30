@@ -220,6 +220,9 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 				return dict, nil
 			},
 			"stringsContains": strings.Contains,
+			"base64": func(v string) string {
+				return base64.StdEncoding.EncodeToString([]byte(v))
+			},
 			"fail": func(msg string) (string, error) {
 				return "", fmt.Errorf("%s", msg)
 			},
@@ -499,9 +502,9 @@ func (b *GenerateGithubWorkflowBase) PipelineScriptBase64() string {
 }
 
 func (b *GenerateGithubWorkflowBase) GetVersionPipelineBase64() string {
-	return base64.StdEncoding.EncodeToString([]byte(b.InputConfig.GetVersionPipeline()))
+	return base64.StdEncoding.EncodeToString([]byte(b.GetVersionPipeline()))
 }
 
 func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
-	return base64.StdEncoding.EncodeToString([]byte(b.InputConfig.GetDownloadPipeline()))
+	return base64.StdEncoding.EncodeToString([]byte(b.GetDownloadPipeline()))
 }

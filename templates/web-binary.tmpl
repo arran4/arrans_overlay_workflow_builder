@@ -135,7 +135,7 @@ jobs:
 [[- range $i, $externalResource := .ExternalResources ]]
             [[- if $.InputConfig.GetDownloadPipeline ]]
             G2_PIPELINE="$(printf '%s' "[[ $.GetDownloadPipelineBase64 ]]" | base64 --decode)"
-            resolved_filename="[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | actionvardoublequoted ]][[ else ]][[ $i | actionvardoublequoted ]][[ end ]]"
+            resolved_filename="$(printf '%s' "[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | base64 ]][[ else ]][[ $i | base64 ]][[ end ]]" | base64 --decode)"
             resolved_filename="${resolved_filename//\${VERSION\}/${originalVersion}}"
             resolved_filename="${resolved_filename//\${TAG\}/${tag}}"
             G2_PIPELINE="${G2_PIPELINE//\${RELEASE_FILENAME\}/${resolved_filename}}"
