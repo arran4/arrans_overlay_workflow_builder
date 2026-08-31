@@ -33,11 +33,11 @@ func TestPythonPipeline(t *testing.T) {
 	defer ts.Close()
 
 	tests := []struct {
-		name     string
-		pipeline string
-		expected string
-		fail     bool
-	expectedErr string
+		name        string
+		pipeline    string
+		expected    string
+		fail        bool
+		expectedErr string
 	}{
 		{"RSS", "get(" + ts.URL + "/rss) | rss | first | link | url.basename | regex(v(.*)\\.tar\\.gz)", "1.0", false, ""},
 		{"Atom", "get(" + ts.URL + "/atom) | atom | first | link | url.basename | regex(v(.*)\\.tar\\.gz)", "2.0", false, ""},

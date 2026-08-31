@@ -276,7 +276,6 @@ Binary amd64=>example-amd64-${VERSION}.tar.gz > example > example`
 	var snippet string
 	lines := strings.Split(yamlOutput, "\n")
 	for i, line := range lines {
-		// Find the DownloadPipeline base64 snippet specifically
 		if strings.Contains(line, "resolved_filename=\"$(printf '%s'") {
 			snippet = strings.Join(lines[i-1:i+6], "\n")
 			break
@@ -313,7 +312,7 @@ EbuildName example-appimage
 Description Example AppImage
 Homepage https://example.com/
 DownloadPageUrl https://example.com/downloads/
-CustomVersionSource echo 1.2.3-beta1
+CustomVersionSource printf '1.2.3-beta1'
 DownloadPipeline get(https://example.com/downloads/${VERSION}) | html_links | regex(v\d+\.\d+\.\d+) | first
 ProgramName example
 Binary amd64=>test.AppImage > example`
@@ -352,14 +351,14 @@ Binary amd64=>test.AppImage > example`
 	yamlOutput := buf.String()
 
 	if strings.Contains(yamlOutput, "G2_PIPELINE_TMPL") {
-	    t.Fatalf("Generated YAML contains G2_PIPELINE_TMPL")
+		t.Fatalf("Generated YAML contains G2_PIPELINE_TMPL")
 	}
 
 	var snippet string
 	lines := strings.Split(yamlOutput, "\n")
 	for i, line := range lines {
-		if strings.Contains(line, "G2_PIPELINE=\"$(printf '%s'") {
-			snippet = strings.Join(lines[i:i+4], "\n")
+		if strings.Contains(line, "version=$(printf '1.2.3-beta1')") {
+			snippet = strings.Join(lines[i:i+3], "\n")
 			break
 		}
 	}
@@ -368,21 +367,8 @@ Binary amd64=>test.AppImage > example`
 		t.Fatalf("Could not find pipeline bash snippet in generated YAML")
 	}
 
-
-	var snippet2 string
-	lines2 := strings.Split(snippet, "\n")
-	for i, line := range lines2 {
-		if strings.Contains(line, "source_url=") {
-			snippet2 = strings.Join(lines2[:i], "\n")
-			break
-		}
-	}
-
-    bashScript := "set -euo pipefail\n" +
-	    "originalVersion=\"1.2.3-beta1\"\n" +
-		"version=\"1.2.3_beta1\"\n" +
-		"tag=\"v1.2.3-beta1\"\n" +
-		snippet2 + "\n" +
+	bashScript := "set -euo pipefail\n" +
+		snippet + "\n" +
 		"echo \"$G2_PIPELINE\"\n"
 
 	cmd := exec.Command("bash", "-c", bashScript)
@@ -392,7 +378,7 @@ Binary amd64=>test.AppImage > example`
 	}
 
 	result := strings.TrimSpace(string(out))
-	expected := "get(https://example.com/downloads/1.2.3_beta1) | html_links | regex(v\\d+\\.\\d+\\.\\d+) | first"
+	expected := "get(https://example.com/downloads/1.2.3-beta1) | html_links | regex(v\\d+\\.\\d+\\.\\d+) | first"
 	if result != expected {
 		t.Errorf("Expected %q, got %q", expected, result)
 	}
@@ -443,7 +429,6 @@ Binary amd64=>example > example > example`
 
 	yamlOutput := buf.String()
 
-	// We want to verify that the template generated the fallback integer. "MA==" is base64 of "0"
 	if !strings.Contains(yamlOutput, "resolved_filename=\"$(printf '%s' \"MA==\" | base64 --decode)\"") {
 		t.Fatalf("Could not find fallback base64 encoded index in generated YAML. output:\n%s", yamlOutput)
 	}
