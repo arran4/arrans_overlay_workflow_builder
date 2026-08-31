@@ -47,7 +47,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y wget jq coreutils
-          [[- if not .DownloadRedirect ]]
+          [[- if and (not .DownloadRedirect) (not .GetDownloadPipeline) ]]
           curl -sfL https://github.com/mgdm/htmlq/releases/download/v0.4.0/htmlq-x86_64-linux.tar.gz | sudo tar xz -C /usr/local/bin htmlq
           [[- end ]]
 
@@ -56,8 +56,12 @@ jobs:
 
       - name: Determine latest AppImage
         id: find_appimage
+
         run: |
           set -euo pipefail
+          [[- if .GetDownloadPipeline ]]
+          printf "%s" "[[ .PipelineScriptBase64 ]]" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
+          [[- end ]]
           [[- if .PreVersionSteps ]]
           [[ .PreVersionSteps | actionvardoublequoted ]]
           [[- end ]]
@@ -68,6 +72,23 @@ jobs:
           appimage_url="[[ .CustomDownloadUrl | actionvardoublequoted ]]"
           [[- else if .DownloadRedirect ]]
           appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' '[[ .DownloadRedirect ]]')"
+[[- else if .GetDownloadPipeline ]]
+          G2_PIPELINE="$(printf '%s' "[[ .GetDownloadPipelineBase64 ]]" | base64 --decode)"
+          [[- if stringsContains .GetDownloadPipeline "${RELEASE_FILENAME}" ]]
+             [[- fail "RELEASE_FILENAME is not supported for Web AppImage pipeline generation" ]]
+          [[- end ]]
+          [[- if stringsContains .GetDownloadPipeline "${VERSION}" ]]
+             [[- if .CustomVersionSource ]]
+          G2_PIPELINE="${G2_PIPELINE//\${VERSION\}/${version}}"
+             [[- else ]]
+             [[- fail "VERSION placeholder used in pipeline but no CustomVersionSource is configured" ]]
+             [[- end ]]
+          [[- end ]]
+          [[- if stringsContains .GetDownloadPipeline "${TAG}" ]]
+             [[- fail "TAG is not supported for Web AppImage pipeline generation before download discovery" ]]
+          [[- end ]]
+          source_url="$(python3 "$RUNNER_TEMP/g2-pipeline.py" "$G2_PIPELINE")"
+          appimage_url="$(curl -sIL -o /dev/null -w '%{url_effective}' "$source_url")"
           [[- else ]]
           source_url="$(curl -sL '[[ .DownloadPageUrl ]]' | htmlq -a href 'a' | grep -iE '[[ if .DownloadMatch ]][[ .DownloadMatch ]][[ else ]]\.AppImage$[[ end ]]' | sort -V | tail -n1)"
           if [ -z "$source_url" ]; then

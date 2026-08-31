@@ -95,6 +95,8 @@ jobs:
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+            # Resolve download URLs once per external resource
+            declare -A resolved_download_urls=()
 
               # shellcheck disable=SC2016
               {

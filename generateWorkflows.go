@@ -3,6 +3,7 @@ package arrans_overlay_workflow_builder
 import (
 	"bytes"
 	"embed"
+	"encoding/base64"
 	"encoding/xml"
 	"fmt"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
@@ -20,7 +21,7 @@ import (
 )
 
 var (
-	//go:embed "templates/*.tmpl" "templates/_partials/*.tmpl"
+	//go:embed "templates/*.tmpl" "templates/_partials/*.tmpl" "templates/_partials/pipeline.py"
 	templateFiles embed.FS
 )
 
@@ -217,6 +218,13 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					dict[key] = values[i+1]
 				}
 				return dict, nil
+			},
+			"stringsContains": strings.Contains,
+			"base64": func(v any) string {
+				return base64.StdEncoding.EncodeToString([]byte(fmt.Sprint(v)))
+			},
+			"fail": func(msg string) (string, error) {
+				return "", fmt.Errorf("%s", msg)
 			},
 			"exitOnMatch": func(v any) bool {
 				if d, ok := v.(map[string]any); ok {
@@ -483,4 +491,20 @@ func (b *GenerateGithubWorkflowBase) FeatureGenerateMd5Cache() bool {
 
 func (b *GenerateGithubWorkflowBase) FeatureGenerateOverlay() bool {
 	return b.GlobalGenerateOverlay || b.InputConfig.FeatureGenerateOverlay()
+}
+
+func (b *GenerateGithubWorkflowBase) PipelineScriptBase64() string {
+	bytes, err := templateFiles.ReadFile("templates/_partials/pipeline.py")
+	if err != nil {
+		panic(err)
+	}
+	return base64.StdEncoding.EncodeToString(bytes)
+}
+
+func (b *GenerateGithubWorkflowBase) GetVersionPipelineBase64() string {
+	return base64.StdEncoding.EncodeToString([]byte(b.GetVersionPipeline()))
+}
+
+func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
+	return base64.StdEncoding.EncodeToString([]byte(b.GetDownloadPipeline()))
 }

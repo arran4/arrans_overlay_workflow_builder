@@ -10,3 +10,10 @@ type GenerateWebBinaryTemplateData struct {
 func (gwbtd *GenerateWebBinaryTemplateData) TemplateFileName() string {
 	return "web-binary.tmpl"
 }
+
+func (gwbtd *GenerateWebBinaryTemplateData) PipelineScriptBase64() string {
+	return gwbtd.GenerateGithubBinaryTemplateData.PipelineScriptBase64()
+}
+func (gwbtd *GenerateWebBinaryTemplateData) GetVersionPipeline() string {
+	return gwbtd.InputConfig.GetVersionPipeline()
+}

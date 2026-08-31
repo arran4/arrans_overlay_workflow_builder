@@ -2,10 +2,10 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
+	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"strings"
 	"testing"
 	"time"
-	"github.com/arran4/arrans_overlay_workflow_builder/util"
 )
 
 func TestSemanticGeneratedEbuildSanity(t *testing.T) {
@@ -179,7 +179,7 @@ func TestLintOutputConditionalIsPresent(t *testing.T) {
 						},
 					},
 				},
-				DownloadBaseUrl: "https://example.com/downloads/",
+				DownloadBaseUrl:     "https://example.com/downloads/",
 				CustomVersionSource: "echo 1.0.0",
 			}
 

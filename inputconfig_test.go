@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"strings"
 	"testing"
 )
 
@@ -429,5 +430,119 @@ Binary x86=>goreleaser_Linux_i386.tar.gz > goreleaser > goreleaser
 				t.Errorf("InputConfig.String() = \n%s", diff)
 			}
 		})
+	}
+}
+
+func TestGetDownloadPipeline_Legacy(t *testing.T) {
+	// Test legacy DownloadRegex mapping
+	configRegex := &InputConfig{
+		DownloadRegex:   "test-(.*)\\.tar\\.gz",
+		DownloadPageUrl: "${DOWNLOAD_PAGE_URL}",
+	}
+	expectedRegex := "get(${DOWNLOAD_PAGE_URL}) | html_links | regex(test-(.*)\\.tar\\.gz) | last"
+	if configRegex.GetDownloadPipeline() != expectedRegex {
+		t.Errorf("Expected %q, got %q", expectedRegex, configRegex.GetDownloadPipeline())
+	}
+
+	// Test legacy DownloadXPath mapping
+	configXPath := &InputConfig{
+		DownloadXPath:   ".//a",
+		DownloadPageUrl: "${DOWNLOAD_PAGE_URL}",
+	}
+	expectedXPath := "get(${DOWNLOAD_PAGE_URL}) | xml | xpath(.//a)"
+	if configXPath.GetDownloadPipeline() != expectedXPath {
+		t.Errorf("Expected %q, got %q", expectedXPath, configXPath.GetDownloadPipeline())
+	}
+}
+
+func TestWebBinaryConfigRoundTrip(t *testing.T) {
+	configStr := "Type Web Binary\n" +
+		"Category app-misc\n" +
+		"EbuildName test-bin\n" +
+		"Description A test description\n" +
+		"Homepage https://example.com/\n" +
+		"DownloadPageUrl https://example.com/downloads/\n" +
+		"DownloadBaseUrl https://example.com/downloads/base/\n" +
+		"DownloadRegex example-amd64-(.*)\\.tar\\.gz\n" +
+		"VersionPipeline get(https://example.com) | html_links | first\n" +
+		"DownloadPipeline get(https://example.com/${VERSION}) | html_links | first\n" +
+		"DownloadMatch test-amd64-(.*)\\.tar\\.gz\n" +
+		"DownloadXPath .//a\n"
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err != nil {
+		t.Fatalf("Failed to parse config: %v", err)
+	}
+
+	serialized := configs[0].String()
+
+	configs2, err2 := ParseInputConfigReader(strings.NewReader(serialized))
+	if err2 != nil {
+		t.Fatalf("Failed to parse serialized config: %v", err2)
+	}
+
+	if configs[0].String() != configs2[0].String() {
+		t.Errorf("Round trip failed.\nExpected:\n%s\nGot:\n%s", configs[0].String(), configs2[0].String())
+	}
+
+	// Explicitly check fields
+	if configs2[0].DownloadPageUrl != "https://example.com/downloads/" {
+		t.Errorf("Expected DownloadPageUrl=https://example.com/downloads/, got %q", configs2[0].DownloadPageUrl)
+	}
+	if configs2[0].DownloadBaseUrl != "https://example.com/downloads/base/" {
+		t.Errorf("Expected DownloadBaseUrl=https://example.com/downloads/base/, got %q", configs2[0].DownloadBaseUrl)
+	}
+	if configs2[0].DownloadRegex != "example-amd64-(.*)\\.tar\\.gz" {
+		t.Errorf("Expected DownloadRegex, got %q", configs2[0].DownloadRegex)
+	}
+	if configs2[0].DownloadMatch != "test-amd64-(.*)\\.tar\\.gz" {
+		t.Errorf("Expected DownloadMatch, got %q", configs2[0].DownloadMatch)
+	}
+	if configs2[0].DownloadXPath != ".//a" {
+		t.Errorf("Expected DownloadXPath, got %q", configs2[0].DownloadXPath)
+	}
+	if configs2[0].VersionPipeline != "get(https://example.com) | html_links | first" {
+		t.Errorf("Expected VersionPipeline, got %q", configs2[0].VersionPipeline)
+	}
+	if configs2[0].DownloadPipeline != "get(https://example.com/${VERSION}) | html_links | first" {
+		t.Errorf("Expected DownloadPipeline, got %q", configs2[0].DownloadPipeline)
+	}
+
+	// Check for exact duplication in serialized form
+	counts := make(map[string]int)
+	for _, line := range strings.Split(serialized, "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 2)
+		if len(parts) > 0 {
+			counts[parts[0]]++
+		}
+	}
+
+	for k, v := range counts {
+		if v > 1 {
+			t.Errorf("Duplicate serialized directive found for %s", k)
+		}
+	}
+}
+
+func TestWebAppImageVersionPipelineValidation(t *testing.T) {
+	configStr := "Type Web AppImage\n" +
+		"Category app-misc\n" +
+		"EbuildName test-appimage\n" +
+		"Description A test description\n" +
+		"Homepage https://example.com/\n" +
+		"DownloadPageUrl https://example.com/downloads/\n" +
+		"VersionPipeline get(https://example.com) | html_links | first\n"
+
+	_, err := ParseInputConfigReader(strings.NewReader(configStr))
+	if err == nil {
+		t.Fatalf("Expected parsing to fail when VersionPipeline is defined for Web AppImage")
+	}
+
+	expectedErr := "version pipeline is not supported for web appimage"
+	if !strings.Contains(err.Error(), expectedErr) {
+		t.Errorf("Expected error containing %q, got %q", expectedErr, err.Error())
 	}
 }

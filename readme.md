@@ -143,7 +143,7 @@ directory after being modified. Remember to add: `Category` with the appropriate
 
 ## Configuration Variables
 
-When defining URLs or filenames in directives like `Binary`, `Custom Download URL`, or `Download Base URL`, you can use the following variables, which the generator will automatically replace with appropriate bash variables during workflow generation:
+When defining URLs or filenames in directives like `Binary`, `Custom Download URL`, or `DownloadBaseUrl`, you can use the following variables, which the generator will automatically replace with appropriate bash variables during workflow generation:
 
 * `${TAG}` - Replaced by `${tag}` in the generated bash script. Used to represent the original release tag string.
 * `${VERSION}` - Replaced by `${version}` or `\${PV}` (in `SRC_URI`), depending on the context. Used to represent the version string (e.g. `1.2.3`).
@@ -251,3 +251,56 @@ grab the current build number, which we don't. This will remain unsupported for 
 * I will be concerned mostly with the apps of my interest, the list can be found here: https://github.com/arran4/arrans_overlay/blob/main/current.config
 * The entire `main.go` is to completely rebuilt with generated code. But until then do what is necessary but in a way which is compatible with that idea
 * I am considering generating more files such as the metadata.xml file too
+## Custom Web Extractors (Web AppImage / Web Binary)
+
+For non-GitHub releases, the generator supports the `Web AppImage` and `Web Binary` types. By default, these rely on HTML scraping or static URLs, but can be highly customized to extract dynamic versions and downloads from index pages, JSON APIs, or RSS feeds.
+
+### Pipeline Directives
+
+Instead of using Bash-dependent tools, you can use the built-in python extraction pipeline. You define pipelines in your configuration for version parsing and download resolution.
+
+* `VersionPipeline` (Web Binary only) - A chained command string used to extract all release versions from the web. Web AppImage derives versions dynamically via AppImage artifact names or `CustomVersionSource`.
+* `DownloadPipeline` - A chained command string used to extract the specific binary download URL for a given tag.
+* `Download Redirect` (AppImages only) - Resolves AppImage URLs by following `HTTP 302` redirects natively, bypassing HTML scraping.
+* `DownloadRegex` (Legacy fallback) - Equivalent to `get(URL) | html_links | regex(PATTERN) | last`.
+* `DownloadXPath` (Legacy fallback) - Not recommended, use `VersionPipeline` and `DownloadPipeline` instead.
+
+### Pipeline Syntax
+
+The extraction pipeline supports piping commands (`|`) to incrementally parse data (like jq or sed, but using python standard libraries).
+
+Available commands:
+* `get(url)` - Fetches data from a URL using `urllib`. Note: URL should be plain text, variables like `${TAG}` are injected.
+* `rss` or `atom` - Parses XML and returns a list of items/entries.
+* `json(path.to.key)` - Parses JSON data and navigates down to the specified key.
+* `html_links` - Extracts `href` attributes from HTML `<a>` tags and automatically resolves them against the fetching URL using `urljoin`.
+* `regex(pattern)` - Applies a regex pattern to extract a matching group. If applied to a list, it filters the list.
+* `link` - Extracts the `<link>` target (from RSS/Atom).
+* `url.basename` - Extracts the file path basename from a URL string.
+* `replace('search', 'replace')` - Simple string replacement using `ast.literal_eval` for parsing tuple arguments.
+* `xml` - Parses XML inputs natively for xpath extraction.
+* `xpath(query)` - Executes standard ElementTree xpath subset queries on parsed XML.
+* `first` / `last` - Grabs the first or last element of a list.
+
+### Pipeline Substitutions
+The pipeline supports native templating substitutions during workflow execution for precise resource fetching. Note that substitutions are heavily restricted depending on configuration type to enforce correct lifecycle resolution:
+* `${VERSION}`: Supported unconditionally in `Web Binary` to access the current mapped iteration version. In `Web AppImage`, it is **only** supported if `CustomVersionSource` is explicitly specified.
+* `${TAG}`: Supported natively in `Web Binary` iteration loops. **Unsupported** in `Web AppImage` pipeline generation.
+* `${RELEASE_FILENAME}`: Replaced with the evaluated architecture-specific resource filename mapping within `ExternalResources`. **Unsupported** in `Web AppImage` generation.
+
+### Example: RSS Feed Extraction
+
+For a project updating its versions via an RSS feed, you can easily extract the version by chaining `get`, `rss`, `first` and `regex`.
+
+```
+Type Web Binary
+EbuildName example-bin
+Category app-misc
+Description Example using Web Binary and RSS extraction
+Homepage https://example.com
+License MIT
+DownloadBaseUrl https://example.com/downloads/example-${VERSION}.tar.gz
+VersionPipeline get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))
+ProgramName example
+Binary amd64=>example-${VERSION}.tar.gz > example > example
+```

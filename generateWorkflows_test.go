@@ -2,8 +2,8 @@ package arrans_overlay_workflow_builder
 
 import (
 	"fmt"
-	"os/exec"
 	"github.com/stretchr/testify/require"
+	"os/exec"
 
 	"bytes"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"

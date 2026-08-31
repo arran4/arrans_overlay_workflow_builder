@@ -137,8 +137,8 @@ jobs:
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
-[[- if $.ReverseProgramsAsAlternatives ]]
-                echo -n '[[- range $use, $archs := $.ReverseProgramsAsAlternatives]][[$use | UseFlagSafe ]]? ( || ( [[range $i, $arch := $archs]][[$arch]] [[end]] ) ) [[end]]'
+[[- if $.SortedReverseProgramsAsAlternatives ]]
+                echo -n '[[- range $i, $alt := $.SortedReverseProgramsAsAlternatives]][[$alt.UseFlag | UseFlagSafe ]]? ( || ( [[range $j, $arch := $alt.Architectures]][[$arch]] [[end]] ) ) [[end]]'
 [[- end ]]
 [[- range $i, $ruse := $.RequiredUse]]
                 echo '		[[ $ruse ]]'
