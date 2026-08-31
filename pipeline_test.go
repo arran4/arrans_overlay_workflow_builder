@@ -63,7 +63,7 @@ func TestPythonPipeline(t *testing.T) {
 		{"Fail Unknown", "unknown_cmd", "", true, ""},
 		{"Fail Empty", "get(" + ts.URL + "/rss) | ", "", true, ""},
 		{"Fail Unbalanced", "get(" + ts.URL + "/rss | trim", "", true, ""},
-		{"Fail Dangling Escape", "get(" + ts.URL + "/rss) | regex(v\\\\", "", true, ""},
+		{"Fail Dangling Escape", "get(" + ts.URL + "/rss) | regex(v" + "\\", "", true, "Dangling escape in pipeline"},
 		{"Fail Replace Args", "get(" + ts.URL + "/rss) | replace('a')", "", true, ""},
 	}
 
@@ -76,6 +76,15 @@ func TestPythonPipeline(t *testing.T) {
 			if tt.fail {
 				if err == nil {
 					t.Errorf("Expected failure for %q but it succeeded. Output: %q", tt.pipeline, outStr)
+					return
+				}
+				if tt.expectedErr != "" && !strings.Contains(outStr, tt.expectedErr) {
+					t.Errorf(
+						"For %q expected error containing %q but got %q",
+						tt.pipeline,
+						tt.expectedErr,
+						outStr,
+					)
 				}
 				return
 			}
