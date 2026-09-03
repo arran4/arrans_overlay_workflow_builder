@@ -437,7 +437,7 @@ jobs:
       - discover
       - go-test
       - prepare-release-tag
-    if: ${{ needs.discover.outputs.has_go == 'true' && needs.discover.outputs.has_goreleaser == 'true' && (((github.event_name == 'push') && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-'))) }}
+    if: ${{ always() && needs.discover.result == 'success' && needs.discover.outputs.has_go == 'true' && needs.discover.outputs.has_goreleaser == 'true' && needs.route.result == 'success' && needs.go-test.result == 'success' && ( (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && (needs.prepare-release-tag.result == 'skipped' || needs.prepare-release-tag.result == 'success')) || (github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-') && needs.prepare-release-tag.result == 'success') ) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
