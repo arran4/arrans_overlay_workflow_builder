@@ -436,7 +436,8 @@ jobs:
       - route
       - discover
       - go-test
-    if: ${{ needs.discover.outputs.has_go == 'true' && needs.discover.outputs.has_goreleaser == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+      - prepare-release-tag
+    if: ${{ needs.discover.outputs.has_go == 'true' && needs.discover.outputs.has_goreleaser == 'true' && (((github.event_name == 'push') && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-'))) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -450,7 +451,8 @@ jobs:
         with:
           distribution: goreleaser
           version: ~> v2
-          args: release --clean
+          args: 'release --clean ${{ (github.event_name == ''workflow_dispatch'' && (inputs.mode == ''release-test'' || inputs.mode == ''release-rc'' || inputs.mode == ''release-alpha'')) && ''--snapshot'' || '''' }}'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ github.event_name == 'push' && github.ref_name || needs.prepare-release-tag.outputs.release_tag }}
