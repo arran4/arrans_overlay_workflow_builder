@@ -147,20 +147,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "release_tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            echo "next_version=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           MODE="${{ inputs.mode }}"
           OVERRIDE="${{ inputs.release_version_override }}"
-
-          if [[ "$MODE" == "publish-tag" ]]; then
-            echo "release_tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            echo "next_version=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
 
           git fetch --tags --force
 
@@ -235,7 +223,7 @@ jobs:
   release-context:
     name: Release Context & Gate
     needs: [route, prepare-release-tag, go-test]
-    if: ${{ !failure() && !cancelled() && needs.route.outputs.run_release == 'true' && (needs.go-test.result == 'success' || needs.go-test.result == 'skipped') }}
+    if: ${{ always() && !failure() && !cancelled() && needs.route.outputs.run_release == 'true' && (needs.go-test.result == 'success' || needs.go-test.result == 'skipped') && (needs.prepare-release-tag.result == 'success' || needs.prepare-release-tag.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -255,50 +243,54 @@ jobs:
           set -euo pipefail
 
           TAG="${{ needs.prepare-release-tag.outputs.release_tag || github.ref_name }}"
+
+          # Validate tag format against eligible release-tag policy
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]] || {
+            echo "Error: Tag '$TAG' does not match eligible release tag policy (vX.Y.Z)." >&2
+            exit 1
+          }
+
           echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
 
           if [[ "${{ github.event_name }}" == "push" ]]; then
             exit 0
-          fi
-
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.mode }}" == "publish-tag" ]]; then
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.mode }}" == "publish-tag" ]]; then
             if [[ "${{ github.ref_type }}" != "tag" ]]; then
               echo "Error: publish-tag mode invoked on a non-tag ref." >&2
               exit 1
             fi
             echo "Running in internal publisher mode; tag is immutable context."
             exit 0
-          fi
-
-          git fetch --tags --force
-          REMOTE_TAG_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
-
-          if [[ -n "$REMOTE_TAG_SHA" ]]; then
-            if [[ "$REMOTE_TAG_SHA" == "${GITHUB_SHA}" ]]; then
-              echo "Tag $TAG already exists on remote and points to the correct SHA. Continuing safely."
-            else
-              echo "Tag $TAG already exists on remote but points to a different commit ($REMOTE_TAG_SHA). Failing." >&2
-              exit 1
-            fi
           else
-            git config --global user.name "github-actions[bot]"
-            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag "$TAG" "${GITHUB_SHA}"
-            # Workaround sandbox check by splitting the word
-            git push origin "$TAG" || (
-              VERIFY_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
-              if [[ "$VERIFY_SHA" == "${GITHUB_SHA}" ]]; then
-                echo "Tag successfully verified on remote after push error."
+            git fetch --tags --force
+            REMOTE_TAG_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
+
+            if [[ -n "$REMOTE_TAG_SHA" ]]; then
+              if [[ "$REMOTE_TAG_SHA" == "${GITHUB_SHA}" ]]; then
+                echo "Tag $TAG already exists on remote and points to the correct SHA. Continuing safely."
               else
-                echo "Tag push failed and remote verification failed." >&2
+                echo "Tag $TAG already exists on remote but points to a different commit ($REMOTE_TAG_SHA). Failing." >&2
                 exit 1
               fi
-            )
-          fi
+            else
+              git config --global user.name "github-actions[bot]"
+              git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git tag "$TAG" "${GITHUB_SHA}"
+              git push origin "$TAG" || (
+                VERIFY_SHA=$(git ls-remote --tags origin "refs/tags/$TAG" | awk '{print $1}')
+                if [[ "$VERIFY_SHA" == "${GITHUB_SHA}" ]]; then
+                  echo "Tag successfully verified on remote after push error."
+                else
+                  echo "Tag push failed and remote verification failed." >&2
+                  exit 1
+                fi
+              )
+            fi
 
-          # Explicitly dispatch the publisher workflow at the new tag ref
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            gh workflow run "ci.yml" --ref "$TAG" -f mode="publish-tag"
+            # Explicitly dispatch the publisher workflow at the new tag ref
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+              gh workflow run "ci.yml" --ref "$TAG" -f mode="publish-tag"
+            fi
           fi
 
   discover:
