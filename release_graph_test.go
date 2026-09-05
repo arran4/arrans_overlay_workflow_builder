@@ -53,4 +53,28 @@ func TestReleaseGraphInvariants(t *testing.T) {
 	if strings.Contains(yamlStr, `softprops/action-gh-release`) {
 		t.Errorf("softprops/action-gh-release should not be present; GoReleaser must be sole creator")
 	}
+
+	// 8. manual workflow_dispatch modes matching release-* set run_release=true
+	if !strings.Contains(yamlStr, `if [[ "${{ inputs.mode }}" == release-* || "${{ inputs.mode }}" == "publish-tag" ]]; then
+                run_release=true
+              fi`) {
+		t.Errorf("workflow_dispatch missing run_release=true for release-* and publish-tag")
+	}
+
+	// 9. prepare-release-tag is gated to workflow_dispatch + release-*
+	if !strings.Contains(yamlStr, `if: ${{ github.event_name == 'workflow_dispatch' && startsWith(inputs.mode, 'release-') }}`) {
+		t.Errorf("prepare-release-tag missing gate for workflow_dispatch release-*")
+	}
+
+	// 10. explicit dispatch for publish-tag mode
+	if !strings.Contains(yamlStr, `gh workflow run "ci.yml" --ref "$TAG" -f mode="publish-tag"`) {
+		t.Errorf("Explicit gh workflow run dispatch missing for publish-tag")
+	}
+
+	// 11. GoReleaser cannot run on branch context directly (requires tag ref)
+	if !strings.Contains(yamlStr, `startsWith(github.ref, 'refs/tags/')`) {
+		t.Errorf("GoReleaser missing tag ref check startsWith(github.ref, 'refs/tags/')")
+	}
+
+	// 12. publish-tag is accepted by routing (checked in #8) and requires actual tag ref before publication (checked in #3 and #11)
 }
