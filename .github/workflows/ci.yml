@@ -222,8 +222,8 @@ jobs:
 
   release-context:
     name: Release Context & Gate
-    needs: [route, prepare-release-tag, go-test]
-    if: ${{ always() && !failure() && !cancelled() && needs.route.outputs.run_release == 'true' && (needs.go-test.result == 'success' || needs.go-test.result == 'skipped') && (needs.prepare-release-tag.result == 'success' || needs.prepare-release-tag.result == 'skipped') }}
+    needs: [route, discover, prepare-release-tag, go-test]
+    if: ${{ always() && !failure() && !cancelled() && needs.route.outputs.run_release == 'true' && (needs.discover.outputs.has_go != 'true' || needs.go-test.result == 'success') && (needs.prepare-release-tag.result == 'success' || needs.prepare-release-tag.result == 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
