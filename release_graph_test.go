@@ -1,7 +1,6 @@
-package main
+package arrans_overlay_workflow_builder
 
 import (
-	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -23,7 +22,7 @@ func TestReleaseGraphInvariants(t *testing.T) {
 
 	// 2. release-context allows skipped prepare-release-tag and reaches GoReleaser
 	if !strings.Contains(yamlStr, `if: ${{ always() && !failure() && !cancelled() && needs.route.outputs.run_release == 'true' && (needs.discover.outputs.has_go != 'true' || needs.go-test.result == 'success') && (needs.prepare-release-tag.result == 'success' || needs.prepare-release-tag.result == 'skipped') }}`) {
-		t.Errorf("release-context condition missing skipped prepare-release-tag handling")
+		t.Errorf("release-context condition missing skipped prepare-release-tag handling or misses go-test success validation")
 	}
 
 	// 3. publish-tag on branch is rejected via publish-tag mode invoked on a non-tag ref
@@ -50,10 +49,8 @@ func TestReleaseGraphInvariants(t *testing.T) {
 		t.Errorf("release: published must be downstream-only")
 	}
 
-    // 7. GoReleaser must be sole creator: Ensure softprops/action-gh-release is NOT present
-    if strings.Contains(yamlStr, `softprops/action-gh-release`) {
-        t.Errorf("softprops/action-gh-release should not be present; GoReleaser must be sole creator")
-    }
-
-	fmt.Println("All assertions matched yaml file")
+	// 7. GoReleaser must be sole creator: Ensure softprops/action-gh-release is NOT present
+	if strings.Contains(yamlStr, `softprops/action-gh-release`) {
+		t.Errorf("softprops/action-gh-release should not be present; GoReleaser must be sole creator")
+	}
 }
