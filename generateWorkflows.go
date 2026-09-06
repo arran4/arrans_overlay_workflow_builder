@@ -426,10 +426,16 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		}
 	}
 	if base.GlobalOverlayRepoName != "" {
-		// Valid gentoo repository names: match ^[a-zA-Z0-9_][a-zA-Z0-9_-]*$
-		matched, _ := regexp.MatchString(`^[a-zA-Z0-9_][a-zA-Z0-9_-]*$`, base.GlobalOverlayRepoName)
+		matched, _ := regexp.MatchString(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`, base.GlobalOverlayRepoName)
 		if !matched {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid name '%s'", base.GlobalOverlayRepoName)
+			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid characters in name '%s'", base.GlobalOverlayRepoName)
+		}
+		// Also must not look like a package name ending with a version.
+		// A simple heuristic for "ends in a version" which Gentoo prohibits for repo names
+		// matches -<number>(.<number>)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$
+		versionMatched, _ := regexp.MatchString(`-[0-9]+(\.[0-9]+)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$`, base.GlobalOverlayRepoName)
+		if versionMatched {
+			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot end in a valid version string '%s'", base.GlobalOverlayRepoName)
 		}
 	}
 	switch ic.Type {

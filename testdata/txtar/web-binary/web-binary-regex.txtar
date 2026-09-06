@@ -35,8 +35,6 @@ env:
   epn: google-cloud-sdk-bin
   description: "Google Cloud SDK"
   homepage: "https://cloud.google.com/sdk/"
-  github_owner:
-  github_repo: google-cloud-sdk
   keywords: ~amd64 ~arm64 ~x86
   workflow_filename: app-admin-google-cloud-sdk-bin-update.yaml
   google-cloud-cli_binary_installed_name: 'gcloud'

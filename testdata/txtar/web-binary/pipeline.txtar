@@ -33,8 +33,6 @@ env:
   epn: example-multi-bin
   description: "Example Multi Binary"
   homepage: "https://example.com/"
-  github_owner:
-  github_repo: example-multi
   keywords: ~amd64 ~arm64
   workflow_filename: app-misc-example-multi-bin-update.yaml
   example_binary_installed_name: 'example'

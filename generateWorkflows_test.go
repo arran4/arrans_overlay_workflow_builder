@@ -177,13 +177,75 @@ func TestOverlayRepoNameValidation(t *testing.T) {
 		EbuildName: "test-app",
 	}
 
-	// Valid name
-	outputDir := t.TempDir()
-	err := GenerateGithubWorkflowsFromInputConfigs("test.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptOverlayRepoName("arrans-overlay"))
-	assert.NoError(t, err)
+	tests := []struct {
+		name      string
+		repoName  string
+		wantError bool
+		errorMsg  string
+	}{
+		{
+			name:      "Valid normal name",
+			repoName:  "arrans-overlay",
+			wantError: false,
+		},
+		{
+			name:      "Valid name with underscore",
+			repoName:  "my_repo",
+			wantError: false,
+		},
+		{
+			name:      "Valid name with numbers",
+			repoName:  "repo123",
+			wantError: false,
+		},
+		{
+			name:      "Invalid starts with hyphen",
+			repoName:  "-invalid",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid characters",
+			repoName:  "my repo!",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid ends with version",
+			repoName:  "foo-1",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+		{
+			name:      "Invalid ends with version minor",
+			repoName:  "foo-1.2.3",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid ends with version revision",
+			repoName:  "foo-1-r2",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+		{
+			name:      "Invalid ends with version alpha",
+			repoName:  "foo-1_alpha1",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+	}
 
-	// Invalid name
-	err = GenerateGithubWorkflowsFromInputConfigs("test.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptOverlayRepoName("-invalid"))
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid name")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputDir := t.TempDir()
+			err := GenerateGithubWorkflowsFromInputConfigs("test.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptOverlayRepoName(tt.repoName))
+			if tt.wantError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
 }

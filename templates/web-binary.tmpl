@@ -18,8 +18,6 @@ env:
   epn: [[ .PackageName ]]
   description: [[ .Description | quoteStr ]]
   homepage: [[ .Homepage  | quoteStr ]]
-  github_owner: [[ .GithubOwner ]]
-  github_repo: [[ .GithubRepo ]]
   keywords: [[ .MaskedKeywords ]]
   workflow_filename: [[ .WorkflowFileName ]]
   [[- range $pname, $prog := .Programs ]]

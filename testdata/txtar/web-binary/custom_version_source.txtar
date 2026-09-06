@@ -32,8 +32,6 @@ env:
   epn: example-bin
   description: ""
   homepage: ""
-  github_owner:
-  github_repo: example-bin
   keywords: ~amd64
   workflow_filename: app-misc-example-bin-update.yaml
   example_binary_installed_name: 'example'

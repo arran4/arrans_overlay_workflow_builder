@@ -6,6 +6,7 @@ import (
 	"github.com/arran4/arrans_overlay_workflow_builder"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -54,9 +55,11 @@ func main() {
 		case "--generate-overlay", "-generate-overlay":
 			globalGenerateOverlay = true
 		case "--overlay-repo-name", "-overlay-repo-name":
-			if i+1 < len(os.Args) {
+			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
 				globalOverlayRepoName = os.Args[i+1]
 				i++
+			} else {
+				log.Fatalf("missing required value for flag %s", arg)
 			}
 		default:
 			newArgs = append(newArgs, arg)
