@@ -21,6 +21,7 @@ type MainArgConfig struct {
 	Date             string
 	GenerateMd5Cache bool
 	GenerateOverlay  bool
+	OverlayRepoName  string
 }
 
 func valueOrDefault(v *string) string {
@@ -40,6 +41,7 @@ func main() {
 	var globalGenerateMd5Cache bool
 	// A workaround for global flags being parsed before the command is parsed
 	var globalGenerateOverlay bool
+	var globalOverlayRepoName string
 	var newArgs []string
 	if len(os.Args) > 0 {
 		newArgs = append(newArgs, os.Args[0])
@@ -51,6 +53,11 @@ func main() {
 			globalGenerateMd5Cache = true
 		case "--generate-overlay", "-generate-overlay":
 			globalGenerateOverlay = true
+		case "--overlay-repo-name", "-overlay-repo-name":
+			if i+1 < len(os.Args) {
+				globalOverlayRepoName = os.Args[i+1]
+				i++
+			}
 		default:
 			newArgs = append(newArgs, arg)
 		}
@@ -58,6 +65,7 @@ func main() {
 	os.Args = newArgs
 	config.GenerateMd5Cache = globalGenerateMd5Cache
 	config.GenerateOverlay = globalGenerateOverlay
+	config.OverlayRepoName = globalOverlayRepoName
 
 	if err := fs.Parse(os.Args); err != nil {
 		log.Printf("Flag parse error: %s", err)
@@ -167,6 +175,9 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 		}
 		if config.GenerateOverlay {
 			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
+		}
+		if config.OverlayRepoName != "" {
+			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(config.OverlayRepoName))
 		}
 
 		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version, opts...)
@@ -558,6 +569,9 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) e
 		if config.GenerateOverlay {
 			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
 		}
+		if config.OverlayRepoName != "" {
+			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(config.OverlayRepoName))
+		}
 		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
@@ -598,6 +612,9 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) err
 		if config.GenerateOverlay {
 			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
 		}
+		if config.OverlayRepoName != "" {
+			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(config.OverlayRepoName))
+		}
 		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
@@ -635,6 +652,9 @@ func (mac *CmdOneshotArgConfig) cmdOneshotWebAppImage(args []string) error {
 		}
 		if config.GenerateOverlay {
 			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
+		}
+		if config.OverlayRepoName != "" {
+			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(config.OverlayRepoName))
 		}
 		return arrans_overlay_workflow_builder.CmdOneshotWebAppImage(*config.PageUrl, *config.MatchExpr, valueOrDefault(config.Extension), *config.OutputDir, config.Version, opts...)
 	default:
@@ -744,6 +764,9 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseCmakeSource(args []string
 		}
 		if config.GenerateOverlay {
 			opts = append(opts, arrans_overlay_workflow_builder.OptGenerateOverlay(true))
+		}
+		if config.OverlayRepoName != "" {
+			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(config.OverlayRepoName))
 		}
 		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseCmakeSource(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:

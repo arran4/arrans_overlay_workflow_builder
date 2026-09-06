@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -319,6 +320,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 
 type OptGenerateMd5Cache bool
 type OptGenerateOverlay bool
+type OptOverlayRepoName string
 
 type GenerateGithubWorkflowBase struct {
 	*InputConfig
@@ -329,6 +331,11 @@ type GenerateGithubWorkflowBase struct {
 
 	GlobalGenerateMd5Cache bool
 	GlobalGenerateOverlay  bool
+	GlobalOverlayRepoName  string
+}
+
+func (b *GenerateGithubWorkflowBase) GetOverlayRepoName() string {
+	return b.GlobalOverlayRepoName
 }
 
 func (b *GenerateGithubWorkflowBase) Cron() string {
@@ -414,6 +421,15 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 			base.GlobalGenerateMd5Cache = bool(o)
 		case OptGenerateOverlay:
 			base.GlobalGenerateOverlay = bool(o)
+		case OptOverlayRepoName:
+			base.GlobalOverlayRepoName = string(o)
+		}
+	}
+	if base.GlobalOverlayRepoName != "" {
+		// Valid gentoo repository names: match ^[a-zA-Z0-9_][a-zA-Z0-9_-]*$
+		matched, _ := regexp.MatchString(`^[a-zA-Z0-9_][a-zA-Z0-9_-]*$`, base.GlobalOverlayRepoName)
+		if !matched {
+			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid name '%s'", base.GlobalOverlayRepoName)
 		}
 	}
 	switch ic.Type {

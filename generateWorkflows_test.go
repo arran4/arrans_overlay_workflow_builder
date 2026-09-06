@@ -169,3 +169,21 @@ func TestBashOverlayNameNormalization(t *testing.T) {
 		})
 	}
 }
+
+func TestOverlayRepoNameValidation(t *testing.T) {
+	inputConfig := &InputConfig{
+		Type:       "Github Binary Release",
+		Category:   "app-misc",
+		EbuildName: "test-app",
+	}
+
+	// Valid name
+	outputDir := t.TempDir()
+	err := GenerateGithubWorkflowsFromInputConfigs("test.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptOverlayRepoName("arrans-overlay"))
+	assert.NoError(t, err)
+
+	// Invalid name
+	err = GenerateGithubWorkflowsFromInputConfigs("test.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptOverlayRepoName("-invalid"))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid name")
+}

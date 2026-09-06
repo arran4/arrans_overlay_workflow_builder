@@ -165,10 +165,14 @@ jobs:
         run: |
           mkdir -p profiles metadata
           if [ ! -f profiles/repo_name ]; then
+[[- if .GetOverlayRepoName ]]
+            echo "[[ .GetOverlayRepoName ]]" > profiles/repo_name
+[[- else ]]
             repo_name="${GITHUB_REPOSITORY#*/}"
             repo_name="${repo_name//./_}"
             repo_name="${repo_name/#-/_}"
             echo "${repo_name}" > profiles/repo_name
+[[- end ]]
           fi
           if [ ! -f profiles/eapi ]; then
             echo "8" > profiles/eapi
@@ -195,10 +199,14 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p profiles metadata
           if [ ! -f profiles/repo_name ]; then
+[[- if .GetOverlayRepoName ]]
+            echo "[[ .GetOverlayRepoName ]]" > profiles/repo_name
+[[- else ]]
             repo_name="${GITHUB_REPOSITORY#*/}"
             repo_name="${repo_name//./_}"
             repo_name="${repo_name/#-/_}"
             echo "${repo_name}" > profiles/repo_name
+[[- end ]]
           fi
           if [ ! -f profiles/eapi ]; then
             echo "8" > profiles/eapi

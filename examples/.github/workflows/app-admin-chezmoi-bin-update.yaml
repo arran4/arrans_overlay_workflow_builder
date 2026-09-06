@@ -1,4 +1,4 @@
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder dev Github Binary Release examples/example.config 2026-08-13 00:00:00 +0000 UTC
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder dev Github Binary Release examples/example.config 2026-09-06 10:20:44.727889114 +0000 UTC m=+0.006290926
 
 name: app-admin/chezmoi-bin update
 
@@ -107,7 +107,7 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
+                echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
