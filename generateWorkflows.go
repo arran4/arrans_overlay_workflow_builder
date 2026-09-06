@@ -331,11 +331,18 @@ type GenerateGithubWorkflowBase struct {
 
 	GlobalGenerateMd5Cache bool
 	GlobalGenerateOverlay  bool
-	GlobalOverlayRepoName  string
+	GlobalOverlayRepoName  *string
 }
 
 func (b *GenerateGithubWorkflowBase) GetOverlayRepoName() string {
-	return b.GlobalOverlayRepoName
+	if b.GlobalOverlayRepoName == nil {
+		return ""
+	}
+	return *b.GlobalOverlayRepoName
+}
+
+func (b *GenerateGithubWorkflowBase) HasOverlayRepoName() bool {
+	return b.GlobalOverlayRepoName != nil
 }
 
 func (b *GenerateGithubWorkflowBase) Cron() string {
@@ -422,20 +429,24 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		case OptGenerateOverlay:
 			base.GlobalGenerateOverlay = bool(o)
 		case OptOverlayRepoName:
-			base.GlobalOverlayRepoName = string(o)
+			v := string(o)
+			base.GlobalOverlayRepoName = &v
 		}
 	}
-	if base.GlobalOverlayRepoName != "" {
-		matched, _ := regexp.MatchString(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`, base.GlobalOverlayRepoName)
+	if base.GlobalOverlayRepoName != nil {
+		if *base.GlobalOverlayRepoName == "" {
+			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot be empty")
+		}
+		matched, _ := regexp.MatchString(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`, *base.GlobalOverlayRepoName)
 		if !matched {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid characters in name '%s'", base.GlobalOverlayRepoName)
+			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid characters in name '%s'", *base.GlobalOverlayRepoName)
 		}
 		// Also must not look like a package name ending with a version.
 		// A simple heuristic for "ends in a version" which Gentoo prohibits for repo names
 		// matches -<number>(.<number>)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$
-		versionMatched, _ := regexp.MatchString(`-[0-9]+(\.[0-9]+)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$`, base.GlobalOverlayRepoName)
+		versionMatched, _ := regexp.MatchString(`-[0-9]+(\.[0-9]+)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$`, *base.GlobalOverlayRepoName)
 		if versionMatched {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot end in a valid version string '%s'", base.GlobalOverlayRepoName)
+			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot end in a valid version string '%s'", *base.GlobalOverlayRepoName)
 		}
 	}
 	switch ic.Type {

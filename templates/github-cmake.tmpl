@@ -165,7 +165,7 @@ jobs:
         run: |
           mkdir -p profiles metadata
           if [ ! -f profiles/repo_name ]; then
-[[- if .GetOverlayRepoName ]]
+[[- if .HasOverlayRepoName ]]
             echo "[[ .GetOverlayRepoName ]]" > profiles/repo_name
 [[- else ]]
             repo_name="${GITHUB_REPOSITORY#*/}"
@@ -199,7 +199,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p profiles metadata
           if [ ! -f profiles/repo_name ]; then
-[[- if .GetOverlayRepoName ]]
+[[- if .HasOverlayRepoName ]]
             echo "[[ .GetOverlayRepoName ]]" > profiles/repo_name
 [[- else ]]
             repo_name="${GITHUB_REPOSITORY#*/}"

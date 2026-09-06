@@ -234,6 +234,12 @@ func TestOverlayRepoNameValidation(t *testing.T) {
 			wantError: true,
 			errorMsg:  "cannot end in a valid version string",
 		},
+		{
+			name:      "Invalid empty explicit name",
+			repoName:  "",
+			wantError: true,
+			errorMsg:  "cannot be empty",
+		},
 	}
 
 	for _, tt := range tests {
