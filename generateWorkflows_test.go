@@ -169,3 +169,207 @@ func TestBashOverlayNameNormalization(t *testing.T) {
 		})
 	}
 }
+
+// Helper function to render a given template
+func renderTestTemplate(t *testing.T, templateType string, useExplicitRepoName bool, repoName string) string {
+	ic := &InputConfig{
+		Type:             templateType,
+		GithubProjectUrl: "https://github.com/owner/repo/",
+		EbuildName:       "test-app",
+		Category:         "app-misc",
+		Description:      "Test app",
+		Homepage:         "https://example.com",
+		Features:         map[string]string{"Generate Overlay": ""},
+	}
+
+	switch templateType {
+	case "Web AppImage", "Web Binary":
+		ic.DownloadPageUrl = "https://example.com/download"
+		ic.DownloadMatch = ".*"
+		ic.DownloadBaseUrl = "https://example.com/download/${VERSION}"
+		ic.VersionPipeline = "get(https://example.com) | regex(v.*)"
+	}
+
+	err := ic.Validate()
+	assert.NoError(t, err)
+
+	now := time.Now()
+	base := &GenerateGithubWorkflowBase{
+		Version:               "1.0.0",
+		Now:                   now,
+		ConfigFile:            "test.config",
+		InputConfig:           ic,
+		GlobalGenerateOverlay: true,
+	}
+
+	if useExplicitRepoName {
+		base.GlobalOverlayRepoName = &repoName
+	}
+
+	var data interface{}
+
+	switch ic.Type {
+	case "Github AppImage Release":
+		data = &GenerateGithubAppImageTemplateData{
+			GenerateGithubWorkflowBase: base,
+		}
+	case "Web AppImage":
+		data = &GenerateWebAppImageTemplateData{
+			GenerateGithubAppImageTemplateData: &GenerateGithubAppImageTemplateData{
+				GenerateGithubWorkflowBase: base,
+			},
+		}
+	case "Github Binary Release":
+		data = &GenerateGithubBinaryTemplateData{
+			GenerateGithubWorkflowBase: base,
+		}
+	case "Github Cmake Release":
+		data = &GenerateGithubCmakeTemplateData{
+			GenerateGithubWorkflowBase: base,
+		}
+	case "Web Binary":
+		data = &GenerateWebBinaryTemplateData{
+			GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
+				GenerateGithubWorkflowBase: base,
+			},
+		}
+	default:
+		t.Fatalf("Unknown template type: %s", ic.Type)
+	}
+
+	templates, err := ParseWorkflowTemplates()
+	assert.NoError(t, err)
+
+	tmpl := templates.Lookup(data.(interface{ TemplateFileName() string }).TemplateFileName())
+	assert.NotNil(t, tmpl, "Template not found")
+
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, data)
+	assert.NoError(t, err)
+
+	return buf.String()
+}
+
+func TestSemanticGenerateOverlayRender(t *testing.T) {
+	templateFamilies := []string{
+		"Github AppImage Release",
+		"Github Binary Release",
+		"Github Cmake Release",
+		"Web AppImage",
+		"Web Binary",
+	}
+
+	for _, family := range templateFamilies {
+		t.Run(family, func(t *testing.T) {
+			// 1. Explicit name replaces fallback entirely
+			outExplicit := renderTestTemplate(t, family, true, "arrans-overlay")
+			assert.Contains(t, outExplicit, "echo \"arrans-overlay\" > profiles/repo_name")
+			assert.NotContains(t, outExplicit, "repo_name=\"${GITHUB_REPOSITORY#*/}\"")
+
+			// Guard condition must be present
+			assert.Contains(t, outExplicit, "if [ ! -f profiles/repo_name ]; then")
+
+			// Check provenance
+			if family != "Github Cmake Release" {
+				assert.Contains(t, outExplicit, "echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'")
+			}
+			assert.NotContains(t, outExplicit, "https://github.com/arran4/arrans_overlay/blob/main")
+
+			// 2. Missing explicit name defaults to GITHUB_REPOSITORY fallback and normalization
+			outFallback := renderTestTemplate(t, family, false, "")
+			assert.Contains(t, outFallback, "repo_name=\"${GITHUB_REPOSITORY#*/}\"")
+			assert.Contains(t, outFallback, "repo_name=\"${repo_name//./_}\"")
+			assert.Contains(t, outFallback, "repo_name=\"${repo_name/#-/_}\"")
+			assert.Contains(t, outFallback, "echo \"${repo_name}\" > profiles/repo_name")
+
+			// Guard condition must be present
+			assert.Contains(t, outFallback, "if [ ! -f profiles/repo_name ]; then")
+		})
+	}
+}
+
+func TestOverlayRepoNameValidation(t *testing.T) {
+	inputConfig := &InputConfig{
+		Type:       "Github Binary Release",
+		Category:   "app-misc",
+		EbuildName: "test-app",
+	}
+
+	tests := []struct {
+		name      string
+		repoName  string
+		wantError bool
+		errorMsg  string
+	}{
+		{
+			name:      "Valid normal name",
+			repoName:  "arrans-overlay",
+			wantError: false,
+		},
+		{
+			name:      "Valid name with underscore",
+			repoName:  "my_repo",
+			wantError: false,
+		},
+		{
+			name:      "Valid name with numbers",
+			repoName:  "repo123",
+			wantError: false,
+		},
+		{
+			name:      "Invalid empty explicit name",
+			repoName:  "",
+			wantError: true,
+			errorMsg:  "cannot be empty",
+		},
+		{
+			name:      "Invalid starts with hyphen",
+			repoName:  "-invalid",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid characters",
+			repoName:  "my repo!",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid ends with version",
+			repoName:  "foo-1",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+		{
+			name:      "Invalid ends with version minor",
+			repoName:  "foo-1.2.3",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid ends with version revision",
+			repoName:  "foo-1-r2",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+		{
+			name:      "Invalid ends with version alpha",
+			repoName:  "foo-1_alpha1",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputDir := t.TempDir()
+			err := GenerateGithubWorkflowsFromInputConfigs("test.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptOverlayRepoName(tt.repoName))
+			if tt.wantError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

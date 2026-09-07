@@ -33,8 +33,6 @@ env:
   epn: example-multi-bin
   description: "Example Multi Binary"
   homepage: "https://example.com/"
-  github_owner:
-  github_repo: example-multi
   keywords: ~amd64 ~arm64
   workflow_filename: app-misc-example-multi-bin-update.yaml
   example_binary_installed_name: 'example'
@@ -132,7 +130,7 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
+                echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""

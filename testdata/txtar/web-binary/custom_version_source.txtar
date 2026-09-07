@@ -32,8 +32,6 @@ env:
   epn: example-bin
   description: ""
   homepage: ""
-  github_owner:
-  github_repo: example-bin
   keywords: ~amd64
   workflow_filename: app-misc-example-bin-update.yaml
   example_binary_installed_name: 'example'
@@ -100,7 +98,7 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
+                echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""

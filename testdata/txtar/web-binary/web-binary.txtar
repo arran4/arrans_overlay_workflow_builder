@@ -36,8 +36,6 @@ env:
   epn: google-cloud-sdk-bin
   description: "Google Cloud SDK"
   homepage: "https://cloud.google.com/sdk/"
-  github_owner:
-  github_repo: google-cloud-sdk
   keywords: ~amd64 ~arm64 ~x86
   workflow_filename: app-admin-google-cloud-sdk-bin-update.yaml
   google-cloud-cli_binary_installed_name: 'gcloud'
@@ -109,7 +107,7 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Generated via: https://github.com/arran4/arrans_overlay/blob/main/.github/workflows/${{ env.workflow_filename }}'
+                echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
