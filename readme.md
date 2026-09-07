@@ -304,3 +304,7 @@ VersionPipeline get(https://example.com/feed.xml) | rss | first | link | url.bas
 ProgramName example
 Binary amd64=>example-${VERSION}.tar.gz > example > example
 ```
+
+## Testing
+
+This repository includes a deterministic, hermetic smoke test suite in `smoke_test.go`. The test harness renders the actual workflow templates, parses the yaml, substitutes github environment bindings, and executes the generated bash scripts natively within a stubbed shell context (`$PATH` is overridden). This proves that the templated paths function accurately from ebuild synthesis up through metadata and commit generation. When adding new template workflows or complicated edge conditions, consider adding a new scenario block to the smoke harness.
