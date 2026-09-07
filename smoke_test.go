@@ -47,13 +47,13 @@ func setupHermeticEnvironment(t *testing.T) (string, func()) {
 
 	// Prepend binDir to PATH
 	origPath := os.Getenv("PATH")
-	os.Setenv("PATH", binDir+":"+origPath)
+	t.Setenv("PATH", binDir+":"+origPath)
 
 	// We need a fake $GITHUB_OUTPUT file
 	githubOutput := filepath.Join(tempDir, "github_output.txt")
-	os.Setenv("GITHUB_OUTPUT", githubOutput)
-	os.Setenv("GITHUB_REPOSITORY", "test/test")
-	os.Setenv("RUNNER_TEMP", tempDir)
+	t.Setenv("GITHUB_OUTPUT", githubOutput)
+	t.Setenv("GITHUB_REPOSITORY", "test/test")
+	t.Setenv("RUNNER_TEMP", tempDir)
 
 	mockCommand(t, binDir, "gh", `#!/bin/bash
 if [[ "$1" == "api" && "$2" == "repos/test/test/releases" ]]; then
@@ -92,14 +92,7 @@ echo "git called with: $@"
 echo "wget called with: $@"
 `)
 
-	cleanup := func() {
-		os.Setenv("PATH", origPath)
-		os.Unsetenv("GITHUB_OUTPUT")
-		os.Unsetenv("GITHUB_REPOSITORY")
-		os.Unsetenv("RUNNER_TEMP")
-	}
-
-	return tempDir, cleanup
+	return tempDir, func() {}
 }
 
 func TestSmokeEndToEndExecution_GithubBinary(t *testing.T) {
