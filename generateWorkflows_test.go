@@ -271,7 +271,7 @@ func TestSemanticGenerateOverlayRender(t *testing.T) {
 
 			// Check provenance
 			if family != "Github Cmake Release" {
-			    assert.Contains(t, outExplicit, "echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'")
+				assert.Contains(t, outExplicit, "echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'")
 			}
 			assert.NotContains(t, outExplicit, "https://github.com/arran4/arrans_overlay/blob/main")
 
@@ -284,6 +284,92 @@ func TestSemanticGenerateOverlayRender(t *testing.T) {
 
 			// Guard condition must be present
 			assert.Contains(t, outFallback, "if [ ! -f profiles/repo_name ]; then")
+		})
+	}
+}
+
+func TestOverlayRepoNameValidation(t *testing.T) {
+	inputConfig := &InputConfig{
+		Type:       "Github Binary Release",
+		Category:   "app-misc",
+		EbuildName: "test-app",
+	}
+
+	tests := []struct {
+		name      string
+		repoName  string
+		wantError bool
+		errorMsg  string
+	}{
+		{
+			name:      "Valid normal name",
+			repoName:  "arrans-overlay",
+			wantError: false,
+		},
+		{
+			name:      "Valid name with underscore",
+			repoName:  "my_repo",
+			wantError: false,
+		},
+		{
+			name:      "Valid name with numbers",
+			repoName:  "repo123",
+			wantError: false,
+		},
+		{
+			name:      "Invalid empty explicit name",
+			repoName:  "",
+			wantError: true,
+			errorMsg:  "cannot be empty",
+		},
+		{
+			name:      "Invalid starts with hyphen",
+			repoName:  "-invalid",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid characters",
+			repoName:  "my repo!",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid ends with version",
+			repoName:  "foo-1",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+		{
+			name:      "Invalid ends with version minor",
+			repoName:  "foo-1.2.3",
+			wantError: true,
+			errorMsg:  "invalid characters",
+		},
+		{
+			name:      "Invalid ends with version revision",
+			repoName:  "foo-1-r2",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+		{
+			name:      "Invalid ends with version alpha",
+			repoName:  "foo-1_alpha1",
+			wantError: true,
+			errorMsg:  "cannot end in a valid version string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputDir := t.TempDir()
+			err := GenerateGithubWorkflowsFromInputConfigs("test.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptOverlayRepoName(tt.repoName))
+			if tt.wantError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errorMsg)
+			} else {
+				assert.NoError(t, err)
+			}
 		})
 	}
 }
