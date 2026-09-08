@@ -55,12 +55,12 @@ func setupHermeticEnvironment(t *testing.T) (string, func()) {
 	t.Setenv("RUNNER_TEMP", tempDir)
 
 	mockCommand(t, binDir, "gh", `#!/bin/bash
-if [[ "$1" == "api" && "$2" == "repos/test/test/releases" ]]; then
+if [[ "$1" == "api" && "$2" == "repos/test/test/releases" && "$3" == "--jq" && "$4" == '.[]? | select(type=="object" and has("tag_name")) | .tag_name' ]]; then
 	echo 'v1.0.0'
 	echo 'v2.0.0'
 else
 	echo "Unknown gh command: $@" >&2
-	return 1
+	exit 1
 fi
 `)
 
@@ -81,7 +81,7 @@ elif [[ "$1" == "manifest" && "$2" == "upsert-from-url" ]]; then
 	echo "$@" >> "${RUNNER_TEMP}/g2_manifest_log.txt"
 else
 	echo "Unknown g2 command: $@" >&2
-	return 1
+	exit 1
 fi
 `)
 
@@ -178,12 +178,14 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 						t.Errorf("Expected ebuild to contain arm64 USE condition but it didn't:\n%s", ebuildContent)
 					}
 
-					// Ensure SRC_URI has the resolved variables and not placeholders
-					if !strings.Contains(string(ebuildContent), "test-v1.0.0-linux-amd64") {
-						t.Errorf("Expected ebuild to have distinct amd64 asset name, but got:\n%s", ebuildContent)
+					// Ensure SRC_URI has the exact resolved URLs
+					expectedAmd64URI := "amd64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> ${P}-test-v1.0.0-linux-amd64  )"
+					if !strings.Contains(string(ebuildContent), expectedAmd64URI) {
+						t.Errorf("Expected ebuild to have exact amd64 SRC_URI: %q, but got:\n%s", expectedAmd64URI, ebuildContent)
 					}
-					if !strings.Contains(string(ebuildContent), "test-v1.0.0-linux-arm64") {
-						t.Errorf("Expected ebuild to have distinct arm64 asset name, but got:\n%s", ebuildContent)
+					expectedArm64URI := "arm64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> ${P}-test-v1.0.0-linux-arm64  )"
+					if !strings.Contains(string(ebuildContent), expectedArm64URI) {
+						t.Errorf("Expected ebuild to have exact arm64 SRC_URI: %q, but got:\n%s", expectedArm64URI, ebuildContent)
 					}
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
@@ -221,16 +223,16 @@ func TestSmokeEndToEndExecution_WebBinary(t *testing.T) {
 
 	binDir := filepath.Join(tempDir, "bin")
 	mockCommand(t, binDir, "python3", `#!/bin/bash
-if [[ "$1" == "$RUNNER_TEMP/g2-pipeline.py" ]]; then
+if [[ "$1" == "$RUNNER_TEMP/g2-pipeline.py" && -n "$2" ]]; then
 	echo "2.0.0"
 else
 	echo "Unknown python3 command: $@" >&2
-	return 1
+	exit 1
 fi
 `)
 
 	configString := `Type Web Binary
-DownloadBaseUrl https://example.com/download/${VERSION}/test-${VERSION}.tar.gz
+DownloadBaseUrl https://example.com/download/${VERSION}/
 EbuildName test-bin
 Category app-admin
 Description Test
@@ -298,17 +300,12 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
-					if err != nil && !os.IsNotExist(err) {
-						t.Errorf("Failed to read g2 log: %v", err)
-					}
-					if logData != nil {
-						logStr := string(logData)
-						if !strings.Contains(logStr, "https://example.com/download/2.0.0/test-2.0.0.tar.gz") {
-							t.Errorf("Expected g2 manifest upsert with resolved DownloadBaseUrl, log:\n%s", logStr)
-						}
-						if !strings.Contains(logStr, "test-bin-2.0.0-test-2.0.0.tar.gz") {
-							t.Errorf("Expected g2 manifest upsert with resolved distfile name, log:\n%s", logStr)
-						}
+					require.NoError(t, err, "g2 manifest log must exist")
+					logStr := string(logData)
+
+					expectedCall := "manifest upsert-from-url https://example.com/download/2.0.0/2.0.0 test-bin-2.0.0-test-2.0.0.tar.gz ./app-admin/test-bin/Manifest"
+					if !strings.Contains(logStr, expectedCall) {
+						t.Errorf("Expected g2 manifest upsert exact call for web binary: %q\nGot log:\n%s", expectedCall, logStr)
 					}
 
 					outData, err := os.ReadFile(os.Getenv("GITHUB_OUTPUT"))
