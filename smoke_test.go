@@ -190,17 +190,46 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
-					if err != nil && !os.IsNotExist(err) {
-						t.Errorf("Failed to read g2 log: %v", err)
+					require.NoError(t, err, "g2 manifest log must exist")
+
+					logLines := strings.Split(strings.TrimSpace(string(logData)), "\n")
+
+					// Filter out empty lines to get accurate count
+					var validLines []string
+					for _, line := range logLines {
+						if strings.TrimSpace(line) != "" {
+							validLines = append(validLines, line)
+						}
 					}
-					if logData != nil {
-						logStr := string(logData)
-						if !strings.Contains(logStr, "test-bin-1.0.0-test-v1.0.0-linux-amd64") {
-							t.Errorf("Expected g2 manifest upsert with amd64 distfile name, log:\n%s", logStr)
+
+					if len(validLines) != 2 {
+						t.Errorf("Expected exactly 2 g2 manifest calls, got %d. Log:\n%s", len(validLines), string(logData))
+					}
+
+					expectedAmd64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-amd64 ./app-admin/test-bin/Manifest"
+
+					foundAmd64 := false
+					for _, line := range logLines {
+						if strings.TrimSpace(line) == expectedAmd64Call {
+							foundAmd64 = true
+							break
 						}
-						if !strings.Contains(logStr, "test-bin-1.0.0-test-v1.0.0-linux-arm64") {
-							t.Errorf("Expected g2 manifest upsert with arm64 distfile name, log:\n%s", logStr)
+					}
+					if !foundAmd64 {
+						t.Errorf("Expected g2 manifest upsert exact call for amd64: %q\nGot log:\n%s", expectedAmd64Call, string(logData))
+					}
+
+					expectedArm64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-arm64 ./app-admin/test-bin/Manifest"
+
+					foundArm64 := false
+					for _, line := range logLines {
+						if strings.TrimSpace(line) == expectedArm64Call {
+							foundArm64 = true
+							break
 						}
+					}
+					if !foundArm64 {
+						t.Errorf("Expected g2 manifest upsert exact call for arm64: %q\nGot log:\n%s", expectedArm64Call, string(logData))
 					}
 				}
 
