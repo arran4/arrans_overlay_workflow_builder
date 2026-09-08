@@ -117,7 +117,7 @@ def execute_pipeline(pipeline_str):
                     sys.exit(1)
                 else:
                     data = data[0]
-            elif not data:
+            elif data is None or data == "":
                 print("Error: exactly_one/single expected 1 item, got 0", file=sys.stderr)
                 sys.exit(1)
         elif cmd == 'first':
