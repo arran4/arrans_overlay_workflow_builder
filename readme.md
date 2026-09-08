@@ -280,7 +280,8 @@ Available commands:
 * `replace('search', 'replace')` - Simple string replacement using `ast.literal_eval` for parsing tuple arguments.
 * `xml` - Parses XML inputs natively for xpath extraction.
 * `xpath(query)` - Executes standard ElementTree xpath subset queries on parsed XML.
-* `first` / `last` - Grabs the first or last element of a list.
+* `first` / `last` - Grabs the first or last element of a list. When an ambiguous count matches, exactly `1` element is selected depending on orientation.
+* `exactly_one` / `single` - Selects exactly one element. Throws a clear fatal error if ambiguous (multiple matches) or missing (zero matches) are found, enforcing a strict cardinality constraint instead of selecting an arbitrary element.
 
 ### Pipeline Substitutions
 The pipeline supports native templating substitutions during workflow execution for precise resource fetching. Note that substitutions are heavily restricted depending on configuration type to enforce correct lifecycle resolution:
@@ -303,6 +304,24 @@ DownloadBaseUrl https://example.com/downloads/example-${VERSION}.tar.gz
 VersionPipeline get(https://example.com/feed.xml) | rss | first | link | url.basename | regex(v(.*))
 ProgramName example
 Binary amd64=>example-${VERSION}.tar.gz > example > example
+```
+
+### Example: Strict Ordinary-HTTP HTML Extraction
+
+For a static site where you are extracting versions from the index path strings, it is highly recommended to use `exactly_one` to immediately catch regressions instead of quietly returning arbitrary components from upstream HTML changes. If there are no matches, it will fail gracefully with `exactly_one/single expected 1 item, got 0`. If there are multiple releases published simultaneously, it will fail with `exactly_one/single expected 1 item, got X`.
+
+```
+Type Web Binary
+EbuildName which-browser-bin
+Category www-client
+Description Example which_browser implementation
+Homepage https://which-browser.site
+License MIT
+DownloadBaseUrl https://which-browser.site/downloads/v${VERSION}/${RELEASE_FILENAME}
+VersionPipeline get(https://which-browser.site/downloads/) | html_links | regex(which_browser-(.*?)-linux\.deb) | exactly_one
+Workaround Version Replacement => s/\+/_p/g
+ProgramName which-browser
+Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
 ```
 
 ## Testing

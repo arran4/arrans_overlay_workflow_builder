@@ -28,7 +28,6 @@ func resolveGithubEnv(script string) string {
 	script = strings.ReplaceAll(script, "${{ github.sha }}", "123456")
 	script = strings.ReplaceAll(script, "${{ github.ref }}", "refs/heads/main")
 
-
 	return script
 }
 

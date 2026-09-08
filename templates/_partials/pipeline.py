@@ -107,6 +107,19 @@ def execute_pipeline(pipeline_str):
             except Exception as e:
                 print(f"Error executing xpath: {e}", file=sys.stderr)
                 sys.exit(1)
+        elif cmd in ('single', 'exactly_one'):
+            if isinstance(data, list):
+                if len(data) == 0:
+                    print("Error: exactly_one/single expected 1 item, got 0", file=sys.stderr)
+                    sys.exit(1)
+                elif len(data) > 1:
+                    print(f"Error: exactly_one/single expected 1 item, got {len(data)}: {data}", file=sys.stderr)
+                    sys.exit(1)
+                else:
+                    data = data[0]
+            elif not data:
+                print("Error: exactly_one/single expected 1 item, got 0", file=sys.stderr)
+                sys.exit(1)
         elif cmd == 'first':
             data = data[0] if data and isinstance(data, list) else data
         elif cmd == 'last':
