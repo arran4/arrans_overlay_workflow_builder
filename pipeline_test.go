@@ -72,6 +72,9 @@ func TestPythonPipeline(t *testing.T) {
 		{"Exactly one fail 2 items list", "get(" + ts.URL + "/html) | html_links | exactly_one", "", true, "exactly_one/single expected 1 item, got 2:"},
 		{"Single success list", "get(" + ts.URL + "/rss) | rss | first | link | url.basename | single", "v1.0.tar.gz", false, ""},
 		{"Single fail 2 items list", "get(" + ts.URL + "/html) | html_links | single", "", true, "exactly_one/single expected 1 item, got 2:"},
+		{"Exactly one legitimately false scalar", "get(" + ts.URL + "/json) | replace('{\"releases\": [{\"tag\": \"v2.0\"}]}', '0') | exactly_one", "0", false, ""},
+		{"Exactly one legitimately false string", "get(" + ts.URL + "/json) | replace('{\"releases\": [{\"tag\": \"v2.0\"}]}', 'false') | exactly_one", "false", false, ""},
+		{"Exactly one empty string", "get(" + ts.URL + "/json) | replace('{\"releases\": [{\"tag\": \"v2.0\"}]}', '') | exactly_one", "", true, "exactly_one/single expected 1 item, got 0"},
 	}
 
 	for _, tt := range tests {
