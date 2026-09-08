@@ -55,7 +55,7 @@ func setupHermeticEnvironment(t *testing.T) (string, func()) {
 	t.Setenv("RUNNER_TEMP", tempDir)
 
 	mockCommand(t, binDir, "gh", `#!/bin/bash
-if [[ "$1" == "api" && "$2" == "repos/test/test/releases" && "$3" == "--jq" && "$4" == '.[]? | select(type=="object" and has("tag_name")) | .tag_name' ]]; then
+if [[ "$#" -eq 4 && "$1" == "api" && "$2" == "repos/test/test/releases" && "$3" == "--jq" && "$4" == '.[]? | select(type=="object" and has("tag_name")) | .tag_name' ]]; then
 	echo 'v1.0.0'
 	echo 'v2.0.0'
 else
@@ -223,7 +223,8 @@ func TestSmokeEndToEndExecution_WebBinary(t *testing.T) {
 
 	binDir := filepath.Join(tempDir, "bin")
 	mockCommand(t, binDir, "python3", `#!/bin/bash
-if [[ "$1" == "$RUNNER_TEMP/g2-pipeline.py" && -n "$2" ]]; then
+EXPECTED_CMD="get(https://example.com) | rss"
+if [[ "$#" -eq 2 && "$1" == "$RUNNER_TEMP/g2-pipeline.py" && "$2" == "$EXPECTED_CMD" ]]; then
 	echo "2.0.0"
 else
 	echo "Unknown python3 command: $@" >&2
@@ -301,11 +302,33 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
 					require.NoError(t, err, "g2 manifest log must exist")
-					logStr := string(logData)
+
+					logLines := strings.Split(strings.TrimSpace(string(logData)), "\n")
+
+					// Filter out empty lines to get accurate count
+					var validLines []string
+					for _, line := range logLines {
+						if strings.TrimSpace(line) != "" {
+							validLines = append(validLines, line)
+						}
+					}
+
+					if len(validLines) != 1 {
+						t.Errorf("Expected exactly 1 g2 manifest call, got %d. Log:\n%s", len(validLines), string(logData))
+					}
 
 					expectedCall := "manifest upsert-from-url https://example.com/download/2.0.0/2.0.0 test-bin-2.0.0-test-2.0.0.tar.gz ./app-admin/test-bin/Manifest"
-					if !strings.Contains(logStr, expectedCall) {
-						t.Errorf("Expected g2 manifest upsert exact call for web binary: %q\nGot log:\n%s", expectedCall, logStr)
+
+					found := false
+					for _, line := range logLines {
+						if strings.Contains(line, expectedCall) {
+							found = true
+							break
+						}
+					}
+
+					if !found {
+						t.Errorf("Expected g2 manifest upsert exact call for web binary: %q\nGot log:\n%s", expectedCall, string(logData))
 					}
 
 					outData, err := os.ReadFile(os.Getenv("GITHUB_OUTPUT"))
