@@ -2,6 +2,8 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -243,6 +245,115 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 			}
 		}
 	}
+}
+
+func TestSmokeEndToEndExecution_WebBinary_WhichBrowser(t *testing.T) {
+	tempDir, cleanup := setupHermeticEnvironment(t)
+	defer cleanup()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`<html><body><a href="downloads/v0.2.6/which_browser-0.2.6+44-linux.deb">download</a></body></html>`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+
+	configString := `Type Web Binary
+EbuildName which-browser-bin
+Category www-client
+Description Test Web Binary
+Homepage https://example.com
+License MIT
+DownloadBaseUrl ` + ts.URL + `/downloads/v${VERSION}/
+VersionPipeline get(` + ts.URL + `/) | html_links | regex(which_browser-(.*?)-linux\.deb) | exactly_one
+DownloadPipeline get(` + ts.URL + `/) | html_links | regex(which_browser-.*-linux\.deb) | exactly_one
+Workaround Version Replacement => s/\+/_p/g
+ProgramName which-browser
+Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	base := &GenerateGithubWorkflowBase{InputConfig: configs[0]}
+	data := &GenerateWebBinaryTemplateData{
+		GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
+			GenerateGithubWorkflowBase: base,
+		},
+	}
+	data.Programs = map[string]*Program{
+		"which-browser": {
+			ProgramName: "which-browser",
+			Binary: map[string][]string{
+				"amd64": {"downloads/v${VERSION}/which_browser-${VERSION}-linux.deb", "which_browser", "which-browser"},
+			},
+		},
+	}
+
+	tmpl, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "web-binary.tmpl", data)
+	require.NoError(t, err)
+
+	yamlOutput := buf.String()
+
+	binDir := filepath.Join(tempDir, "bin")
+
+	cwd, _ := os.Getwd()
+	mockCommand(t, binDir, "python3", `#!/bin/bash
+exec /usr/bin/python3 "`+filepath.Join(cwd, "templates", "_partials", "pipeline.py")+`" "${@:2}"
+`)
+
+	workflow := make(map[string]interface{})
+	err = yaml.Unmarshal([]byte(yamlOutput), &workflow)
+	require.NoError(t, err)
+
+	var processReleasesScript string
+	jobs := workflow["jobs"].(map[string]interface{})
+	for _, jobInterface := range jobs {
+		job := jobInterface.(map[string]interface{})
+		steps := job["steps"].([]interface{})
+		for _, stepInterface := range steps {
+			step := stepInterface.(map[string]interface{})
+			if step["name"] == "Process each release" || step["name"] == "Process releases" {
+				processReleasesScript = step["run"].(string)
+				break
+			}
+		}
+	}
+
+	processReleasesScript = resolveGithubEnv(processReleasesScript)
+	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_archived_name_amd64 }}", "which_browser")
+	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_installed_name }}", "which-browser")
+
+	// Overwrite default resolveGithubEnv variables that apply specifically here
+	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.epn }}", "which-browser-bin")
+	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.ecn }}", "www-client")
+
+	t.Setenv("RUNNER_TEMP", tempDir)
+	t.Setenv("GITHUB_ENV", filepath.Join(tempDir, "github_env"))
+	t.Setenv("GITHUB_OUTPUT", filepath.Join(tempDir, "github_output"))
+
+	err = os.WriteFile(filepath.Join(tempDir, "github_env"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	cmd := exec.Command("bash", "-c", processReleasesScript)
+	cmd.Dir = tempDir
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		t.Logf("Process release script failed with output: %s\nScript:\n%s", string(out), processReleasesScript)
+	}
+	require.NoError(t, err, "Process release script failed: %s", string(out))
+
+	require.Contains(t, string(out), "Content changed or new version for 0.2.6_p44")
+	require.Contains(t, string(out), "g2 manifest called")
 }
 
 func TestSmokeEndToEndExecution_WebBinary(t *testing.T) {
