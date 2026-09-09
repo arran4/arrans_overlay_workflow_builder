@@ -305,9 +305,27 @@ Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
 
 	binDir := filepath.Join(tempDir, "bin")
 
-	cwd, _ := os.Getwd()
 	mockCommand(t, binDir, "python3", `#!/bin/bash
-exec /usr/bin/python3 "`+filepath.Join(cwd, "templates", "_partials", "pipeline.py")+`" "${@:2}"
+exec /usr/bin/python3 "$1" "${@:2}"
+`)
+
+	mockCommand(t, binDir, "g2", `#!/bin/bash
+if [[ "$1" == "metadata" ]]; then
+	echo "g2 metadata called"
+	touch "${@: -1}"
+elif [[ "$1" == "ebuild" && "$2" == "next-revision" ]]; then
+	echo "${@: -1}"
+elif [[ "$1" == "ebuild" && "$2" == "deduplicate" ]]; then
+	echo "g2 deduplicate called"
+elif [[ "$1" == "cache" && "$2" == "generate" ]]; then
+	echo "g2 cache generate called"
+elif [[ "$1" == "manifest" && "$2" == "upsert-from-url" ]]; then
+	echo "g2 manifest called"
+	echo "$@" >> "${RUNNER_TEMP}/g2_manifest_log.txt"
+else
+	echo "Unknown g2 command: $@" >&2
+	exit 1
+fi
 `)
 
 	workflow := make(map[string]interface{})
