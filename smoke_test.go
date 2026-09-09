@@ -15,12 +15,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func resolveGithubEnv(script string) string {
+func resolveGithubEnvForPackage(script, category, packageName string) string {
 	script = strings.ReplaceAll(script, "${{secrets.GITHUB_TOKEN}}", "test-token")
 	script = strings.ReplaceAll(script, "${{ env.github_owner }}", "test")
 	script = strings.ReplaceAll(script, "${{ env.github_repo }}", "test")
-	script = strings.ReplaceAll(script, "${{ env.ecn }}", "app-admin")
-	script = strings.ReplaceAll(script, "${{ env.epn }}", "test-bin")
+	script = strings.ReplaceAll(script, "${{ env.ecn }}", category)
+	script = strings.ReplaceAll(script, "${{ env.epn }}", packageName)
 	script = strings.ReplaceAll(script, "${{ env.description }}", "Test")
 	script = strings.ReplaceAll(script, "${{ env.homepage }}", "https://www.test.io/")
 	script = strings.ReplaceAll(script, "${{ env.keywords }}", "amd64")
@@ -29,8 +29,11 @@ func resolveGithubEnv(script string) string {
 	script = strings.ReplaceAll(script, "${{ github.repository }}", "test/test")
 	script = strings.ReplaceAll(script, "${{ github.sha }}", "123456")
 	script = strings.ReplaceAll(script, "${{ github.ref }}", "refs/heads/main")
-
 	return script
+}
+
+func resolveGithubEnv(script string) string {
+	return resolveGithubEnvForPackage(script, "app-admin", "test-bin")
 }
 
 func mockCommand(t *testing.T, binDir string, name string, content string) {
@@ -262,14 +265,14 @@ func TestSmokeEndToEndExecution_WebBinary_WhichBrowser(t *testing.T) {
 	defer ts.Close()
 
 	configString := `Type Web Binary
-EbuildName test-bin
-Category app-admin
+EbuildName which-browser-bin
+Category www-client
 Description Test Web Binary
 Homepage https://example.com
 License MIT
 DownloadBaseUrl ` + ts.URL + `/downloads/v${VERSION}/
-VersionPipeline get(` + ts.URL + `/) | html_links | regex(which_browser-(.*?)-linux[.]deb) | exactly_one
-DownloadPipeline get(` + ts.URL + `/) | html_links | regex(.*/downloads/v0[.]2[.]6/which_browser-0[.]2[.]6[+]44-linux[.]deb$) | exactly_one
+VersionPipeline get(` + ts.URL + `/) | html_links | regex(which_browser-([^/]+)-linux[.]deb$) | exactly_one
+DownloadPipeline get(` + ts.URL + `/) | html_links | regex(.*/downloads/v[^/]+/which_browser-[^/]+-linux[.]deb$) | exactly_one
 Workaround Version Replacement => s/\+/_p/g
 ProgramName which-browser
 Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
@@ -346,13 +349,9 @@ fi
 		}
 	}
 
-	processReleasesScript = resolveGithubEnv(processReleasesScript)
+	processReleasesScript = resolveGithubEnvForPackage(processReleasesScript, "www-client", "which-browser-bin")
 	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_archived_name_amd64 }}", "which_browser")
 	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_installed_name }}", "which-browser")
-
-	// Overwrite default resolveGithubEnv variables that apply specifically here
-	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.epn }}", "test-bin")
-	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.ecn }}", "app-admin")
 
 	t.Setenv("RUNNER_TEMP", tempDir)
 	t.Setenv("GITHUB_ENV", filepath.Join(tempDir, "github_env"))
@@ -373,15 +372,24 @@ fi
 	require.Contains(t, string(out), "Content changed or new version for 0.2.6_p44")
 	require.Contains(t, string(out), "g2 manifest called")
 
-	ebuildPath := filepath.Join(tempDir, "app-admin", "test-bin", "test-bin-0.2.6_p44.ebuild")
+	ebuildPath := filepath.Join(tempDir, "www-client", "which-browser-bin", "which-browser-bin-0.2.6_p44.ebuild")
 	ebuildContent, err := os.ReadFile(ebuildPath)
 	require.NoError(t, err, "Ebuild should have been generated")
-	require.Contains(t, string(ebuildContent), ts.URL+"/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb", "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
+	require.Contains(t, string(ebuildContent), ts.URL+"/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb -> ${P}-which_browser-0.2.6+44-linux.deb", "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
 
 	manifestLogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 	manifestLogContent, err := os.ReadFile(manifestLogPath)
 	require.NoError(t, err)
-	require.Contains(t, string(manifestLogContent), "upsert-from-url "+ts.URL+"/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb", "g2 manifest must receive exact resolved URL")
+
+	logLines := strings.Split(strings.TrimSpace(string(manifestLogContent)), "\n")
+	var validLines []string
+	for _, line := range logLines {
+		if strings.TrimSpace(line) != "" {
+			validLines = append(validLines, line)
+		}
+	}
+	require.Equal(t, 1, len(validLines), "g2 manifest should be called exactly once")
+	require.Equal(t, "manifest upsert-from-url "+ts.URL+"/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb which-browser-bin-0.2.6_p44-which_browser-0.2.6+44-linux.deb ./www-client/which-browser-bin/Manifest", strings.TrimSpace(validLines[0]), "g2 manifest must receive exact resolved URL and expected distfile mapping")
 }
 
 func TestSmokeEndToEndExecution_WebBinary(t *testing.T) {
