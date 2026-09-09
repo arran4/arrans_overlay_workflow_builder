@@ -319,7 +319,7 @@ Homepage https://which-browser.site
 License MIT
 DownloadBaseUrl https://which-browser.site/downloads/v${VERSION}/
 VersionPipeline get(https://which-browser.site/downloads/) | html_links | regex(which_browser-(.*?)-linux[.]deb) | exactly_one
-DownloadPipeline get(https://which-browser.site/downloads/v${VERSION}/) | html_links | regex(which_browser-0[.]2[.]6[+]44-linux[.]deb) | exactly_one
+DownloadPipeline get(https://which-browser.site/downloads/v${VERSION}/) | html_links | regex(.*/downloads/v0[.]2[.]6/which_browser-0[.]2[.]6[+]44-linux[.]deb$) | exactly_one
 Workaround Version Replacement => s/\+/_p/g
 ProgramName which-browser
 Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
