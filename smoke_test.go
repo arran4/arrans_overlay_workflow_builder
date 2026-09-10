@@ -2,6 +2,8 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,12 +15,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func resolveGithubEnv(script string) string {
+func resolveGithubEnvForPackage(script, category, packageName string) string {
 	script = strings.ReplaceAll(script, "${{secrets.GITHUB_TOKEN}}", "test-token")
 	script = strings.ReplaceAll(script, "${{ env.github_owner }}", "test")
 	script = strings.ReplaceAll(script, "${{ env.github_repo }}", "test")
-	script = strings.ReplaceAll(script, "${{ env.ecn }}", "app-admin")
-	script = strings.ReplaceAll(script, "${{ env.epn }}", "test-bin")
+	script = strings.ReplaceAll(script, "${{ env.ecn }}", category)
+	script = strings.ReplaceAll(script, "${{ env.epn }}", packageName)
 	script = strings.ReplaceAll(script, "${{ env.description }}", "Test")
 	script = strings.ReplaceAll(script, "${{ env.homepage }}", "https://www.test.io/")
 	script = strings.ReplaceAll(script, "${{ env.keywords }}", "amd64")
@@ -27,9 +29,11 @@ func resolveGithubEnv(script string) string {
 	script = strings.ReplaceAll(script, "${{ github.repository }}", "test/test")
 	script = strings.ReplaceAll(script, "${{ github.sha }}", "123456")
 	script = strings.ReplaceAll(script, "${{ github.ref }}", "refs/heads/main")
-
-
 	return script
+}
+
+func resolveGithubEnv(script string) string {
+	return resolveGithubEnvForPackage(script, "app-admin", "test-bin")
 }
 
 func mockCommand(t *testing.T, binDir string, name string, content string) {
@@ -244,6 +248,148 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 			}
 		}
 	}
+}
+
+func TestSmokeEndToEndExecution_WebBinary_WhichBrowser(t *testing.T) {
+	tempDir, cleanup := setupHermeticEnvironment(t)
+	defer cleanup()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`<html><body><a href="downloads/v0.2.6/which_browser-0.2.6+44-linux.deb">download</a></body></html>`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer ts.Close()
+
+	configString := `Type Web Binary
+EbuildName which-browser-bin
+Category www-client
+Description Test Web Binary
+Homepage https://example.com
+License MIT
+DownloadBaseUrl ` + ts.URL + `/downloads/v${VERSION}/
+VersionPipeline get(` + ts.URL + `/) | html_links | regex(which_browser-([^/]+)-linux[.]deb$) | exactly_one
+DownloadPipeline get(` + ts.URL + `/) | html_links | regex(.*/downloads/v[^/]+/which_browser-[^/]+-linux[.]deb$) | exactly_one
+Workaround Version Replacement => s/\+/_p/g
+ProgramName which-browser
+Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	base := &GenerateGithubWorkflowBase{InputConfig: configs[0]}
+	data := &GenerateWebBinaryTemplateData{
+		GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
+			GenerateGithubWorkflowBase: base,
+		},
+	}
+	data.Programs = map[string]*Program{
+		"which-browser": {
+			ProgramName: "which-browser",
+			Binary: map[string][]string{
+				"amd64": {"which_browser-${TAG}-linux.deb", "which_browser", "which-browser"},
+			},
+		},
+	}
+
+	tmpl, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	var buf bytes.Buffer
+	err = tmpl.ExecuteTemplate(&buf, "web-binary.tmpl", data)
+	require.NoError(t, err)
+
+	yamlOutput := buf.String()
+
+	binDir := filepath.Join(tempDir, "bin")
+
+	mockCommand(t, binDir, "python3", `#!/bin/bash
+exec /usr/bin/python3 "$1" "${@:2}"
+`)
+
+	mockCommand(t, binDir, "g2", `#!/bin/bash
+if [[ "$1" == "metadata" ]]; then
+	echo "g2 metadata called"
+	touch "${@: -1}"
+elif [[ "$1" == "ebuild" && "$2" == "next-revision" ]]; then
+	echo "${@: -1}"
+elif [[ "$1" == "ebuild" && "$2" == "deduplicate" ]]; then
+	echo "g2 deduplicate called"
+elif [[ "$1" == "cache" && "$2" == "generate" ]]; then
+	echo "g2 cache generate called"
+elif [[ "$1" == "manifest" && "$2" == "upsert-from-url" ]]; then
+	echo "g2 manifest called"
+	echo "$@" >> "${RUNNER_TEMP}/g2_manifest_log.txt"
+else
+	echo "Unknown g2 command: $@" >&2
+	exit 1
+fi
+`)
+
+	workflow := make(map[string]interface{})
+	err = yaml.Unmarshal([]byte(yamlOutput), &workflow)
+	require.NoError(t, err)
+
+	var processReleasesScript string
+	jobs := workflow["jobs"].(map[string]interface{})
+	for _, jobInterface := range jobs {
+		job := jobInterface.(map[string]interface{})
+		steps := job["steps"].([]interface{})
+		for _, stepInterface := range steps {
+			step := stepInterface.(map[string]interface{})
+			if step["name"] == "Process each release" || step["name"] == "Process releases" {
+				processReleasesScript = step["run"].(string)
+				break
+			}
+		}
+	}
+
+	processReleasesScript = resolveGithubEnvForPackage(processReleasesScript, "www-client", "which-browser-bin")
+	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_archived_name_amd64 }}", "which_browser")
+	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_installed_name }}", "which-browser")
+
+	t.Setenv("RUNNER_TEMP", tempDir)
+	t.Setenv("GITHUB_ENV", filepath.Join(tempDir, "github_env"))
+	t.Setenv("GITHUB_OUTPUT", filepath.Join(tempDir, "github_output"))
+
+	err = os.WriteFile(filepath.Join(tempDir, "github_env"), []byte(""), 0644)
+	require.NoError(t, err)
+
+	cmd := exec.Command("bash", "-c", processReleasesScript)
+	cmd.Dir = tempDir
+	out, err := cmd.CombinedOutput()
+
+	if err != nil {
+		t.Logf("Process release script failed with output: %s\nScript:\n%s", string(out), processReleasesScript)
+	}
+	require.NoError(t, err, "Process release script failed: %s", string(out))
+
+	require.Contains(t, string(out), "Content changed or new version for 0.2.6_p44")
+	require.Contains(t, string(out), "g2 manifest called")
+
+	ebuildPath := filepath.Join(tempDir, "www-client", "which-browser-bin", "which-browser-bin-0.2.6_p44.ebuild")
+	ebuildContent, err := os.ReadFile(ebuildPath)
+	require.NoError(t, err, "Ebuild should have been generated")
+	require.Contains(t, string(ebuildContent), ts.URL+"/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb -> ${P}-which_browser-0.2.6+44-linux.deb", "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
+
+	manifestLogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
+	manifestLogContent, err := os.ReadFile(manifestLogPath)
+	require.NoError(t, err)
+
+	logLines := strings.Split(strings.TrimSpace(string(manifestLogContent)), "\n")
+	var validLines []string
+	for _, line := range logLines {
+		if strings.TrimSpace(line) != "" {
+			validLines = append(validLines, line)
+		}
+	}
+	require.Equal(t, 1, len(validLines), "g2 manifest should be called exactly once")
+	require.Equal(t, "manifest upsert-from-url "+ts.URL+"/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb which-browser-bin-0.2.6_p44-which_browser-0.2.6+44-linux.deb ./www-client/which-browser-bin/Manifest", strings.TrimSpace(validLines[0]), "g2 manifest must receive exact resolved URL and expected distfile mapping")
 }
 
 func TestSmokeEndToEndExecution_WebBinary(t *testing.T) {

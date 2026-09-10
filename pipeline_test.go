@@ -65,6 +65,16 @@ func TestPythonPipeline(t *testing.T) {
 		{"Fail Unbalanced", "get(" + ts.URL + "/rss | trim", "", true, ""},
 		{"Fail Dangling Escape", "get(" + ts.URL + "/rss) | regex(v" + "\\", "", true, "Dangling escape in pipeline"},
 		{"Fail Replace Args", "get(" + ts.URL + "/rss) | replace('a')", "", true, ""},
+		{"Exactly one success string", "get(" + ts.URL + "/rss) | replace('tar.gz', 'zip') | exactly_one", "<rss><channel><item><link>http://example.com/v1.0.zip</link></item></channel></rss>", false, ""},
+		{"Exactly one success list", "get(" + ts.URL + "/rss) | rss | first | link | url.basename | exactly_one", "v1.0.tar.gz", false, ""},
+		{"Exactly one fail 0 items list", "get(" + ts.URL + "/json) | json(releases) | regex(notfound) | exactly_one", "", true, "exactly_one/single expected 1 item, got 0"},
+		{"Exactly one fail 0 items string", "get(" + ts.URL + "/json) | json(releases) | regex(notfound) | first | exactly_one", "", true, "exactly_one/single expected 1 item, got 0"},
+		{"Exactly one fail 2 items list", "get(" + ts.URL + "/html) | html_links | exactly_one", "", true, "exactly_one/single expected 1 item, got 2:"},
+		{"Single success list", "get(" + ts.URL + "/rss) | rss | first | link | url.basename | single", "v1.0.tar.gz", false, ""},
+		{"Single fail 2 items list", "get(" + ts.URL + "/html) | html_links | single", "", true, "exactly_one/single expected 1 item, got 2:"},
+		{"Exactly one legitimately false scalar", "get(" + ts.URL + "/json) | replace('{\"releases\": [{\"tag\": \"v2.0\"}]}', '0') | exactly_one", "0", false, ""},
+		{"Exactly one legitimately false string", "get(" + ts.URL + "/json) | replace('{\"releases\": [{\"tag\": \"v2.0\"}]}', 'false') | exactly_one", "false", false, ""},
+		{"Exactly one empty string", "get(" + ts.URL + "/json) | replace('{\"releases\": [{\"tag\": \"v2.0\"}]}', '') | exactly_one", "", true, "exactly_one/single expected 1 item, got 0"},
 	}
 
 	for _, tt := range tests {
