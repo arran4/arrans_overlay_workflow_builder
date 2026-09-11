@@ -216,11 +216,10 @@ jobs:
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p profiles metadata
-          if [ ! -f profiles/repo_name ]; then
-            repo_name="${GITHUB_REPOSITORY#*/}"
-            repo_name="${repo_name//./_}"
-            repo_name="${repo_name/#-/_}"
-            echo "${repo_name}" > profiles/repo_name
+          if [ -f profiles/repo_name ]; then
+            :
+          else
+            echo "::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled."
           fi
           if [ ! -f profiles/eapi ]; then
             echo "8" > profiles/eapi

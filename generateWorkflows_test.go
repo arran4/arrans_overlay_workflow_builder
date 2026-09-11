@@ -3,7 +3,9 @@ package arrans_overlay_workflow_builder
 import (
 	"fmt"
 	"github.com/stretchr/testify/require"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	"bytes"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
@@ -171,7 +173,7 @@ func TestBashOverlayNameNormalization(t *testing.T) {
 }
 
 // Helper function to render a given template
-func renderTestTemplate(t *testing.T, templateType string, useExplicitRepoName bool, repoName string) string {
+func renderTestTemplate(t *testing.T, templateType string, useExplicitRepoName bool, repoName string, upsert bool) string {
 	ic := &InputConfig{
 		Type:             templateType,
 		GithubProjectUrl: "https://github.com/owner/repo/",
@@ -180,6 +182,10 @@ func renderTestTemplate(t *testing.T, templateType string, useExplicitRepoName b
 		Description:      "Test app",
 		Homepage:         "https://example.com",
 		Features:         map[string]string{"Generate Overlay": ""},
+	}
+
+	if upsert {
+		ic.Features["Upsert Overlay Repo Name"] = ""
 	}
 
 	switch templateType {
@@ -261,13 +267,13 @@ func TestSemanticGenerateOverlayRender(t *testing.T) {
 
 	for _, family := range templateFamilies {
 		t.Run(family, func(t *testing.T) {
-			// 1. Explicit name replaces fallback entirely
-			outExplicit := renderTestTemplate(t, family, true, "arrans-overlay")
+			// 1. Explicit name + explicit upsert replaces fallback entirely
+			outExplicit := renderTestTemplate(t, family, true, "arrans-overlay", true)
 			assert.Contains(t, outExplicit, "echo \"arrans-overlay\" > profiles/repo_name")
 			assert.NotContains(t, outExplicit, "repo_name=\"${GITHUB_REPOSITORY#*/}\"")
 
 			// Guard condition must be present
-			assert.Contains(t, outExplicit, "if [ ! -f profiles/repo_name ]; then")
+			assert.Contains(t, outExplicit, "if [ -f profiles/repo_name ]; then")
 
 			// Check provenance
 			if family != "Github Cmake Release" {
@@ -275,19 +281,43 @@ func TestSemanticGenerateOverlayRender(t *testing.T) {
 			}
 			assert.NotContains(t, outExplicit, "https://github.com/arran4/arrans_overlay/blob/main")
 
-			// 2. Missing explicit name defaults to GITHUB_REPOSITORY fallback and normalization
-			outFallback := renderTestTemplate(t, family, false, "")
+			// 2. Missing explicit name + explicit upsert defaults to GITHUB_REPOSITORY fallback and normalization
+			outFallback := renderTestTemplate(t, family, false, "", true)
 			assert.Contains(t, outFallback, "repo_name=\"${GITHUB_REPOSITORY#*/}\"")
 			assert.Contains(t, outFallback, "repo_name=\"${repo_name//./_}\"")
 			assert.Contains(t, outFallback, "repo_name=\"${repo_name/#-/_}\"")
 			assert.Contains(t, outFallback, "echo \"${repo_name}\" > profiles/repo_name")
 
 			// Guard condition must be present
-			assert.Contains(t, outFallback, "if [ ! -f profiles/repo_name ]; then")
+			assert.Contains(t, outFallback, "if [ -f profiles/repo_name ]; then")
+
+			// 3. Default + existing file => untouched
+			outUntouched := renderTestTemplate(t, family, false, "", false)
+			assert.Contains(t, outUntouched, "if [ -f profiles/repo_name ]; then")
+			assert.Contains(t, outUntouched, "echo \"::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled.\"")
+
+			// 4. Configured canonical identity without upsert => no mutation
+			outNoUpsertConfigured := renderTestTemplate(t, family, true, "arrans-overlay", false)
+			assert.Contains(t, outNoUpsertConfigured, "if [ -f profiles/repo_name ]; then")
+			assert.Contains(t, outNoUpsertConfigured, "if [ \"$(cat profiles/repo_name)\" != \"arrans-overlay\" ]; then")
+			assert.Contains(t, outNoUpsertConfigured, "echo \"::warning title=profiles/repo_name mismatch::Configured canonical overlay identity 'arrans-overlay' does not match existing profiles/repo_name '$(cat profiles/repo_name)' - leaving existing file untouched.\"")
+			assert.Contains(t, outNoUpsertConfigured, "echo \"::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled.\"")
+
+			// 5. Configured canonical identity differing from existing file + explicit upsert => warning and no overwrite
+			outMismatchWithUpsert := renderTestTemplate(t, family, true, "arrans-overlay", true)
+			assert.Contains(t, outMismatchWithUpsert, "if [ \"$(cat profiles/repo_name)\" != \"arrans-overlay\" ]; then")
+			assert.Contains(t, outMismatchWithUpsert, "echo \"::warning title=profiles/repo_name mismatch::Configured canonical overlay identity 'arrans-overlay' does not match existing profiles/repo_name '$(cat profiles/repo_name)' - leaving existing file untouched.\"")
+
+			// 6. Existing file untouched + fallback normalization + explicit upsert (simulating execution path conceptually via template)
+			outFallbackWithUpsert := renderTestTemplate(t, family, false, "", true)
+			assert.Contains(t, outFallbackWithUpsert, "if [ -f profiles/repo_name ]; then")
+			assert.Contains(t, outFallbackWithUpsert, "repo_name=\"${GITHUB_REPOSITORY#*/}\"")
+			assert.Contains(t, outFallbackWithUpsert, "repo_name=\"${repo_name//./_}\"")
+			assert.Contains(t, outFallbackWithUpsert, "repo_name=\"${repo_name/#-/_}\"")
+			assert.Contains(t, outFallbackWithUpsert, "echo \"${repo_name}\" > profiles/repo_name")
 		})
 	}
 }
-
 func TestOverlayRepoNameValidation(t *testing.T) {
 	inputConfig := &InputConfig{
 		Type:       "Github Binary Release",
@@ -372,4 +402,32 @@ func TestOverlayRepoNameValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOptUpsertOverlayRepoNamePlumbing(t *testing.T) {
+	inputConfig := &InputConfig{
+		Type:       "Github Binary Release",
+		Category:   "app-misc",
+		EbuildName: "test-app",
+		Features:   map[string]string{"Generate Overlay": ""},
+	}
+
+	outputDir := t.TempDir()
+
+	// 1. Without OptUpsertOverlayRepoName
+	err := GenerateGithubWorkflowsFromInputConfigs("test1.config", []*InputConfig{inputConfig}, outputDir, "1.0.0")
+	assert.NoError(t, err)
+
+	b1, err := os.ReadFile(filepath.Join(outputDir, "app-misc-test-app-update.yaml"))
+	assert.NoError(t, err)
+	assert.Contains(t, string(b1), "echo \"::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled.\"")
+
+	// 2. With OptUpsertOverlayRepoName
+	err = GenerateGithubWorkflowsFromInputConfigs("test2.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptUpsertOverlayRepoName(true))
+	assert.NoError(t, err)
+
+	b2, err := os.ReadFile(filepath.Join(outputDir, "app-misc-test-app-update.yaml"))
+	assert.NoError(t, err)
+	assert.NotContains(t, string(b2), "echo \"::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled.\"")
+	assert.Contains(t, string(b2), "repo_name=\"${GITHUB_REPOSITORY#*/}\"")
 }

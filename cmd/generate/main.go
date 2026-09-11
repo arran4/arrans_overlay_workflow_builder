@@ -17,12 +17,13 @@ var (
 )
 
 type MainArgConfig struct {
-	Version          string
-	Commit           string
-	Date             string
-	GenerateMd5Cache bool
-	GenerateOverlay  bool
-	OverlayRepoName  *string
+	Version               string
+	Commit                string
+	Date                  string
+	GenerateMd5Cache      bool
+	GenerateOverlay       bool
+	OverlayRepoName       *string
+	UpsertOverlayRepoName bool
 }
 
 func valueOrDefault(v *string) string {
@@ -44,6 +45,7 @@ func main() {
 	var globalGenerateOverlay bool
 	var globalOverlayRepoName string
 	var globalOverlayRepoNameSet bool
+	var globalUpsertOverlayRepoName bool
 	var newArgs []string
 	if len(os.Args) > 0 {
 		newArgs = append(newArgs, os.Args[0])
@@ -55,6 +57,8 @@ func main() {
 			globalGenerateMd5Cache = true
 		case "--generate-overlay", "-generate-overlay":
 			globalGenerateOverlay = true
+		case "--upsert-overlay-repo-name", "-upsert-overlay-repo-name":
+			globalUpsertOverlayRepoName = true
 		case "--overlay-repo-name", "-overlay-repo-name":
 			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
 				globalOverlayRepoName = os.Args[i+1]
@@ -73,6 +77,7 @@ func main() {
 	os.Args = newArgs
 	config.GenerateMd5Cache = globalGenerateMd5Cache
 	config.GenerateOverlay = globalGenerateOverlay
+	config.UpsertOverlayRepoName = globalUpsertOverlayRepoName
 	if globalOverlayRepoNameSet {
 		config.OverlayRepoName = &globalOverlayRepoName
 	}
@@ -188,6 +193,9 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 		}
 		if config.OverlayRepoName != nil {
 			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(*config.OverlayRepoName))
+		}
+		if config.UpsertOverlayRepoName {
+			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
 		}
 
 		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version, opts...)
@@ -582,6 +590,9 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseAppImage(args []string) e
 		if config.OverlayRepoName != nil {
 			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(*config.OverlayRepoName))
 		}
+		if config.UpsertOverlayRepoName {
+			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
+		}
 		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseAppImage(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
@@ -625,6 +636,9 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseBinary(args []string) err
 		if config.OverlayRepoName != nil {
 			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(*config.OverlayRepoName))
 		}
+		if config.UpsertOverlayRepoName {
+			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
+		}
 		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseBinary(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
@@ -665,6 +679,9 @@ func (mac *CmdOneshotArgConfig) cmdOneshotWebAppImage(args []string) error {
 		}
 		if config.OverlayRepoName != nil {
 			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(*config.OverlayRepoName))
+		}
+		if config.UpsertOverlayRepoName {
+			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
 		}
 		return arrans_overlay_workflow_builder.CmdOneshotWebAppImage(*config.PageUrl, *config.MatchExpr, valueOrDefault(config.Extension), *config.OutputDir, config.Version, opts...)
 	default:
@@ -777,6 +794,9 @@ func (mac *CmdOneshotArgConfig) cmdOneshotGithubReleaseCmakeSource(args []string
 		}
 		if config.OverlayRepoName != nil {
 			opts = append(opts, arrans_overlay_workflow_builder.OptOverlayRepoName(*config.OverlayRepoName))
+		}
+		if config.UpsertOverlayRepoName {
+			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
 		}
 		return arrans_overlay_workflow_builder.CmdOneshotGithubReleaseCmakeSource(*config.GithubUrl, *config.SelectedVersionTag, *config.TagPrefix, *config.OutputDir, config.Version, opts...)
 	default:

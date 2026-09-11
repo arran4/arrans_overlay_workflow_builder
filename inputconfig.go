@@ -1346,6 +1346,14 @@ func (ic *InputConfig) FeatureGenerateOverlay() bool {
 	return ok
 }
 
+func (ic *InputConfig) FeatureUpsertOverlayRepoName() bool {
+	if ic.Features == nil {
+		return false
+	}
+	_, ok := ic.Features["Upsert Overlay Repo Name"]
+	return ok
+}
+
 func (ic *InputConfig) GetVersionPipeline() string {
 	if ic.VersionPipeline != "" {
 		return ic.VersionPipeline
