@@ -433,6 +433,8 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		case OptOverlayRepoName:
 			v := string(o)
 			base.GlobalOverlayRepoName = &v
+		case OptUpsertOverlayRepoName:
+			base.GlobalUpsertOverlayRepoName = bool(o)
 		}
 	}
 	if base.GlobalOverlayRepoName != nil {
