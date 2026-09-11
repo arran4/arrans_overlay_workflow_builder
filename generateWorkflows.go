@@ -321,6 +321,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 type OptGenerateMd5Cache bool
 type OptGenerateOverlay bool
 type OptOverlayRepoName string
+type OptUpsertOverlayRepoName bool
 
 type GenerateGithubWorkflowBase struct {
 	*InputConfig
@@ -329,9 +330,10 @@ type GenerateGithubWorkflowBase struct {
 	ConfigFile string
 	Schedule   string
 
-	GlobalGenerateMd5Cache bool
-	GlobalGenerateOverlay  bool
-	GlobalOverlayRepoName  *string
+	GlobalGenerateMd5Cache      bool
+	GlobalGenerateOverlay       bool
+	GlobalOverlayRepoName       *string
+	GlobalUpsertOverlayRepoName bool
 }
 
 func (b *GenerateGithubWorkflowBase) GetOverlayRepoName() string {
@@ -524,6 +526,10 @@ func (b *GenerateGithubWorkflowBase) FeatureGenerateMd5Cache() bool {
 
 func (b *GenerateGithubWorkflowBase) FeatureGenerateOverlay() bool {
 	return b.GlobalGenerateOverlay || b.InputConfig.FeatureGenerateOverlay()
+}
+
+func (b *GenerateGithubWorkflowBase) FeatureUpsertOverlayRepoName() bool {
+	return b.GlobalUpsertOverlayRepoName || b.InputConfig.FeatureUpsertOverlayRepoName()
 }
 
 func (b *GenerateGithubWorkflowBase) PipelineScriptBase64() string {

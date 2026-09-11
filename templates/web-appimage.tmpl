@@ -220,7 +220,18 @@ jobs:
       - name: Generate Overlay
         run: |
           mkdir -p profiles metadata
-          if [ ! -f profiles/repo_name ]; then
+          if [ -f profiles/repo_name ]; then
+[[- if .HasOverlayRepoName ]]
+            if [ "$(cat profiles/repo_name)" != "[[ .GetOverlayRepoName ]]" ]; then
+              echo "::warning title=profiles/repo_name mismatch::Configured canonical overlay identity '[[ .GetOverlayRepoName ]]' does not match existing profiles/repo_name '$(cat profiles/repo_name)' - leaving existing file untouched."
+            fi
+[[- else ]]
+            :
+[[- end ]]
+          else
+[[- if not .FeatureUpsertOverlayRepoName ]]
+            echo "::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled."
+[[- else ]]
 [[- if .HasOverlayRepoName ]]
             echo "[[ .GetOverlayRepoName ]]" > profiles/repo_name
 [[- else ]]
@@ -228,6 +239,7 @@ jobs:
             repo_name="${repo_name//./_}"
             repo_name="${repo_name/#-/_}"
             echo "${repo_name}" > profiles/repo_name
+[[- end ]]
 [[- end ]]
           fi
           if [ ! -f profiles/eapi ]; then
@@ -254,7 +266,18 @@ jobs:
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p profiles metadata
-          if [ ! -f profiles/repo_name ]; then
+          if [ -f profiles/repo_name ]; then
+[[- if .HasOverlayRepoName ]]
+            if [ "$(cat profiles/repo_name)" != "[[ .GetOverlayRepoName ]]" ]; then
+              echo "::warning title=profiles/repo_name mismatch::Configured canonical overlay identity '[[ .GetOverlayRepoName ]]' does not match existing profiles/repo_name '$(cat profiles/repo_name)' - leaving existing file untouched."
+            fi
+[[- else ]]
+            :
+[[- end ]]
+          else
+[[- if not .FeatureUpsertOverlayRepoName ]]
+            echo "::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled."
+[[- else ]]
 [[- if .HasOverlayRepoName ]]
             echo "[[ .GetOverlayRepoName ]]" > profiles/repo_name
 [[- else ]]
@@ -262,6 +285,7 @@ jobs:
             repo_name="${repo_name//./_}"
             repo_name="${repo_name/#-/_}"
             echo "${repo_name}" > profiles/repo_name
+[[- end ]]
 [[- end ]]
           fi
           if [ ! -f profiles/eapi ]; then
