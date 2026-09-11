@@ -1,8 +1,8 @@
 module github.com/arran4/arrans_overlay_workflow_builder
 
-go 1.25.0
+go 1.26
 
-toolchain go1.24.0
+toolchain go1.26.0
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -17,13 +17,13 @@ require (
 require (
 	github.com/arran4/g2 v0.0.82
 	golang.org/x/tools v0.48.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	mvdan.cc/sh/v3 v3.13.1 // indirect
 )
 
