@@ -3,7 +3,9 @@ package arrans_overlay_workflow_builder
 import (
 	"fmt"
 	"github.com/stretchr/testify/require"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	"bytes"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
@@ -400,4 +402,32 @@ func TestOverlayRepoNameValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOptUpsertOverlayRepoNamePlumbing(t *testing.T) {
+	inputConfig := &InputConfig{
+		Type:       "Github Binary Release",
+		Category:   "app-misc",
+		EbuildName: "test-app",
+		Features:   map[string]string{"Generate Overlay": ""},
+	}
+
+	outputDir := t.TempDir()
+
+	// 1. Without OptUpsertOverlayRepoName
+	err := GenerateGithubWorkflowsFromInputConfigs("test1.config", []*InputConfig{inputConfig}, outputDir, "1.0.0")
+	assert.NoError(t, err)
+
+	b1, err := os.ReadFile(filepath.Join(outputDir, "app-misc-test-app-update.yaml"))
+	assert.NoError(t, err)
+	assert.Contains(t, string(b1), "echo \"::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled.\"")
+
+	// 2. With OptUpsertOverlayRepoName
+	err = GenerateGithubWorkflowsFromInputConfigs("test2.config", []*InputConfig{inputConfig}, outputDir, "1.0.0", OptUpsertOverlayRepoName(true))
+	assert.NoError(t, err)
+
+	b2, err := os.ReadFile(filepath.Join(outputDir, "app-misc-test-app-update.yaml"))
+	assert.NoError(t, err)
+	assert.NotContains(t, string(b2), "echo \"::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled.\"")
+	assert.Contains(t, string(b2), "repo_name=\"${GITHUB_REPOSITORY#*/}\"")
 }
