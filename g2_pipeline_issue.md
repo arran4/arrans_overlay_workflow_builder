@@ -28,12 +28,14 @@ The new `g2` implementation must preserve the existing pipeline functionality, i
     *   Parsing errors (e.g., invalid JSON/XML).
 
 **Cardinality & Matching Semantics**
-*   **Zero results**: A pipeline yielding an empty list without `single`/`exactly_one` should complete with no output (unless intentionally changed). Zero or ambiguous cardinality is only an error when `single` / `exactly_one` asserts exactly one result.
+*   **Zero results**: A pipeline yielding an empty list without `single` or `exactly_one` must complete successfully with no output.
 *   **One result**: Success, output the scalar value.
 *   **Multiple results**:
     *   If expected (e.g., extracting multiple links), output them newline-separated.
-    *   If unambiguous extraction is expected but multiple are found (e.g., when using `exactly_one` or `single`), it must result in an actionable ambiguity failure.
-*   **Legitimate falsey scalar values**: Legitimate scalar values such as numeric JSON `0` or boolean `false` must not accidentally be confused with absence merely because of truthiness. The current empty-string policy (which explicitly requires an empty string to fail as zero cardinality under `exactly_one`) must preserve established semantics unless intentionally changed.
+*   **Exactly One constraints**:
+    *   Under `single` or `exactly_one`, zero results (including the established empty-string case) must fail with a non-zero exit code.
+    *   Under `single` or `exactly_one`, multiple results must fail with an actionable ambiguity error.
+*   **Legitimate falsey scalar values**: Legitimate scalar values such as JSON numeric `0` or boolean `false` must be preserved and not accidentally lost due to truthiness checks. Additionally, string values `"0"` and `"false"` must survive `exactly_one` checks as valid single results. The empty string is distinct and must be treated as zero cardinality under `exactly_one`.
 
 **Substitution Requirements**
 The pipeline expression often needs to interpolate variables. The `g2` command must support replacing placeholders like `${VERSION}`, `${TAG}`, and `${RELEASE_FILENAME}` when they are provided (either via environment variables or explicit CLI flags).
