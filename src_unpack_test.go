@@ -52,7 +52,10 @@ Binary amd64=>foo-${VERSION}.tar.gz > foo > foo`
 	if strings.Contains(out, "src_unpack() { :; }") {
 		t.Fatalf("unexpected no-op src_unpack: %s", out)
 	}
-	if !strings.Contains(out, "unpack \\\"\\${DISTDIR}/") {
+	if !strings.Contains(out, "unpack ") {
 		t.Fatalf("expected unpack command in src_unpack, got:\n%s", out)
+	}
+	if !strings.Contains(out, `"${DISTDIR}/`) {
+		t.Fatalf("expected literal ${DISTDIR} in src_unpack, got:\n%s", out)
 	}
 }

@@ -489,3 +489,38 @@ ManualPage arm64=>tool_${VERSION}_linux_arm64.tar.gz > tool.1 > tool.1
 		}
 	})
 }
+
+func TestEbuildFormatting(t *testing.T) {
+	cfg := `Type Github Binary Release
+GithubProjectUrl https://github.com/example/foo
+EbuildName foo-bin
+Category app-misc
+Description test
+License MIT
+ProgramName foo
+Binary amd64=>foo-${VERSION}.tar.gz > foo > foo
+Binary arm64=>foo-arm-${VERSION}.tar.gz > foo-arm > foo`
+	data := NewGenerateGithubBinaryTemplateDataFromString(cfg)
+	templates, err := ParseWorkflowTemplates()
+	if err != nil {
+		t.Fatalf("ParseWorkflowTemplates: %v", err)
+	}
+	var buf bytes.Buffer
+	if err := templates.ExecuteTemplate(&buf, data.TemplateFileName(), data); err != nil {
+		t.Fatalf("ExecuteTemplate: %v", err)
+	}
+	out := buf.String()
+
+	if !strings.Contains(out, "# Copyright") {
+		t.Errorf("Missing # Copyright in output:\n%s", out)
+	}
+	if !strings.Contains(out, "SRC_URI=\"\"") {
+		t.Errorf("Missing SRC_URI=\"\" in output:\n%s", out)
+	}
+	if !strings.Contains(out, "unpack \\'") {
+		t.Errorf("Missing unpack \\' in output:\n%s", out)
+	}
+	if !strings.Contains(out, "newexe \\'") {
+		t.Errorf("Missing newexe \\' in output:\n%s", out)
+	}
+}

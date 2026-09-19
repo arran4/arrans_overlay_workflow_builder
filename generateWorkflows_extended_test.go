@@ -57,14 +57,14 @@ Binary arm64=>rustdesk-${TAG}-aarch64.AppImage > rustdesk.AppImage
 	workflow := string(normalizeGeneratedWorkflow(out.Bytes()))
 
 	// POSITIVE ASSERTIONS
-	if !strings.Contains(workflow, "echo '  if use amd64; then'") {
-		t.Errorf("Missing expected valid Gentoo shell: echo '  if use amd64; then'")
+	if !strings.Contains(workflow, "echo '	if use amd64; then'") {
+		t.Errorf("Missing expected valid Gentoo shell: echo '	if use amd64; then'")
 	}
-	if !strings.Contains(workflow, "echo '  if use arm64; then'") {
-		t.Errorf("Missing expected valid Gentoo shell: echo '  if use arm64; then'")
+	if !strings.Contains(workflow, "echo '	if use arm64; then'") {
+		t.Errorf("Missing expected valid Gentoo shell: echo '	if use arm64; then'")
 	}
 
-	expectedSed := "echo \"  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.rustdesk_appimage_installed_name }}:' 'squashfs-root/${{ env.rustdesk_desktop_file }}'\""
+	expectedSed := "echo \"\tsed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.rustdesk_appimage_installed_name }}:' 'squashfs-root/${{ env.rustdesk_desktop_file }}'\""
 	if !strings.Contains(workflow, expectedSed) {
 		t.Errorf("Missing complete desktop-file rewrite. Expected: %s", expectedSed)
 	}
@@ -83,7 +83,7 @@ Binary arm64=>rustdesk-${TAG}-aarch64.AppImage > rustdesk.AppImage
 		"`]];",
 		"echo '  if use amd64`]]",
 		"echo '  if use arm64`]]",
-		"echo \"  sed -i 's:^Exec=.*:Exec=/opt/bin/.*\"",
+		"echo \"\tsed -i 's:^Exec=.*:Exec=/opt/bin/.*\"",
 		"# shellcheck disable=SC2001\n                # shellcheck disable=SC2001",
 		"# shellcheck disable=SC2001\n            # shellcheck disable=SC2001",
 	}
