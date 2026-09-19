@@ -81,6 +81,9 @@ jobs:
 
               # shellcheck disable=SC2016
               {
+                echo '# Copyright 2026 Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
+                echo ''
                 echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
@@ -96,36 +99,37 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo 'SRC_URI="'
-                echo "  amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-Anytype-\${PV}.AppImage )"
-                echo '"'
+                echo 'SRC_URI=""'
+                echo "SRC_URI+=\"	amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-Anytype-\${PV}.AppImage )\""
                 echo ''
                 echo 'src_unpack() {'
-                echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.Anytype_release_name_amd64 }}\" \"${{ env.Anytype_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
-                echo '  fi'
-                echo '  chmod a+x "${{ env.Anytype_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
-                echo '  "./${{ env.Anytype_appimage_installed_name }}" --appimage-extract "${{ env.Anytype_desktop_file }}" || die "Failed to extract .desktop from appimage"'
-                echo '  "./${{ env.Anytype_appimage_installed_name }}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
-                echo '  "./${{ env.Anytype_appimage_installed_name }}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
+                echo '	if use amd64; then'
+                echo "		cp \"${DISTDIR}/${P}-${{ env.Anytype_release_name_amd64 }}\" \"${{ env.Anytype_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo '	fi'
+                echo '	chmod a+x "${{ env.Anytype_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
+                echo '	"./${{ env.Anytype_appimage_installed_name }}" --appimage-extract "${{ env.Anytype_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+                echo '	"./${{ env.Anytype_appimage_installed_name }}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
+                echo '	"./${{ env.Anytype_appimage_installed_name }}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.Anytype_appimage_installed_name }}:' 'squashfs-root/${{ env.Anytype_desktop_file }}'"
+                echo "	sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.Anytype_appimage_installed_name }}:' 'squashfs-root/${{ env.Anytype_desktop_file }}'"
                 echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
                 echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
                 echo '  eapply_user'
                 echo '}'
                 echo ''
                 echo 'src_install() {'
-                echo '  exeinto /opt/bin'
-                echo '  doexe "${{ env.Anytype_appimage_installed_name }}" || die "Failed to install AppImage"'
-                echo '  insinto /usr/share/applications'
-                echo '  doins "squashfs-root/${{ env.Anytype_desktop_file }}" || die "Failed to install desktop file"'
-                echo '  insinto /usr/share/icons'
-                echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
-                echo '  insinto /usr/share/pixmaps'
-                echo '  doins squashfs-root/*.png || die "Failed to install icons"'
+                echo '	exeinto /opt/bin'
+                echo '	doexe \'
+                echo '		"${{ env.Anytype_appimage_installed_name }}" \'
+                echo '		|| die "Failed to install AppImage"'
+                echo '	insinto /usr/share/applications'
+                echo '	doins "squashfs-root/${{ env.Anytype_desktop_file }}" || die "Failed to install desktop file"'
+                echo '	insinto /usr/share/icons'
+                echo '	doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
+                echo '	insinto /usr/share/pixmaps'
+                echo '	doins squashfs-root/*.png || die "Failed to install icons"'
                 echo '}'
                 echo ""
                 echo "pkg_postinst() {"
