@@ -100,7 +100,10 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\"	amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-Anytype-\${PV}.AppImage )\""
+                echo -n "SRC_URI+=\"	amd64? ( "
+                echo -n "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \""
+                echo ""
+                echo "SRC_URI+=\" \${P}-Anytype-\${PV}.AppImage )  \""
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
@@ -121,8 +124,8 @@ jobs:
                 echo ''
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
-                echo '	doexe \'
-                echo '		"${{ env.Anytype_appimage_installed_name }}" \'
+                echo "	doexe \\"
+                echo "		\"${{ env.Anytype_appimage_installed_name }}\" \\"
                 echo '		|| die "Failed to install AppImage"'
                 echo '	insinto /usr/share/applications'
                 echo '	doins "squashfs-root/${{ env.Anytype_desktop_file }}" || die "Failed to install desktop file"'

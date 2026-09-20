@@ -104,7 +104,10 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\"	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-k9s_Linux_amd64.tar.gz  )  \""
+                echo -n "SRC_URI+=\"	amd64? (  "
+                echo -n "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \""
+                echo ""
+                echo "SRC_URI+=\" \${P}-k9s_Linux_amd64.tar.gz  )  \""
                 echo 'LICENSE="Apache-2.0"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -121,8 +124,8 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
-                echo '		unpack \'
-                echo '			"${DISTDIR}/${P}-k9s_Linux_amd64.tar.gz" \'
+                echo "		unpack \\"
+                echo "			\"\${DISTDIR}/\${P}-k9s_Linux_amd64.tar.gz\" \\"
                 echo '			|| die "Cannot unpack archive file"'
                 echo '	fi'
                 echo '}'
@@ -130,9 +133,9 @@ jobs:
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
                 echo '	if use amd64; then'
-                echo '		newexe \'
-                echo '			"${{ env.binary_archived_name_amd64 }}" \'
-                echo '			"${{ env.binary_installed_name }}" \'
+                echo "		newexe \\"
+                echo "			\"${{ env.binary_archived_name_amd64 }}\" \\"
+                echo "			\"${{ env.binary_installed_name }}\" \\"
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '}'

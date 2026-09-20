@@ -104,7 +104,10 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\"	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rust-1.0.0-amd64  )  \""
+                echo -n "SRC_URI+=\"	amd64? (  "
+                echo -n "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \""
+                echo ""
+                echo "SRC_URI+=\" \${P}-rust-1.0.0-amd64  )  \""
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -124,9 +127,9 @@ jobs:
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
                 echo '	if use amd64; then'
-                echo '		newexe \'
-                echo '			"${DISTDIR}/${P}-${{ env.release_name_amd64 }}" \'
-                echo '			"${{ env.binary_installed_name }}" \'
+                echo "		newexe \\"
+                echo "			\"\${DISTDIR}/\${P}-${{ env.release_name_amd64 }}\" \\"
+                echo "			\"${{ env.binary_installed_name }}\" \\"
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '}'

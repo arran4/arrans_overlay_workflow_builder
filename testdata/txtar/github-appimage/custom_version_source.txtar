@@ -116,7 +116,10 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\"	amd64? ( https://custom.url/${version} -> \${P}-example-linux-x86_64-\${PV}.AppImage )\""
+                echo -n "SRC_URI+=\"	amd64? ( "
+                echo -n "https://custom.url/${version} -> \""
+                echo ""
+                echo "SRC_URI+=\" \${P}-example-linux-x86_64-\${PV}.AppImage )  \""
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
@@ -133,8 +136,8 @@ jobs:
                 echo ''
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
-                echo '	doexe \'
-                echo '		"${{ env.example_appimage_installed_name }}" \'
+                echo "	doexe \\"
+                echo "		\"${{ env.example_appimage_installed_name }}\" \\"
                 echo '		|| die "Failed to install AppImage"'
                 echo '	insinto /usr/share/applications'
                 echo '	doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'

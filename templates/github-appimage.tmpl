@@ -145,8 +145,8 @@ jobs:
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
                 echo '	if use [[ $externalResource.Keyword ]]; then'
-                echo '		unpack \'
-                echo '			"${DISTDIR}/${P}-[[ $releaseFilename | ebuildvardoublequoted ]]" \'
+                echo "		unpack \\"
+                echo "			\"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" \\"
                 echo '			|| die "Cannot unpack archive file"'
                 echo '	fi'
   [[ end ]]
@@ -217,8 +217,8 @@ jobs:
                 echo "	dosym [[ $starget ]] [[ $sname ]]"
 [[- end ]]
 [[- range $pname, $prog := .Programs ]]
-                echo '	doexe \'
-                echo '		"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" \'
+                echo "	doexe \\"
+                echo "		\"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\" \\"
                 echo '		|| die "Failed to install AppImage"'
 [[ end ]]
 [[- if .HasDesktopFile ]]

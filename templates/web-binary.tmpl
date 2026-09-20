@@ -196,8 +196,8 @@ jobs:
   [[- if $externalResource.Archived ]]
     [[- $count := 0 ]]
                 echo '	if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe  ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
-                echo '		unpack \'
-                echo '			"${DISTDIR}/${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]" \'
+                echo "		unpack \\"
+                echo "			\"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]\" \\"
                 echo '			|| die "Cannot unpack archive file"'
                 echo '	fi'
   [[ end ]]
@@ -238,17 +238,17 @@ jobs:
     [[- if gt (len $binary) 2 ]]
         [[- $count := 0 ]]
                 echo '	if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
-                echo '		newexe \'
-                echo '			"${{ env.[[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]] }}" \'
-                echo '			"${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" \'
+                echo "		newexe \\"
+                echo "			\"${{ env.[[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]] }}\" \\"
+                echo "			\"${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}\" \\"
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
     [[ else ]]
         [[- $count := 0 ]]
                 echo '	if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
-                echo '		newexe \'
-                echo '			"${DISTDIR}/${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}" \'
-                echo '			"${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" \'
+                echo "		newexe \\"
+                echo "			\"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \\"
+                echo "			\"${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}\" \\"
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
     [[ end ]]

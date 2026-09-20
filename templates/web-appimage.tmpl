@@ -170,9 +170,9 @@ jobs:
               echo "  dosym [[ $starget ]] [[ $sname ]]"
 [[- end ]]
 [[ range $pname, $prog := .Programs ]]
-              echo '	newexe \'
-              echo '		"${P}.${appimage_extension}" \'
-              echo '		"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" \'
+              echo "	newexe \\"
+              echo "		\"\${P}.${appimage_extension}\" \\"
+              echo "		\"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\" \\"
               echo '		|| die "Failed to install AppImage"'
 [[ end ]]
 [[ if .HasDesktopFile ]]

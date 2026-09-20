@@ -152,11 +152,11 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 				}
 
 				// For the multi-architecture case, verify variables
-				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.test_release_name_amd64 }}", "test-${tag}-linux-amd64")
-				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.test_release_name_arm64 }}", "test-${tag}-linux-arm64")
-				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.test_binary_archived_name_amd64 }}", "test")
-				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.test_binary_archived_name_arm64 }}", "test")
-				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.test_binary_installed_name }}", "test")
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.release_name_amd64 }}", "test-${tag}-linux-amd64")
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.release_name_arm64 }}", "test-${tag}-linux-arm64")
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.binary_archived_name_amd64 }}", "test")
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.binary_archived_name_arm64 }}", "test")
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.binary_installed_name }}", "test")
 
 				cmd := exec.Command("bash", "-c", "set -euo pipefail\n"+resolvedScript)
 				cmd.Dir = tempDir
@@ -183,13 +183,13 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 					}
 
 					// Ensure SRC_URI has the exact resolved URLs
-					expectedAmd64URI := "amd64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> ${P}-test-v1.0.0-linux-amd64  )"
+					expectedAmd64URI := `amd64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> "` + "\n" + `SRC_URI+=" ${P}-test-v1.0.0-linux-amd64  )  "`
 					if !strings.Contains(string(ebuildContent), expectedAmd64URI) {
-						t.Errorf("Expected ebuild to have exact amd64 SRC_URI: %q, but got:\n%s", expectedAmd64URI, ebuildContent)
+						t.Errorf("amd64 SRC_URI fragments not found:\nexpected: %q\nactual ebuild:\n%s", expectedAmd64URI, string(ebuildContent))
 					}
-					expectedArm64URI := "arm64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> ${P}-test-v1.0.0-linux-arm64  )"
+					expectedArm64URI := `arm64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> "` + "\n" + `SRC_URI+=" ${P}-test-v1.0.0-linux-arm64  )  "`
 					if !strings.Contains(string(ebuildContent), expectedArm64URI) {
-						t.Errorf("Expected ebuild to have exact arm64 SRC_URI: %q, but got:\n%s", expectedArm64URI, ebuildContent)
+						t.Errorf("arm64 SRC_URI fragments not found:\nexpected: %q\nactual ebuild:\n%s", expectedArm64URI, string(ebuildContent))
 					}
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
@@ -375,7 +375,7 @@ fi
 	ebuildPath := filepath.Join(tempDir, "www-client", "which-browser-bin", "which-browser-bin-0.2.6_p44.ebuild")
 	ebuildContent, err := os.ReadFile(ebuildPath)
 	require.NoError(t, err, "Ebuild should have been generated")
-	require.Contains(t, string(ebuildContent), ts.URL+"/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb -> ${P}-which_browser-0.2.6+44-linux.deb", "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
+	require.Contains(t, string(ebuildContent), ts.URL+`/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb -> "` + "\n" + `SRC_URI+=" ${P}-which_browser-0.2.6+44-linux.deb`, "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
 
 	manifestLogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 	manifestLogContent, err := os.ReadFile(manifestLogPath)

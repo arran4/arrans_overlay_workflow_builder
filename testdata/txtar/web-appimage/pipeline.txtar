@@ -123,9 +123,9 @@ jobs:
               echo '  "./${P}.${appimage_extension}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
               echo '  "./${P}.${appimage_extension}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
               echo '	exeinto /opt/bin'
-              echo '	newexe \'
-              echo '		"${P}.${appimage_extension}" \'
-              echo '		"${{ env.example_appimage_installed_name }}" \'
+              echo "	newexe \\"
+              echo "		\"\${P}.${appimage_extension}\" \\"
+              echo "		\"${{ env.example_appimage_installed_name }}\" \\"
               echo '		|| die "Failed to install AppImage"'
               echo '	insinto /usr/share/applications'
               echo '	doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'

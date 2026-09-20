@@ -107,7 +107,10 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\"	amd64? (  https://example.com/download/${tag}/\${PV} -> \${P}-example-${tag}.tar.gz  )  \""
+                echo -n "SRC_URI+=\"	amd64? (  "
+                echo -n "https://example.com/download/${tag}/\${PV} -> \""
+                echo ""
+                echo "SRC_URI+=\" \${P}-example-${tag}.tar.gz  )  \""
                 echo 'LICENSE="MIT License"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -127,9 +130,9 @@ jobs:
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
                 echo '	if use amd64; then'
-                echo '		newexe \'
-                echo '			"${DISTDIR}/${P}-${{ env.example_release_name_amd64 }}" \'
-                echo '			"${{ env.example_binary_installed_name }}" \'
+                echo "		newexe \\"
+                echo "			\"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \\"
+                echo "			\"${{ env.example_binary_installed_name }}\" \\"
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '}'
