@@ -15,6 +15,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Maximum allowed line width by g2 lint/pkgcheck for ebuilds (except for explicit multiline escapes)
+// Used in end-to-end regression tests to assert properly wrapped statements.
+// Default Gentoo maximum is 100 for normal lines, up to 130 for URIs,
+const EbuildMaxWidth = 130
+
 func resolveGithubEnvForPackage(script, category, packageName, owner, repo string) string {
 	script = strings.ReplaceAll(script, "${{secrets.GITHUB_TOKEN}}", "test-token")
 	script = strings.ReplaceAll(script, "${{ env.github_owner }}", owner)
@@ -59,7 +64,7 @@ func setupHermeticEnvironment(t *testing.T) (string, func()) {
 	t.Setenv("RUNNER_TEMP", tempDir)
 
 	mockCommand(t, binDir, "gh", `#!/bin/bash
-if [[ "$#" -eq 4 && "$1" == "api" && "$2" == "repos/test/test/releases" || "$2" == "repos/test/test-app/releases" && "$3" == "--jq" && "$4" == '.[]? | select(type=="object" and has("tag_name")) | .tag_name' ]]; then
+if [[ "$#" -eq 4 && "$1" == "api" && ( "$2" == "repos/test/test/releases" || "$2" == "repos/test/test-app/releases" ) && "$3" == "--jq" && "$4" == '.[]? | select(type=="object" and has("tag_name")) | .tag_name' ]]; then
 	echo 'v1.0.0'
 	echo 'v2.0.0'
 else
@@ -217,7 +222,7 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-filename-that-will-cause-line-wr
 					// Validate ebuild line width limits (simulating `g2 lint` line length rule for long variables like SRC_URI)
 					lines := strings.Split(string(ebuildContent), "\n")
 					for i, line := range lines {
-						if len(line) > 130 { // Ensure long URIs and src_unpack commands are properly wrapped by the template
+						if len(line) > EbuildMaxWidth { // Ensure long URIs and src_unpack commands are properly wrapped by the template
 							t.Errorf("Ebuild line %d exceeds max width (length %d)\nLine:\n%s", i+1, len(line), line)
 						}
 					}
@@ -652,7 +657,7 @@ Binary amd64=>TestApp-${TAG}-x86_64.AppImage > TestApp
 	// Verify line widths
 	lines := strings.Split(ebuildContent, "\n")
 	for i, line := range lines {
-		if len(line) > 130 {
+		if len(line) > EbuildMaxWidth {
 			t.Errorf("Ebuild line %d exceeds max width (length %d)\nLine:\n%s", i+1, len(line), line)
 		}
 	}
