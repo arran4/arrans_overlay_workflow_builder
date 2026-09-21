@@ -107,7 +107,7 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
-                echo "		cp \"${DISTDIR}/${P}-${{ env.Anytype_release_name_amd64 }}\" \"${{ env.Anytype_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
+                echo "		cp \"\${DISTDIR}/\${P}-${{ env.Anytype_release_name_amd64 }}\" \"${{ env.Anytype_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
                 echo '	fi'
                 echo '	chmod a+x "${{ env.Anytype_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '	"./${{ env.Anytype_appimage_installed_name }}" --appimage-extract "${{ env.Anytype_desktop_file }}" || die "Failed to extract .desktop from appimage"'

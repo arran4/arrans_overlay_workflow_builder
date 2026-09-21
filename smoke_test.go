@@ -111,8 +111,8 @@ Category app-admin
 Description Test
 Homepage https://www.test.io/
 License MIT License
-Binary amd64=>test-${TAG}-linux-amd64 > test > test
-Binary arm64=>test-${TAG}-linux-arm64 > test > test
+Binary amd64=>test-${TAG}-linux-amd64-very-long-filename-that-will-cause-line-wrapping-if-not-careful.tar.gz > test > test
+Binary arm64=>test-${TAG}-linux-arm64-very-long-filename-that-will-cause-line-wrapping-if-not-careful.tar.gz > test > test
 `
 	inputConfigs, err := ParseInputConfigReader(strings.NewReader(configString))
 	require.NoError(t, err)
@@ -215,11 +215,11 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 					}
 
 					// Ensure SRC_URI has the exact resolved URLs
-					expectedAmd64URI := `amd64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> "` + "\n" + `SRC_URI+=" ${P}-test-v1.0.0-linux-amd64  )  "`
+					expectedAmd64URI := "SRC_URI+=\"	amd64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> \"\n" + `SRC_URI+=" ${P}-test-v1.0.0-linux-amd64-very-long-filename-that-will-cause-line-wrapping-if-not-careful.tar.gz  )  "`
 					if !strings.Contains(string(ebuildContent), expectedAmd64URI) {
 						t.Errorf("amd64 SRC_URI fragments not found:\nexpected: %q\nactual ebuild:\n%s", expectedAmd64URI, string(ebuildContent))
 					}
-					expectedArm64URI := `arm64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> "` + "\n" + `SRC_URI+=" ${P}-test-v1.0.0-linux-arm64  )  "`
+					expectedArm64URI := "SRC_URI+=\"	arm64? (  https://github.com/test/test/releases/download/v1.0.0/${PV} -> \"\n" + `SRC_URI+=" ${P}-test-v1.0.0-linux-arm64-very-long-filename-that-will-cause-line-wrapping-if-not-careful.tar.gz  )  "`
 					if !strings.Contains(string(ebuildContent), expectedArm64URI) {
 						t.Errorf("arm64 SRC_URI fragments not found:\nexpected: %q\nactual ebuild:\n%s", expectedArm64URI, string(ebuildContent))
 					}
@@ -242,7 +242,7 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 						t.Errorf("Expected exactly 2 g2 manifest calls, got %d. Log:\n%s", len(validLines), string(logData))
 					}
 
-					expectedAmd64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-amd64 ./app-admin/test-bin/Manifest"
+					expectedAmd64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-amd64-very-long-filename-that-will-cause-line-wrapping-if-not-careful.tar.gz ./app-admin/test-bin/Manifest"
 
 					foundAmd64 := false
 					for _, line := range logLines {
@@ -255,7 +255,7 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 						t.Errorf("Expected g2 manifest upsert exact call for amd64: %q\nGot log:\n%s", expectedAmd64Call, string(logData))
 					}
 
-					expectedArm64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-arm64 ./app-admin/test-bin/Manifest"
+					expectedArm64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-arm64-very-long-filename-that-will-cause-line-wrapping-if-not-careful.tar.gz ./app-admin/test-bin/Manifest"
 
 					foundArm64 := false
 					for _, line := range logLines {
@@ -584,26 +584,24 @@ Binary amd64=>TestApp-${TAG}-x86_64.AppImage > TestApp
 	err = templates.ExecuteTemplate(&out, "github-appimage.tmpl", data)
 	require.NoError(t, err)
 
-	yamlStr := out.String()
+	var workflow map[string]interface{}
+	err = yaml.Unmarshal(out.Bytes(), &workflow)
+	require.NoError(t, err)
+
 	var bashScript string
-	lines := strings.Split(yamlStr, "\n")
-	for i, line := range lines {
-		if strings.Contains(line, "name: 'Process releases'") || strings.Contains(line, "name: Process releases") || strings.Contains(line, "name: Process each release") {
-			for j := i + 1; j < len(lines); j++ {
-				if strings.Contains(lines[j], "run: |") || strings.Contains(lines[j], "run: ") {
-					var scriptLines []string
-					for k := j + 1; k < len(lines) && (strings.HasPrefix(lines[k], "        ") || strings.TrimSpace(lines[k]) == ""); k++ {
-						scriptLines = append(scriptLines, strings.TrimPrefix(lines[k], "        "))
-					}
-					bashScript = strings.Join(scriptLines, "\n")
-					break
-				}
+	jobs := workflow["jobs"].(map[string]interface{})
+	for _, jobInterface := range jobs {
+		job := jobInterface.(map[string]interface{})
+		steps := job["steps"].([]interface{})
+		for _, stepInterface := range steps {
+			step := stepInterface.(map[string]interface{})
+			if name, ok := step["name"].(string); ok && (name == "Process each release" || name == "Process releases") {
+				bashScript = step["run"].(string)
+				break
 			}
-			break
 		}
 	}
 
-	t.Logf("YAML DUMP:\n%s\n", yamlStr)
 	require.NotEmpty(t, bashScript, "Could not extract bash script for AppImage")
 
 	bashScript = resolveGithubEnvForPackage(bashScript, "app-admin", "test-app-bin")
@@ -625,14 +623,12 @@ Binary amd64=>TestApp-${TAG}-x86_64.AppImage > TestApp
 		"GITHUB_WORKSPACE=" + tempDir,
 		"GITHUB_OUTPUT=" + filepath.Join(tempDir, "github_output"),
 		"RUNNER_TEMP=" + tempDir,
-		"GITHUB_REPOSITORY=test/test",
+		"GITHUB_REPOSITORY=test/test-app",
 	}
 	cmd.Dir = tempDir
 
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "Bash script execution failed: %s\nOutput:\n%s", err, string(output))
-
-	t.Logf("BASH SCRIPT:\n%s\nOUTPUT:\n%s\n", bashScript, string(output))
 
 	ebuildPath := filepath.Join(tempDir, "app-admin", "test-app-bin", "test-app-bin-1.0.0.ebuild")
 	ebuildData, err := os.ReadFile(ebuildPath)
@@ -644,6 +640,6 @@ Binary amd64=>TestApp-${TAG}-x86_64.AppImage > TestApp
 	expectedAppImageCp := "cp \"${DISTDIR}/${P}-TestApp-v1.0.0-x86_64.AppImage\" \"TestApp\""
 	require.Contains(t, ebuildContent, expectedAppImageCp, "Ebuild should contain the exact literal unexpanded variables inside cp")
 
-	expectedAmd64URI := "amd64? ( https://github.com/test/test/releases/download/v1.0.0/${PV} -> "
+	expectedAmd64URI := "SRC_URI+=\"	amd64? ( https://github.com/test/test/releases/download/v1.0.0/${PV} -> \"\nSRC_URI+=\" ${P}-TestApp-v1.0.0-x86_64.AppImage )  \""
 	require.Contains(t, ebuildContent, expectedAmd64URI, "Ebuild should format SRC_URI correctly")
 }
