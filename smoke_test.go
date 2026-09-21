@@ -147,6 +147,9 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 			if ok && runScript != "" {
 				resolvedScript := resolveGithubEnv(runScript)
 
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.binary_archived_name_amd64 }}", "test")
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.binary_installed_name }}", "test")
+
 				if step["name"] == "Commit and push changes" {
 					resolvedScript = "generated_tag=v1.0.0\n" + resolvedScript
 				}
@@ -180,6 +183,35 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 					}
 					if !strings.Contains(string(ebuildContent), "arm64? (") {
 						t.Errorf("Expected ebuild to contain arm64 USE condition but it didn't:\n%s", ebuildContent)
+					}
+
+
+					if !strings.Contains(string(ebuildContent), "unpack \\") {
+						t.Errorf("Missing line continuation for unpack:\n%s", ebuildContent)
+					}
+					if !strings.Contains(string(ebuildContent), "newexe \\") {
+						t.Errorf("Missing line continuation for newexe:\n%s", ebuildContent)
+					}
+					if !strings.Contains(string(ebuildContent), "# Copyright") {
+						t.Errorf("Missing # Copyright in output:\n%s", ebuildContent)
+					}
+					if !strings.Contains(string(ebuildContent), "SRC_URI=\"\"") {
+						t.Errorf("Missing SRC_URI=\"\" in output:\n%s", ebuildContent)
+					}
+					if !strings.Contains(string(ebuildContent), "\"${DISTDIR}/") {
+						t.Errorf("Expected literal ${DISTDIR} in ebuild:\n%s", ebuildContent)
+					}
+					if !strings.Contains(string(ebuildContent), "${P}") {
+						t.Errorf("Expected literal ${P} in ebuild:\n%s", ebuildContent)
+					}
+					if !strings.Contains(string(ebuildContent), "${PV}") {
+						t.Errorf("Expected literal ${PV} in ebuild:\n%s", ebuildContent)
+					}
+					if !strings.Contains(string(ebuildContent), "${WORKDIR}") {
+						t.Errorf("Expected literal ${WORKDIR} in ebuild:\n%s", ebuildContent)
+					}
+					if strings.Contains(string(ebuildContent), "src_unpack() { :; }") {
+						t.Errorf("Unexpected no-op src_unpack:\n%s", ebuildContent)
 					}
 
 					// Ensure SRC_URI has the exact resolved URLs
@@ -452,6 +484,9 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 			if ok && runScript != "" {
 				resolvedScript := resolveGithubEnv(runScript)
 
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.binary_archived_name_amd64 }}", "test")
+				resolvedScript = strings.ReplaceAll(resolvedScript, "${{ env.binary_installed_name }}", "test")
+
 				// Make sure we have the pipeline partials available
 				if step["name"] == "Commit and push changes" {
 					resolvedScript = "generated_tag=2.0.0\n" + resolvedScript
@@ -515,4 +550,100 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 			}
 		}
 	}
+}
+
+func TestSmokeEndToEndExecution_GithubAppImage(t *testing.T) {
+	tempDir, cleanup := setupHermeticEnvironment(t)
+	defer cleanup()
+
+	configString := `Type Github AppImage Release
+GithubProjectUrl https://github.com/test/test-app
+EbuildName test-app-bin
+Category app-admin
+Description Test AppImage
+Homepage https://www.test.io/
+License MIT License
+Binary amd64=>TestApp-${TAG}-x86_64.AppImage > TestApp
+`
+	inputConfigs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	ic := inputConfigs[0]
+
+	templates, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	base := &GenerateGithubWorkflowBase{
+		Version:     "1.0",
+		InputConfig: ic,
+		ConfigFile:  "test-app.config",
+		Now:         time.Date(2026, 8, 13, 0, 0, 0, 0, time.UTC),
+	}
+	data := &GenerateGithubAppImageTemplateData{GenerateGithubWorkflowBase: base}
+
+	var out bytes.Buffer
+	err = templates.ExecuteTemplate(&out, "github-appimage.tmpl", data)
+	require.NoError(t, err)
+
+	yamlStr := out.String()
+	var bashScript string
+	lines := strings.Split(yamlStr, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "name: 'Process releases'") || strings.Contains(line, "name: Process releases") || strings.Contains(line, "name: Process each release") {
+			for j := i + 1; j < len(lines); j++ {
+				if strings.Contains(lines[j], "run: |") || strings.Contains(lines[j], "run: ") {
+					var scriptLines []string
+					for k := j + 1; k < len(lines) && (strings.HasPrefix(lines[k], "        ") || strings.TrimSpace(lines[k]) == ""); k++ {
+						scriptLines = append(scriptLines, strings.TrimPrefix(lines[k], "        "))
+					}
+					bashScript = strings.Join(scriptLines, "\n")
+					break
+				}
+			}
+			break
+		}
+	}
+
+	t.Logf("YAML DUMP:\n%s\n", yamlStr)
+	require.NotEmpty(t, bashScript, "Could not extract bash script for AppImage")
+
+	bashScript = resolveGithubEnvForPackage(bashScript, "app-admin", "test-app-bin")
+	bashScript = strings.ReplaceAll(bashScript, "${{ env.appimage_installed_name }}", "TestApp")
+	bashScript = strings.ReplaceAll(bashScript, "${{ env.release_name_amd64 }}", "TestApp-${tag}-x86_64.AppImage")
+	bashScript = strings.ReplaceAll(bashScript, "${{ env.github_owner }}", "test")
+	bashScript = strings.ReplaceAll(bashScript, "${{ env.github_repo }}", "test-app")
+	scriptFile := filepath.Join(tempDir, "script.sh")
+	err = os.WriteFile(scriptFile, []byte(bashScript), 0755)
+	require.NoError(t, err)
+
+	cmd := exec.Command("bash", scriptFile)
+	cmd.Env = []string{
+		"PATH=" + filepath.Join(tempDir, "bin") + ":" + os.Getenv("PATH"),
+		"epn=test-app-bin",
+		"ecn=app-admin",
+		"release_name_amd64=TestApp-${tag}-x86_64.AppImage",
+		"appimage_installed_name_amd64=TestApp",
+		"GITHUB_WORKSPACE=" + tempDir,
+		"GITHUB_OUTPUT=" + filepath.Join(tempDir, "github_output"),
+		"RUNNER_TEMP=" + tempDir,
+		"GITHUB_REPOSITORY=test/test",
+	}
+	cmd.Dir = tempDir
+
+	output, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Bash script execution failed: %s\nOutput:\n%s", err, string(output))
+
+	t.Logf("BASH SCRIPT:\n%s\nOUTPUT:\n%s\n", bashScript, string(output))
+
+	ebuildPath := filepath.Join(tempDir, "app-admin", "test-app-bin", "test-app-bin-1.0.0.ebuild")
+	ebuildData, err := os.ReadFile(ebuildPath)
+	require.NoError(t, err)
+	ebuildContent := string(ebuildData)
+
+	require.Contains(t, ebuildContent, "# Copyright 2026 Gentoo Authors", "Ebuild should contain the correct year in the copyright header")
+
+	expectedAppImageCp := "cp \"${DISTDIR}/${P}-TestApp-v1.0.0-x86_64.AppImage\" \"TestApp\""
+	require.Contains(t, ebuildContent, expectedAppImageCp, "Ebuild should contain the exact literal unexpanded variables inside cp")
+
+	expectedAmd64URI := "amd64? ( https://github.com/test/test/releases/download/v1.0.0/${PV} -> "
+	require.Contains(t, ebuildContent, expectedAmd64URI, "Ebuild should format SRC_URI correctly")
 }
