@@ -15,10 +15,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func resolveGithubEnvForPackage(script, category, packageName string) string {
+func resolveGithubEnvForPackage(script, category, packageName, owner, repo string) string {
 	script = strings.ReplaceAll(script, "${{secrets.GITHUB_TOKEN}}", "test-token")
-	script = strings.ReplaceAll(script, "${{ env.github_owner }}", "test")
-	script = strings.ReplaceAll(script, "${{ env.github_repo }}", "test")
+	script = strings.ReplaceAll(script, "${{ env.github_owner }}", owner)
+	script = strings.ReplaceAll(script, "${{ env.github_repo }}", repo)
 	script = strings.ReplaceAll(script, "${{ env.ecn }}", category)
 	script = strings.ReplaceAll(script, "${{ env.epn }}", packageName)
 	script = strings.ReplaceAll(script, "${{ env.description }}", "Test")
@@ -26,14 +26,14 @@ func resolveGithubEnvForPackage(script, category, packageName string) string {
 	script = strings.ReplaceAll(script, "${{ env.keywords }}", "amd64")
 	script = strings.ReplaceAll(script, "${{ env.workflow_filename }}", "test.yml")
 	script = strings.ReplaceAll(script, "${{ github.server_url }}", "https://github.com")
-	script = strings.ReplaceAll(script, "${{ github.repository }}", "test/test")
+	script = strings.ReplaceAll(script, "${{ github.repository }}", owner+"/"+repo)
 	script = strings.ReplaceAll(script, "${{ github.sha }}", "123456")
 	script = strings.ReplaceAll(script, "${{ github.ref }}", "refs/heads/main")
 	return script
 }
 
 func resolveGithubEnv(script string) string {
-	return resolveGithubEnvForPackage(script, "app-admin", "test-bin")
+	return resolveGithubEnvForPackage(script, "app-admin", "test-bin", "test", "test")
 }
 
 func mockCommand(t *testing.T, binDir string, name string, content string) {
@@ -59,7 +59,7 @@ func setupHermeticEnvironment(t *testing.T) (string, func()) {
 	t.Setenv("RUNNER_TEMP", tempDir)
 
 	mockCommand(t, binDir, "gh", `#!/bin/bash
-if [[ "$#" -eq 4 && "$1" == "api" && "$2" == "repos/test/test/releases" && "$3" == "--jq" && "$4" == '.[]? | select(type=="object" and has("tag_name")) | .tag_name' ]]; then
+if [[ "$#" -eq 4 && "$1" == "api" && "$2" == "repos/test/test/releases" || "$2" == "repos/test/test-app/releases" && "$3" == "--jq" && "$4" == '.[]? | select(type=="object" and has("tag_name")) | .tag_name' ]]; then
 	echo 'v1.0.0'
 	echo 'v2.0.0'
 else
@@ -212,6 +212,14 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-filename-that-will-cause-line-wr
 					}
 					if strings.Contains(string(ebuildContent), "src_unpack() { :; }") {
 						t.Errorf("Unexpected no-op src_unpack:\n%s", ebuildContent)
+					}
+
+					// Validate ebuild line width limits (simulating `g2 lint` line length rule for long variables like SRC_URI)
+					lines := strings.Split(string(ebuildContent), "\n")
+					for i, line := range lines {
+						if len(line) > 130 { // Ensure long URIs and src_unpack commands are properly wrapped by the template
+							t.Errorf("Ebuild line %d exceeds max width (length %d)\nLine:\n%s", i+1, len(line), line)
+						}
 					}
 
 					// Ensure SRC_URI has the exact resolved URLs
@@ -381,7 +389,7 @@ fi
 		}
 	}
 
-	processReleasesScript = resolveGithubEnvForPackage(processReleasesScript, "www-client", "which-browser-bin")
+	processReleasesScript = resolveGithubEnvForPackage(processReleasesScript, "www-client", "which-browser-bin", "test", "test")
 	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_archived_name_amd64 }}", "which_browser")
 	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_installed_name }}", "which-browser")
 
@@ -604,11 +612,9 @@ Binary amd64=>TestApp-${TAG}-x86_64.AppImage > TestApp
 
 	require.NotEmpty(t, bashScript, "Could not extract bash script for AppImage")
 
-	bashScript = resolveGithubEnvForPackage(bashScript, "app-admin", "test-app-bin")
+	bashScript = resolveGithubEnvForPackage(bashScript, "app-admin", "test-app-bin", "test", "test-app")
 	bashScript = strings.ReplaceAll(bashScript, "${{ env.appimage_installed_name }}", "TestApp")
 	bashScript = strings.ReplaceAll(bashScript, "${{ env.release_name_amd64 }}", "TestApp-${tag}-x86_64.AppImage")
-	bashScript = strings.ReplaceAll(bashScript, "${{ env.github_owner }}", "test")
-	bashScript = strings.ReplaceAll(bashScript, "${{ env.github_repo }}", "test-app")
 	scriptFile := filepath.Join(tempDir, "script.sh")
 	err = os.WriteFile(scriptFile, []byte(bashScript), 0755)
 	require.NoError(t, err)
@@ -640,6 +646,14 @@ Binary amd64=>TestApp-${TAG}-x86_64.AppImage > TestApp
 	expectedAppImageCp := "cp \"${DISTDIR}/${P}-TestApp-v1.0.0-x86_64.AppImage\" \"TestApp\""
 	require.Contains(t, ebuildContent, expectedAppImageCp, "Ebuild should contain the exact literal unexpanded variables inside cp")
 
-	expectedAmd64URI := "SRC_URI+=\"	amd64? ( https://github.com/test/test/releases/download/v1.0.0/${PV} -> \"\nSRC_URI+=\" ${P}-TestApp-v1.0.0-x86_64.AppImage )  \""
+	expectedAmd64URI := "SRC_URI+=\"	amd64? ( https://github.com/test/test-app/releases/download/v1.0.0/${PV} -> \"\nSRC_URI+=\" ${P}-TestApp-v1.0.0-x86_64.AppImage )  \""
 	require.Contains(t, ebuildContent, expectedAmd64URI, "Ebuild should format SRC_URI correctly")
+
+	// Verify line widths
+	lines := strings.Split(ebuildContent, "\n")
+	for i, line := range lines {
+		if len(line) > 130 {
+			t.Errorf("Ebuild line %d exceeds max width (length %d)\nLine:\n%s", i+1, len(line), line)
+		}
+	}
 }
