@@ -111,8 +111,8 @@ Category app-admin
 Description Test
 Homepage https://www.test.io/
 License MIT License
-Binary amd64=>test-${TAG}-linux-amd64 > test > test
-Binary arm64=>test-${TAG}-linux-arm64 > test > test
+Binary amd64=>test-${TAG}-linux-amd64-very-long-asset-name > test > test
+Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 `
 	inputConfigs, err := ParseInputConfigReader(strings.NewReader(configString))
 	require.NoError(t, err)
@@ -189,17 +189,29 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 					require.Contains(t, string(ebuildContent), "\t\tunpack ", "Ebuild missing tab indentation for unpack")
 					require.NotContains(t, string(ebuildContent), "        unpack ", "Ebuild uses space indentation for unpack")
 
-					// Assert 4: No overlong lines (e.g., > 140 chars)
+					// Assert 4: No overlong lines
+					// g2's IndentingWhitespaceLintRule: tabs=4 positions, limit=80
 					lines := strings.Split(string(ebuildContent), "\n")
 					for _, line := range lines {
-						if len(line) > 150 {
-							t.Errorf("Ebuild line too long: %s", line)
+					    if strings.HasPrefix(line, "# Generated via") {
+					        continue
+					    }
+						pos := 0
+						for _, ch := range line {
+							if ch == '\t' {
+								pos += 4
+							} else {
+								pos += 1
+							}
+						}
+						if pos > 80 {
+							t.Errorf("Ebuild line too long (%d positions > 80): %s", pos, line)
 						}
 					}
 
 					// Assert 5: src_unpack paths correct
-					require.Contains(t, string(ebuildContent), "unpack \"${DISTDIR}/${P}-test-v1.0.0-linux-amd64\"", "Ebuild missing correct src_unpack path for amd64")
-					require.Contains(t, string(ebuildContent), "unpack \"${DISTDIR}/${P}-test-v1.0.0-linux-arm64\"", "Ebuild missing correct src_unpack path for arm64")
+					require.Contains(t, string(ebuildContent), "unpack \"${DISTDIR}/${P}-test-v1.0.0-linux-amd64-very-long-asset-name\"", "Ebuild missing correct src_unpack path for amd64")
+					require.Contains(t, string(ebuildContent), "unpack \"${DISTDIR}/${P}-test-v1.0.0-linux-arm64-very-long-asset-name\"", "Ebuild missing correct src_unpack path for arm64")
 
 					// Assert 6: Evaluate SRC_URI
 					// Extract the SRC_URI assignments
@@ -209,23 +221,26 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 							srcURILines = append(srcURILines, line)
 						}
 					}
-					srcURIScript := strings.Join(srcURILines, "\n")
-					srcURIScript += "\necho \"$SRC_URI\""
+					srcURIScript := "P=test-bin\nPV=1.0.0\n" + strings.Join(srcURILines, "\n")
+					srcURIScript += "\nprintf '%s' \"$SRC_URI\""
 
 					cmd := exec.Command("bash", "-c", srcURIScript)
 					output, err := cmd.Output()
 					require.NoError(t, err, "Evaluating SRC_URI failed")
 
-					evaluatedSRC_URI := strings.TrimSpace(string(output))
+					evaluatedSRC_URI := string(output)
 
 					// Assert no newlines/tabs in evaluated value
-					require.NotContains(t, evaluatedSRC_URI, "\n", "Evaluated SRC_URI contains literal newline")
-					require.NotContains(t, evaluatedSRC_URI, "\t", "Evaluated SRC_URI contains literal tab")
+					require.NotContains(t, evaluatedSRC_URI, "\n", "Evaluated SRC_URI contains physical newline")
+					require.NotContains(t, evaluatedSRC_URI, "\t", "Evaluated SRC_URI contains physical tab")
+					require.NotContains(t, evaluatedSRC_URI, "\\n", "Evaluated SRC_URI contains literal backslash+n")
+					require.NotContains(t, evaluatedSRC_URI, "\\t", "Evaluated SRC_URI contains literal backslash+t")
 
 					// Assert logical value
-					// Since we evaluate without PV set, it is empty. So we just check the structure.
-					require.Contains(t, evaluatedSRC_URI, "amd64? (   https://github.com/test/test/releases/download/v1.0.0/  -> -test-v1.0.0-linux-amd64  )", "Evaluated SRC_URI missing amd64 fragment")
-					require.Contains(t, evaluatedSRC_URI, "arm64? (   https://github.com/test/test/releases/download/v1.0.0/  -> -test-v1.0.0-linux-arm64  )", "Evaluated SRC_URI missing arm64 fragment")
+					expectedAmd64 := "amd64? (   https://github.com/test/test/releases/download/v1.0.0/1.0.0  -> test-bin-test-v1.0.0-linux-amd64-very-long-asset-name  )"
+					expectedArm64 := "arm64? (   https://github.com/test/test/releases/download/v1.0.0/1.0.0  -> test-bin-test-v1.0.0-linux-arm64-very-long-asset-name  )"
+					require.Contains(t, evaluatedSRC_URI, expectedAmd64, "Evaluated SRC_URI missing amd64 fragment")
+					require.Contains(t, evaluatedSRC_URI, expectedArm64, "Evaluated SRC_URI missing arm64 fragment")
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
@@ -245,7 +260,7 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 						t.Errorf("Expected exactly 2 g2 manifest calls, got %d. Log:\n%s", len(validLines), string(logData))
 					}
 
-					expectedAmd64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-amd64 ./app-admin/test-bin/Manifest"
+					expectedAmd64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-amd64-very-long-asset-name ./app-admin/test-bin/Manifest"
 
 					foundAmd64 := false
 					for _, line := range logLines {
@@ -258,7 +273,7 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 						t.Errorf("Expected g2 manifest upsert exact call for amd64: %q\nGot log:\n%s", expectedAmd64Call, string(logData))
 					}
 
-					expectedArm64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-arm64 ./app-admin/test-bin/Manifest"
+					expectedArm64Call := "manifest upsert-from-url https://github.com/test/test/releases/download/v1.0.0/1.0.0 test-bin-1.0.0-test-v1.0.0-linux-arm64-very-long-asset-name ./app-admin/test-bin/Manifest"
 
 					foundArm64 := false
 					for _, line := range logLines {
