@@ -175,20 +175,57 @@ Binary arm64=>test-${TAG}-linux-arm64 > test > test
 					ebuildContent, err := os.ReadFile(ebuildPath)
 					require.NoError(t, err)
 
-					if !strings.Contains(string(ebuildContent), "amd64? (") {
-						t.Errorf("Expected ebuild to contain amd64 USE condition but it didn't:\n%s", ebuildContent)
-					}
-					if !strings.Contains(string(ebuildContent), "arm64? (") {
-						t.Errorf("Expected ebuild to contain arm64 USE condition but it didn't:\n%s", ebuildContent)
+					// Assert 1: Standard header
+					require.Contains(t, string(ebuildContent), "# Copyright 2026 Gentoo Authors", "Ebuild missing Copyright header")
+					require.Contains(t, string(ebuildContent), "# Distributed under the terms of the GNU General Public License v2", "Ebuild missing License header")
+
+					// Assert 2: Literal ebuild variables survive
+					require.Contains(t, string(ebuildContent), "${DISTDIR}", "Ebuild missing literal ${DISTDIR}")
+					require.Contains(t, string(ebuildContent), "${P}", "Ebuild missing literal ${P}")
+					require.Contains(t, string(ebuildContent), "${PV}", "Ebuild missing literal ${PV}")
+					require.Contains(t, string(ebuildContent), "${WORKDIR}", "Ebuild missing literal ${WORKDIR}")
+
+					// Assert 3: Tab indentation
+					require.Contains(t, string(ebuildContent), "\t\tunpack ", "Ebuild missing tab indentation for unpack")
+					require.NotContains(t, string(ebuildContent), "        unpack ", "Ebuild uses space indentation for unpack")
+
+					// Assert 4: No overlong lines (e.g., > 140 chars)
+					lines := strings.Split(string(ebuildContent), "\n")
+					for _, line := range lines {
+						if len(line) > 150 {
+							t.Errorf("Ebuild line too long: %s", line)
+						}
 					}
 
-					// Ensure SRC_URI has the exact resolved URLs
-					if !strings.Contains(string(ebuildContent), "amd64? (  ") || !strings.Contains(string(ebuildContent), "https://github.com/test/test/releases/download/v1.0.0/${PV} ") || !strings.Contains(string(ebuildContent), "-> ${P}-test-v1.0.0-linux-amd64  )  ") {
-						t.Errorf("Expected ebuild to have split amd64 SRC_URI elements, but got:\n%s", ebuildContent)
+					// Assert 5: src_unpack paths correct
+					require.Contains(t, string(ebuildContent), "unpack \"${DISTDIR}/${P}-test-v1.0.0-linux-amd64\"", "Ebuild missing correct src_unpack path for amd64")
+					require.Contains(t, string(ebuildContent), "unpack \"${DISTDIR}/${P}-test-v1.0.0-linux-arm64\"", "Ebuild missing correct src_unpack path for arm64")
+
+					// Assert 6: Evaluate SRC_URI
+					// Extract the SRC_URI assignments
+					var srcURILines []string
+					for _, line := range lines {
+						if strings.HasPrefix(strings.TrimSpace(line), "SRC_URI=") || strings.HasPrefix(strings.TrimSpace(line), "SRC_URI+=") {
+							srcURILines = append(srcURILines, line)
+						}
 					}
-					if !strings.Contains(string(ebuildContent), "arm64? (  ") || !strings.Contains(string(ebuildContent), "https://github.com/test/test/releases/download/v1.0.0/${PV} ") || !strings.Contains(string(ebuildContent), "-> ${P}-test-v1.0.0-linux-arm64  )  ") {
-						t.Errorf("Expected ebuild to have split arm64 SRC_URI elements, but got:\n%s", ebuildContent)
-					}
+					srcURIScript := strings.Join(srcURILines, "\n")
+					srcURIScript += "\necho \"$SRC_URI\""
+
+					cmd := exec.Command("bash", "-c", srcURIScript)
+					output, err := cmd.Output()
+					require.NoError(t, err, "Evaluating SRC_URI failed")
+
+					evaluatedSRC_URI := strings.TrimSpace(string(output))
+
+					// Assert no newlines/tabs in evaluated value
+					require.NotContains(t, evaluatedSRC_URI, "\n", "Evaluated SRC_URI contains literal newline")
+					require.NotContains(t, evaluatedSRC_URI, "\t", "Evaluated SRC_URI contains literal tab")
+
+					// Assert logical value
+					// Since we evaluate without PV set, it is empty. So we just check the structure.
+					require.Contains(t, evaluatedSRC_URI, "amd64? (   https://github.com/test/test/releases/download/v1.0.0/  -> -test-v1.0.0-linux-amd64  )", "Evaluated SRC_URI missing amd64 fragment")
+					require.Contains(t, evaluatedSRC_URI, "arm64? (   https://github.com/test/test/releases/download/v1.0.0/  -> -test-v1.0.0-linux-arm64  )", "Evaluated SRC_URI missing arm64 fragment")
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
