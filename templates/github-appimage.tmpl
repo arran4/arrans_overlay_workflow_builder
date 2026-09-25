@@ -118,6 +118,8 @@ jobs:
 
               # shellcheck disable=SC2016
               {
+                echo '# Copyright [[ .Now.Format "2006" ]] Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
                 echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
@@ -141,36 +143,40 @@ jobs:
                 echo 'src_unpack() {'
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
-                echo '  if use [[ $externalResource.Keyword ]]; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
-                echo '  fi'
+                echo '	if use [[ $externalResource.Keyword ]]; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
+                echo '	fi'
   [[ end ]]
 [[ end ]]
 [[- range $pname, $prog := .Programs ]]
 [[- range $keyword, $binary := $prog.Binary ]]
   [[- if gt (len $binary) 2 ]]
-                echo '  if use [[ $keyword ]]; then'
-                echo "    mv \"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't move archived file\""
-                echo '  fi'
+                echo '	if use [[ $keyword ]]; then'
+                echo "		mv \\"
+                echo "			\"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \\"
+                echo "			\"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\" || die \"Can't move archived file\""
+                echo '	fi'
   [[ else ]]
-                echo '  if use [[ $keyword ]]; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\"  || die \"Can't copy downloaded file\""
-                echo '  fi'
+                echo '	if use [[ $keyword ]]; then'
+                echo "		cp \\"
+                echo "			\"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \\"
+                echo "			\"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\" || die \"Can't copy downloaded file\""
+                echo '	fi'
   [[ end ]]
 [[ end ]]
-                echo '  chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
+                echo '	chmod a+x "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}"  || die "Can'\''t chmod archive file"'
 [[- if $prog.HasDesktopFile ]]
-                echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
+                echo '	"./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to extract .desktop from appimage"'
 [[ end ]]
 [[- range $i, $icon := $prog.Icons ]]
   [[- if eq $icon "hicolor-apps" ]]
-                echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
+                echo '	"./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
   [[ end ]]
   [[- if eq $icon "pixmaps" ]]
-                echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "usr/share/pixmaps" || die "Failed to extract pixmaps icons from app image"'
+                echo '	"./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "usr/share/pixmaps" || die "Failed to extract pixmaps icons from app image"'
   [[ end ]]
   [[- if eq $icon "root" ]]
-                echo '  "./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
+                echo '	"./${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" --appimage-extract "*.png" || die "Failed to extract root icons from app image"'
   [[ end ]]
 [[ end ]]
 [[ end ]]
@@ -183,54 +189,54 @@ jobs:
 [[- if .HasDesktopFile ]]
   [[- range $pname, $prog := .Programs ]]
     [[- if $prog.HasDesktopFile ]]
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}:' 'squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}'"
+                echo "	sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}:' 'squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}'"
     [[ end ]]
   [[ end ]]
 [[ end ]]
 [[- range $pname, $prog := .Programs ]]
   [[- range $i, $icon := $prog.Icons ]]
     [[- if eq $icon "hicolor-apps" ]]
-                echo "  find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
-                echo "  find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
+                echo "	find squashfs-root -type f \( -name index.theme -or -name icon-theme.cache \) -exec rm {} \; "
+                echo "	find squashfs-root -type d -exec rmdir -p --ignore-fail-on-non-empty {} \; "
     [[ end ]]
   [[ end ]]
 [[ end ]]
-                echo '  eapply_user'
+                echo '	eapply_user'
                 echo '}'
 [[- if .EbuildInclude.pkg_postinst ]]
                 echo 'pkg_postinst() {'
-[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent "	" | shell_echo | indent (repeat 16 " ") ]]
                 echo '}'
 [[- end ]]
                 echo ''
                 echo 'src_install() {'
 [[- if .EbuildInclude.src_install ]]
-[[ getEbuildIncludes .EbuildInclude "src_install" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" | indent "	" | shell_echo | indent (repeat 16 " ") ]]
 [[- end ]]
-                echo '  exeinto /opt/bin'
+                echo '	exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
-                echo "  dosym [[ $starget ]] [[ $sname ]]"
+                echo "	dosym [[ $starget ]] [[ $sname ]]"
 [[- end ]]
 [[- range $pname, $prog := .Programs ]]
-                echo '  doexe "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
+                echo '	doexe "${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}" || die "Failed to install AppImage"'
 [[ end ]]
 [[- if .HasDesktopFile ]]
-                echo '  insinto /usr/share/applications'
+                echo '	insinto /usr/share/applications'
   [[- range $pname, $prog := .Programs ]]
-                echo '  doins "squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to install desktop file"'
+                echo '	doins "squashfs-root/${{ env.[[ join (filterEmpty $pname "desktop_file" ) "_" ]] }}" || die "Failed to install desktop file"'
   [[ end ]]
 [[ end ]]
 [[- range $pname, $prog := .Programs ]]
   [[- range $i, $icon := $prog.Icons ]]
     [[- if eq $icon "hicolor-apps" ]]
-                echo '  insinto /usr/share/icons'
-                echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
+                echo '	insinto /usr/share/icons'
+                echo '	doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
     [[- else if eq $icon "pixmaps" ]]
-                echo '  insinto /usr/share/pixmaps'
-                echo '  doins squashfs-root/usr/share/pixmaps/*.png || die "Failed to install icons"'
+                echo '	insinto /usr/share/pixmaps'
+                echo '	doins squashfs-root/usr/share/pixmaps/*.png || die "Failed to install icons"'
     [[- else if eq $icon "root" ]]
-                echo '  insinto /usr/share/pixmaps'
-                echo '  doins squashfs-root/*.png || die "Failed to install icons"'
+                echo '	insinto /usr/share/pixmaps'
+                echo '	doins squashfs-root/*.png || die "Failed to install icons"'
     [[ end ]]
   [[ end ]]
 [[ end ]]
@@ -238,7 +244,7 @@ jobs:
                 echo ""
 [[- if .HasDesktopFile ]]
                 echo "pkg_postinst() {"
-                echo "  xdg_desktop_database_update"
+                echo "	xdg_desktop_database_update"
                 echo "}"
                 echo ""
 [[ end ]]

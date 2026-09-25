@@ -130,14 +130,15 @@ jobs:
 
               # shellcheck disable=SC2016
               {
+                echo '# Copyright 2026 Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
                 echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'SRC_URI="'
-                echo "	amd64? (  ${resolved_download_urls["0"]} -> \${P}-example-amd64-\${PV}.tar.gz  )  "
-                echo "	arm64? (  ${resolved_download_urls["1"]} -> \${P}-example-arm64-\${PV}.tar.gz  )  "
-                echo '"'
+                echo 'SRC_URI=""'
+                echo "SRC_URI+=\" amd64? (  ${resolved_download_urls["0"]} -> \${P}-example-amd64-\${PV}.tar.gz  )  \""
+                echo "SRC_URI+=\" arm64? (  ${resolved_download_urls["1"]} -> \${P}-example-arm64-\${PV}.tar.gz  )  \""
                 echo 'LICENSE="unknown"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -153,22 +154,30 @@ jobs:
                 echo 'S="${WORKDIR}"'
                 echo ''
                 echo 'src_unpack() {'
-                echo '  if use amd64; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-example-amd64-\${PV}.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use arm64; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-example-arm64-\${PV}.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
+                echo '	if use amd64; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-example-amd64-\${PV}.tar.gz\" \\"
+                echo "			|| die \"Can't unpack archive file\""
+                echo '	fi'
+                echo '	if use arm64; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-example-arm64-\${PV}.tar.gz\" \\"
+                echo "			|| die \"Can't unpack archive file\""
+                echo '	fi'
                 echo '}'
                 echo ''
                 echo 'src_install() {'
-                echo '  exeinto /opt/bin'
-                echo '  if use amd64; then'
-                echo '    newexe "${{ env.example_binary_archived_name_amd64 }}" "${{ env.example_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use arm64; then'
-                echo '    newexe "${{ env.example_binary_archived_name_arm64 }}" "${{ env.example_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
+                echo '	exeinto /opt/bin'
+                echo '	if use amd64; then'
+                echo '		newexe \'
+                echo '			"${{ env.example_binary_archived_name_amd64 }}" \'
+                echo '			"${{ env.example_binary_installed_name }}" \'
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use arm64; then'
+                echo '		newexe \'
+                echo '			"${{ env.example_binary_archived_name_arm64 }}" \'
+                echo '			"${{ env.example_binary_installed_name }}" \'
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
                 echo '}'
               } > "$tmp_ebuild_file"
               if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then

@@ -1,21 +1,19 @@
-This fixture tests CustomDownloadUrl and TAG mappings.
+This tests that the generated github binary workflow uses correct tabs, creates properly wrapped line continuations for long shell commands, correctly handles line lengths for `SRC_URI` with appending architecture targets, and adds the Gentoo copyright and GPLv2 headers.
 
 -- input.config --
-Type Web Binary
-Category net-misc
-EbuildName example-bin
-Description Example description
-Homepage https://example.com
-License MIT License
-ProgramName example
-TagsCommand curl -s https://example.com/tags | jq -r .[]
-Binary amd64=>example-${TAG}.tar.gz
-DownloadBaseUrl https://example.com/download/${TAG}/
-
+Type Github Binary Release
+GithubProjectUrl https://github.com/example/foo
+EbuildName foo-bin
+Category app-misc
+Description test
+License MIT
+ProgramName foo
+Binary amd64=>foo-very-long-asset-name-to-test-wrapping-${VERSION}-x86_64-linux-gnu.tar.gz > foo-very-long-archive-name-inside > foo-very-long-installed-name
+Binary arm64=>foo-very-long-asset-name-to-test-wrapping-${VERSION}-aarch64-linux-gnu.tar.gz > foo-very-long-archive-name-inside > foo-very-long-installed-name
 -- expected.yaml --
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web Binary test.config 2026-07-12 00:00:00 +0000 UTC
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC
 
-name: net-misc/example-bin update
+name: app-misc/foo-bin update
 
 permissions:
   contents: write
@@ -26,17 +24,22 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/net-misc-example-bin-update.yaml'
+      - '.github/workflows/app-misc-foo-bin-update.yaml'
 
 env:
-  ecn: net-misc
-  epn: example-bin
-  description: "Example description"
-  homepage: "https://example.com"
-  keywords: ~amd64
-  workflow_filename: net-misc-example-bin-update.yaml
-  example_binary_installed_name: 'example-${TAG}.tar.gz'
-  example_release_name_amd64: 'example-${tag}.tar.gz'
+  ecn: app-misc
+  epn: foo-bin
+  description: "test"
+  homepage: ""
+  github_owner: example
+  github_repo: foo
+  keywords: ~amd64 ~arm64
+  workflow_filename: app-misc-foo-bin-update.yaml
+  foo_binary_installed_name: 'foo-very-long-installed-name'
+  foo_binary_archived_name_amd64: 'foo-very-long-archive-name-inside'
+  foo_release_name_amd64: 'foo-very-long-asset-name-to-test-wrapping-${version}-x86_64-linux-gnu.tar.gz'
+  foo_binary_archived_name_arm64: 'foo-very-long-archive-name-inside'
+  foo_release_name_arm64: 'foo-very-long-asset-name-to-test-wrapping-${version}-aarch64-linux-gnu.tar.gz'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -63,15 +66,13 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:example/foo" "$metadata_file"
           declare -A releaseTypes=()
-          tags=$(curl -s https://example.com/tags | jq -r .[])
+          tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
           for tag in $tags; do
             version="${tag#v}"
-            if echo "$tag" | grep -qE '^v?[0-9]'; then
-                version="${tag#v}"
-            elif [ "${version}" = "${tag}" ]; then
+            if [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no v removed skipping"
                 continue
             fi
@@ -94,8 +95,6 @@ jobs:
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
-            # Resolve download URLs once per external resource
-            declare -A resolved_download_urls=()
 
               # shellcheck disable=SC2016
               {
@@ -106,8 +105,9 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? (  https://example.com/download/${tag}/\${PV} -> \${P}-example-${tag}.tar.gz  )  \""
-                echo 'LICENSE="MIT License"'
+                echo "SRC_URI+=\" amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-x86_64-linux-gnu.tar.gz  )  \""
+                echo "SRC_URI+=\" arm64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-aarch64-linux-gnu.tar.gz  )  \""
+                echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
@@ -121,14 +121,29 @@ jobs:
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
-                echo 'src_unpack() { :; }'
+                echo 'src_unpack() {'
+                echo '	if use amd64; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-x86_64-linux-gnu.tar.gz\" \\"
+                echo "			|| die \"Can't unpack archive file\""
+                echo '	fi'
+                echo '	if use arm64; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-aarch64-linux-gnu.tar.gz\" \\"
+                echo "			|| die \"Can't unpack archive file\""
+                echo '	fi'
+                echo '}'
                 echo ''
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
                 echo '	if use amd64; then'
                 echo '		newexe \'
-                echo '			"${DISTDIR}/${P}-${{ env.example_release_name_amd64 }}" \'
-                echo '			"${{ env.example_binary_installed_name }}" \'
+                echo '			"${{ env.foo_binary_archived_name_amd64 }}" \'
+                echo '			"${{ env.foo_binary_installed_name }}" \'
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use arm64; then'
+                echo '		newexe \'
+                echo '			"${{ env.foo_binary_archived_name_arm64 }}" \'
+                echo '			"${{ env.foo_binary_installed_name }}" \'
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '}'
@@ -144,7 +159,8 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://example.com/download/${tag}/${version}" "${{ env.epn }}-${version}-example-${tag}.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-foo-very-long-asset-name-to-test-wrapping-${version}-x86_64-linux-gnu.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-foo-very-long-asset-name-to-test-wrapping-${version}-aarch64-linux-gnu.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

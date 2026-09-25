@@ -97,6 +97,8 @@ jobs:
 
               # shellcheck disable=SC2016
               {
+                echo '# Copyright 2026 Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
                 echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
@@ -112,32 +114,33 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo 'SRC_URI="'
-                echo "  amd64? ( https://custom.url/${version} -> \${P}-example-linux-x86_64-\${PV}.AppImage )"
-                echo '"'
+                echo 'SRC_URI=""'
+                echo "SRC_URI+=\" amd64? ( https://custom.url/${version} -> \${P}-example-linux-x86_64-\${PV}.AppImage ) \""
                 echo ''
                 echo 'src_unpack() {'
-                echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
-                echo '  fi'
-                echo '  chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
-                echo '  "./${{ env.example_appimage_installed_name }}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+                echo '	if use amd64; then'
+                echo "		cp \\"
+                echo "			\"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \\"
+                echo "			\"${{ env.example_appimage_installed_name }}\" || die \"Can't copy downloaded file\""
+                echo '	fi'
+                echo '	chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
+                echo '	"./${{ env.example_appimage_installed_name }}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
-                echo "  sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.example_appimage_installed_name }}:' 'squashfs-root/${{ env.example_desktop_file }}'"
-                echo '  eapply_user'
+                echo "	sed -i 's:^Exec=.*:Exec=/opt/bin/${{ env.example_appimage_installed_name }}:' 'squashfs-root/${{ env.example_desktop_file }}'"
+                echo '	eapply_user'
                 echo '}'
                 echo ''
                 echo 'src_install() {'
-                echo '  exeinto /opt/bin'
-                echo '  doexe "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
-                echo '  insinto /usr/share/applications'
-                echo '  doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'
+                echo '	exeinto /opt/bin'
+                echo '	doexe "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
+                echo '	insinto /usr/share/applications'
+                echo '	doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'
                 echo '}'
                 echo ""
                 echo "pkg_postinst() {"
-                echo "  xdg_desktop_database_update"
+                echo "	xdg_desktop_database_update"
                 echo "}"
                 echo ""
 

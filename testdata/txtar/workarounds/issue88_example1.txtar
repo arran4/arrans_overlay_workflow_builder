@@ -97,13 +97,14 @@ jobs:
 
               # shellcheck disable=SC2016
               {
+                echo '# Copyright 2026 Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
                 echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'SRC_URI="'
-                echo "	amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-go-playerctl-bin-linux-amd64  )  "
-                echo '"'
+                echo 'SRC_URI=""'
+                echo "SRC_URI+=\" amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-go-playerctl-bin-linux-amd64  )  \""
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -121,14 +122,17 @@ jobs:
                 echo 'src_unpack() { :; }'
                 echo ''
                 echo 'src_install() {'
-                echo '  exeinto /opt/bin'
+                echo '	exeinto /opt/bin'
                 echo "  dosym /opt/bin/go-playerctl-bin go-playerctl"
-                echo '  if use amd64; then'
-                echo '    newexe "${DISTDIR}/${P}-${{ env.release_name_amd64 }}" "${{ env.binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
+                echo '	if use amd64; then'
+                echo '		newexe \'
+                echo '			"${DISTDIR}/${P}-${{ env.release_name_amd64 }}" \'
+                echo '			"${{ env.binary_installed_name }}" \'
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
                 echo '}'
                 echo 'pkg_postinst() {'
-                echo "    echo \"Please add your user to the video group.\""
+                echo "	echo \"Please add your user to the video group.\""
                 echo '}'
               } > "$tmp_ebuild_file"
               if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then

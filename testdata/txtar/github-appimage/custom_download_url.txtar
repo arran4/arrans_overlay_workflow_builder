@@ -93,6 +93,8 @@ jobs:
 
               # shellcheck disable=SC2016
               {
+                echo '# Copyright 2026 Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
                 echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
@@ -106,24 +108,25 @@ jobs:
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
                 echo ''
-                echo 'SRC_URI="'
-                echo "  amd64? ( https://example.com/download/${tag}/example-${tag}.AppImage -> \${P}-example-${tag}.AppImage )"
-                echo '"'
+                echo 'SRC_URI=""'
+                echo "SRC_URI+=\" amd64? ( https://example.com/download/${tag}/example-${tag}.AppImage -> \${P}-example-${tag}.AppImage ) \""
                 echo ''
                 echo 'src_unpack() {'
-                echo '  if use amd64; then'
-                echo "    cp \"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \"${{ env.example_appimage_installed_name }}\"  || die \"Can't copy downloaded file\""
-                echo '  fi'
-                echo '  chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
+                echo '	if use amd64; then'
+                echo "		cp \\"
+                echo "			\"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \\"
+                echo "			\"${{ env.example_appimage_installed_name }}\" || die \"Can't copy downloaded file\""
+                echo '	fi'
+                echo '	chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '}'
                 echo ''
                 echo 'src_prepare() {'
-                echo '  eapply_user'
+                echo '	eapply_user'
                 echo '}'
                 echo ''
                 echo 'src_install() {'
-                echo '  exeinto /opt/bin'
-                echo '  doexe "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
+                echo '	exeinto /opt/bin'
+                echo '	doexe "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
                 echo '}'
                 echo ""
               } > "$tmp_ebuild_file"
