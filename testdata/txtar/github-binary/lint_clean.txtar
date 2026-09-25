@@ -127,11 +127,11 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-x86_64-linux-gnu.tar.gz\" \\"
+                echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-x86_64-linux-gnu.tar.gz\" "\\
                 echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm64; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-aarch64-linux-gnu.tar.gz\" \\"
+                echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-aarch64-linux-gnu.tar.gz\" "\\
                 echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
@@ -139,15 +139,15 @@ jobs:
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
                 echo '	if use amd64; then'
-                echo '		newexe \'
-                echo '			"${{ env.foo_binary_archived_name_amd64 }}" \'
-                echo '			"${{ env.foo_binary_installed_name }}" \'
+                echo '		newexe '\\
+                echo '			"${{ env.foo_binary_archived_name_amd64 }}" '\\
+                echo '			"${{ env.foo_binary_installed_name }}" '\\
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '	if use arm64; then'
-                echo '		newexe \'
-                echo '			"${{ env.foo_binary_archived_name_arm64 }}" \'
-                echo '			"${{ env.foo_binary_installed_name }}" \'
+                echo '		newexe '\\
+                echo '			"${{ env.foo_binary_archived_name_arm64 }}" '\\
+                echo '			"${{ env.foo_binary_installed_name }}" '\\
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '}'

@@ -122,7 +122,7 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-k9s_Linux_amd64.tar.gz\" \\"
+                echo "		unpack \"\${DISTDIR}/\${P}-k9s_Linux_amd64.tar.gz\" "\\
                 echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
@@ -130,9 +130,9 @@ jobs:
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
                 echo '	if use amd64; then'
-                echo '		newexe \'
-                echo '			"${{ env.binary_archived_name_amd64 }}" \'
-                echo '			"${{ env.binary_installed_name }}" \'
+                echo '		newexe '\\
+                echo '			"${{ env.binary_archived_name_amd64 }}" '\\
+                echo '			"${{ env.binary_installed_name }}" '\\
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '}'

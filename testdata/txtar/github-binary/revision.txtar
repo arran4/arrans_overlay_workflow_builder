@@ -128,9 +128,9 @@ jobs:
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
                 echo '	if use amd64; then'
-                echo '		newexe \'
+                echo '		newexe '\\
                 echo '			"${DISTDIR}/${P}-${{ env.tool_release_name_amd64 }}" \'
-                echo '			"${{ env.tool_binary_installed_name }}" \'
+                echo '			"${{ env.tool_binary_installed_name }}" '\\
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '}'
