@@ -193,9 +193,6 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 					// g2's IndentingWhitespaceLintRule: tabs=4 positions, limit=80
 					lines := strings.Split(string(ebuildContent), "\n")
 					for _, line := range lines {
-					    if strings.HasPrefix(line, "# Generated via") {
-					        continue
-					    }
 						pos := 0
 						for _, ch := range line {
 							if ch == '\t' {
@@ -239,8 +236,8 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 					// Assert logical value
 					expectedAmd64 := "amd64? (   https://github.com/test/test/releases/download/v1.0.0/1.0.0  -> test-bin-test-v1.0.0-linux-amd64-very-long-asset-name  )"
 					expectedArm64 := "arm64? (   https://github.com/test/test/releases/download/v1.0.0/1.0.0  -> test-bin-test-v1.0.0-linux-arm64-very-long-asset-name  )"
-					require.Contains(t, evaluatedSRC_URI, expectedAmd64, "Evaluated SRC_URI missing amd64 fragment")
-					require.Contains(t, evaluatedSRC_URI, expectedArm64, "Evaluated SRC_URI missing arm64 fragment")
+					expectedFull := " " + expectedAmd64 + "   " + expectedArm64 + "  " // Include the spaces that are appended by multiple `SRC_URI+=` assignments
+					require.Equal(t, expectedFull, evaluatedSRC_URI, "Evaluated SRC_URI does not perfectly match expected logical value")
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
