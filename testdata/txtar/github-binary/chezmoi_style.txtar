@@ -161,35 +161,35 @@ jobs:
                 echo 'src_unpack() {'
                 echo '	if use amd64 && use glibc && ! use loong64 ; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux-glibc_amd64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use amd64 && ! use glibc  && ! use loong64 ; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux-musl_amd64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use amd64 && use loong64 && ! use glibc ; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_loong64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_arm.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm64 && use android; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_android_arm64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm64 && ! use android ; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_arm64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use ppc64 && ! use le ; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use ppc64 && use le; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
                 echo ''

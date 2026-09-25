@@ -144,19 +144,19 @@ jobs:
                 echo 'src_unpack() {'
                 echo '	if use amd64 && use extra_flag && ! use my_alt ; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-tool_\${PV}_linux_amd64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use amd64 && use my_alt; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-tool_alt_\${PV}_linux_amd64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm64 && ! use my_alt ; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-tool_\${PV}_linux_arm64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm64 && use my_alt; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-tool_alt_\${PV}_linux_arm64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
                 echo ''

@@ -124,11 +124,11 @@ jobs:
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-x86_64-linux-gnu.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm64; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-aarch64-linux-gnu.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
                 echo ''

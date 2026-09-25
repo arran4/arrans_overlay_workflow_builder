@@ -156,11 +156,11 @@ jobs:
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-example-amd64-\${PV}.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm64; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-example-arm64-\${PV}.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
                 echo ''

@@ -144,7 +144,7 @@ jobs:
 [[- range $releaseFilename, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
                 echo '	if use [[ $externalResource.Keyword ]]; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
+                echo "		unpack \"\${DISTDIR}/\${P}-[[ $releaseFilename | ebuildvardoublequoted ]]\" || die \"Failed to unpack archive file\""
                 echo '	fi'
   [[ end ]]
 [[ end ]]
@@ -154,13 +154,13 @@ jobs:
                 echo '	if use [[ $keyword ]]; then'
                 echo "		mv \\"
                 echo "			\"${{ env.[[ join (filterEmpty $pname "appimage_archived_name" $keyword) "_" ]] }}\" \\"
-                echo "			\"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\" || die \"Can't move archived file\""
+                echo "			\"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\" || die \"Failed to move archived file\""
                 echo '	fi'
   [[ else ]]
                 echo '	if use [[ $keyword ]]; then'
                 echo "		cp \\"
                 echo "			\"\${DISTDIR}/\${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}\" \\"
-                echo "			\"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\" || die \"Can't copy downloaded file\""
+                echo "			\"${{ env.[[ join (filterEmpty $pname "appimage_installed_name" ) "_" ]] }}\" || die \"Failed to copy downloaded file\""
                 echo '	fi'
   [[ end ]]
 [[ end ]]

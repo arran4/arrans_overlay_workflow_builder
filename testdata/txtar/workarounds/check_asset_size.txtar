@@ -128,7 +128,7 @@ jobs:
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-rustdesk-\${PV}-x86_64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
                 echo ''

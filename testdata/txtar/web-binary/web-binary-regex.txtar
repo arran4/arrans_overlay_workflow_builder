@@ -133,15 +133,15 @@ jobs:
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use arm64; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '	if use x86; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-x86.tar.gz\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
                 echo ''

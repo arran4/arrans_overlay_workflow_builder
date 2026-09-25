@@ -127,12 +127,12 @@ jobs:
                 echo '	if use amd64; then'
                 echo "		cp \\"
                 echo "			\"\${DISTDIR}/\${P}-${{ env.rustdesk_release_name_amd64 }}\" \\"
-                echo "			\"${{ env.rustdesk_appimage_installed_name }}\" || die \"Can't copy downloaded file\""
+                echo "			\"${{ env.rustdesk_appimage_installed_name }}\" || die \"Failed to copy downloaded file\""
                 echo '	fi'
                 echo '	if use arm64; then'
                 echo "		cp \\"
                 echo "			\"\${DISTDIR}/\${P}-${{ env.rustdesk_release_name_arm64 }}\" \\"
-                echo "			\"${{ env.rustdesk_appimage_installed_name }}\" || die \"Can't copy downloaded file\""
+                echo "			\"${{ env.rustdesk_appimage_installed_name }}\" || die \"Failed to copy downloaded file\""
                 echo '	fi'
                 echo '	chmod a+x "${{ env.rustdesk_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '	"./${{ env.rustdesk_appimage_installed_name }}" --appimage-extract "${{ env.rustdesk_desktop_file }}" || die "Failed to extract .desktop from appimage"'

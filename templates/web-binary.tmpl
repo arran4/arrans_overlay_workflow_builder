@@ -196,7 +196,7 @@ jobs:
     [[- $count := 0 ]]
                 echo '	if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe  ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
                 echo "		unpack \"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]\" \\"
-                echo "			|| die \"Can't unpack archive file\""
+                echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
   [[ end ]]
 [[ end ]]

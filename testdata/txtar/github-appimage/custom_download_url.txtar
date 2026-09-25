@@ -115,7 +115,7 @@ jobs:
                 echo '	if use amd64; then'
                 echo "		cp \\"
                 echo "			\"\${DISTDIR}/\${P}-${{ env.example_release_name_amd64 }}\" \\"
-                echo "			\"${{ env.example_appimage_installed_name }}\" || die \"Can't copy downloaded file\""
+                echo "			\"${{ env.example_appimage_installed_name }}\" || die \"Failed to copy downloaded file\""
                 echo '	fi'
                 echo '	chmod a+x "${{ env.example_appimage_installed_name }}"  || die "Can'\''t chmod archive file"'
                 echo '}'
