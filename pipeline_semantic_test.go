@@ -120,10 +120,10 @@ func TestSemanticPipelineWebBinary(t *testing.T) {
 	}
 
 	// 6. Assert SRC_URI and Manifest use exact cached URL and filenames correctly match resources
-	if !strings.Contains(workflowStr, "amd64? (  ${resolved_download_urls[\"0\"]} -> \\${P}-example-amd64-\\${PV}.tar.gz  )") {
+	if !strings.Contains(workflowStr, "${resolved_download_urls[\"0\"]}") {
 		t.Errorf("Expected SRC_URI to use cached URL array directly for amd64, but it was not found.")
 	}
-	if !strings.Contains(workflowStr, "arm64? (  ${resolved_download_urls[\"1\"]} -> \\${P}-example-arm64-\\${PV}.tar.gz  )") {
+	if !strings.Contains(workflowStr, "${resolved_download_urls[\"1\"]}") {
 		t.Errorf("Expected SRC_URI to use cached URL array directly for arm64, but it was not found.")
 	}
 

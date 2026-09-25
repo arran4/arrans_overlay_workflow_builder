@@ -115,7 +115,9 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? ( https://custom.url/${version} -> \${P}-example-linux-x86_64-\${PV}.AppImage ) \""
+                echo "SRC_URI+=\" amd64? ( \""
+                echo "SRC_URI+=\" https://custom.url/${version} \""
+                echo "SRC_URI+=\" -> \${P}-example-linux-x86_64-\${PV}.AppImage ) \""
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'

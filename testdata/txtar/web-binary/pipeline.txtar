@@ -137,8 +137,12 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? (  ${resolved_download_urls["0"]} -> \${P}-example-amd64-\${PV}.tar.gz  )  \""
-                echo "SRC_URI+=\" arm64? (  ${resolved_download_urls["1"]} -> \${P}-example-arm64-\${PV}.tar.gz  )  \""
+                echo "SRC_URI+=\" amd64? (  \""
+                echo "SRC_URI+=\" ${resolved_download_urls["0"]} \""
+                echo "SRC_URI+=\" -> \${P}-example-amd64-\${PV}.tar.gz  )  \""
+                echo "SRC_URI+=\" arm64? (  \""
+                echo "SRC_URI+=\" ${resolved_download_urls["1"]} \""
+                echo "SRC_URI+=\" -> \${P}-example-arm64-\${PV}.tar.gz  )  \""
                 echo 'LICENSE="unknown"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'

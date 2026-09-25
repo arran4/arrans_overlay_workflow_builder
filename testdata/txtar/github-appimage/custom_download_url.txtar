@@ -109,7 +109,9 @@ jobs:
                 echo 'RESTRICT="strip"'
                 echo ''
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? ( https://example.com/download/${tag}/example-${tag}.AppImage -> \${P}-example-${tag}.AppImage ) \""
+                echo "SRC_URI+=\" amd64? ( \""
+                echo "SRC_URI+=\" https://example.com/download/${tag}/example-${tag}.AppImage \""
+                echo "SRC_URI+=\" -> \${P}-example-${tag}.AppImage ) \""
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'

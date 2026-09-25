@@ -103,7 +103,9 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-rust-1.0.0-amd64  )  \""
+                echo "SRC_URI+=\" amd64? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-rust-1.0.0-amd64  )  \""
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'

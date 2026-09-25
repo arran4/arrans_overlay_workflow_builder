@@ -116,7 +116,9 @@ jobs:
                 echo "inherit xdg-utils"
                 echo ''
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? ( https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-LocalSend-${tag}-linux-x86-64.AppImage ) \""
+                echo "SRC_URI+=\" amd64? ( \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-LocalSend-${tag}-linux-x86-64.AppImage ) \""
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'

@@ -111,7 +111,9 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? (  https://example.com/archive/${version}/example.tar.gz -> \${P}-example-linux-amd64.tar.gz  )  \""
+                echo "SRC_URI+=\" amd64? (  \""
+                echo "SRC_URI+=\" https://example.com/archive/${version}/example.tar.gz \""
+                echo "SRC_URI+=\" -> \${P}-example-linux-amd64.tar.gz  )  \""
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
