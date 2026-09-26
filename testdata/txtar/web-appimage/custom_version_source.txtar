@@ -99,7 +99,12 @@ jobs:
           tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
             # shellcheck disable=SC2016
             {
-              echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
+              echo '# Copyright 2026 Gentoo Authors'
+              echo '# Distributed under the terms of the GNU General Public License v2'
+              echo '# Generated via:'
+              echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
+              echo '#   commit: ${{ github.sha }}'
+              echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
               echo 'EAPI=8'
               echo "DESCRIPTION=\"${{ env.description }}\""
               echo "HOMEPAGE=\"${{ env.homepage }}\""
@@ -116,19 +121,19 @@ jobs:
               echo 'inherit xdg-utils'
               echo ''
               echo 'src_install() {'
-              echo '  cp "${DISTDIR}/${P}.${appimage_extension}" "${P}.${appimage_extension}" || die "Failed to copy AppImage"'
-              echo '  chmod a+x "${P}.${appimage_extension}" || die "Can'"'"'t chmod archive file"'
-              echo '  "./${P}.${appimage_extension}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'
-              echo '  "./${P}.${appimage_extension}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
-              echo '  exeinto /opt/bin'
-              echo '  newexe "${P}.${appimage_extension}" "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
-              echo '  insinto /usr/share/applications'
-              echo '  doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'
-              echo '  insinto /usr/share/icons'
-              echo '  doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
+              echo '	cp "${DISTDIR}/${P}.${appimage_extension}" "${P}.${appimage_extension}" || die "Failed to copy AppImage"'
+              echo '	chmod a+x "${P}.${appimage_extension}" || die "Can'"'"'t chmod archive file"'
+              echo '	"./${P}.${appimage_extension}" --appimage-extract "${{ env.example_desktop_file }}" || die "Failed to extract .desktop from appimage"'
+              echo '	"./${P}.${appimage_extension}" --appimage-extract "usr/share/icons" || die "Failed to extract hicolor icons from app image"'
+              echo '	exeinto /opt/bin'
+              echo '	newexe "${P}.${appimage_extension}" "${{ env.example_appimage_installed_name }}" || die "Failed to install AppImage"'
+              echo '	insinto /usr/share/applications'
+              echo '	doins "squashfs-root/${{ env.example_desktop_file }}" || die "Failed to install desktop file"'
+              echo '	insinto /usr/share/icons'
+              echo '	doins -r squashfs-root/usr/share/icons/hicolor || die "Failed to install icons"'
               echo '}'
               echo 'pkg_postinst() {'
-              echo '  xdg_desktop_database_update'
+              echo '	xdg_desktop_database_update'
               echo '}'
             } > "$tmp_ebuild_file"
               if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then

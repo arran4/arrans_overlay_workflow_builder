@@ -107,23 +107,49 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
+                echo '# Copyright 2026 Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
+                echo '# Generated via:'
+                echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
+                echo '#   commit: ${{ github.sha }}'
+                echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'SRC_URI="'
-                echo "	amd64? ( glibc? ( !loong64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux-glibc_amd64.tar.gz  )  )  )  "
-                echo "	amd64? ( !glibc? ( !loong64? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux-musl_amd64.tar.gz  )  )  )  "
-                echo "	amd64? ( loong64? ( !glibc? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_loong64.tar.gz  )  )  )  "
-                echo "	arm? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_arm.tar.gz  )  "
-                echo "	arm64? ( android? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_android_arm64.tar.gz  )  )  "
-                echo "	arm64? ( !android? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_arm64.tar.gz  )  )  "
-                echo "	ppc64? ( !le? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_ppc64.tar.gz  )  )  "
-                echo "	ppc64? ( le? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz  )  )  "
-                echo "	riscv? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_riscv64.tar.gz  )  "
-                echo "	s390? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_s390x.tar.gz  )  "
-                echo "	x86? (  https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} -> \${P}-chezmoi_\${PV}_linux_i386.tar.gz  )  "
-                echo '"'
+                echo 'SRC_URI=""'
+                echo "SRC_URI+=\" amd64? ( glibc? ( !loong64? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux-glibc_amd64.tar.gz  )  )  )  \""
+                echo "SRC_URI+=\" amd64? ( !glibc? ( !loong64? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux-musl_amd64.tar.gz  )  )  )  \""
+                echo "SRC_URI+=\" amd64? ( loong64? ( !glibc? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux_loong64.tar.gz  )  )  )  \""
+                echo "SRC_URI+=\" arm? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux_arm.tar.gz  )  \""
+                echo "SRC_URI+=\" arm64? ( android? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_android_arm64.tar.gz  )  )  \""
+                echo "SRC_URI+=\" arm64? ( !android? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux_arm64.tar.gz  )  )  \""
+                echo "SRC_URI+=\" ppc64? ( !le? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux_ppc64.tar.gz  )  )  \""
+                echo "SRC_URI+=\" ppc64? ( le? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz  )  )  \""
+                echo "SRC_URI+=\" riscv? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux_riscv64.tar.gz  )  \""
+                echo "SRC_URI+=\" s390? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux_s390x.tar.gz  )  \""
+                echo "SRC_URI+=\" x86? (  \""
+                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
+                echo "SRC_URI+=\" -> \${P}-chezmoi_\${PV}_linux_i386.tar.gz  )  \""
                 echo 'LICENSE="MIT License"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -142,76 +168,120 @@ jobs:
                 echo 'S="${WORKDIR}"'
                 echo ''
                 echo 'src_unpack() {'
-                echo '  if use amd64 && use glibc && ! use loong64 ; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux-glibc_amd64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use amd64 && ! use glibc  && ! use loong64 ; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux-musl_amd64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use amd64 && use loong64 && ! use glibc ; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_loong64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use arm; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_arm.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use arm64 && use android; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_android_arm64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use arm64 && ! use android ; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_arm64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use ppc64 && ! use le ; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use ppc64 && use le; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use riscv; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_riscv64.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use s390; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_s390x.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
-                echo '  if use x86; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_i386.tar.gz\" || die \"Can't unpack archive file\""
-                echo '  fi'
+                echo '	if use amd64 && use glibc && ! use loong64 ; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux-glibc_amd64.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use amd64 && ! use glibc  && ! use loong64 ; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux-musl_amd64.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use amd64 && use loong64 && ! use glibc ; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_loong64.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use arm; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_arm.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use arm64 && use android; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_android_arm64.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use arm64 && ! use android ; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_arm64.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use ppc64 && ! use le ; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use ppc64 && use le; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use riscv; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_riscv64.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use s390; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_s390x.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '	if use x86; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-chezmoi_\${PV}_linux_i386.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
                 echo '}'
                 echo ''
                 echo 'src_install() {'
-                echo '  exeinto /opt/bin'
-                echo '  if use arm64 && use android; then'
-                echo '    newexe "${{ env.android_binary_archived_name_arm64 }}" "${{ env.android_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use amd64 && ! use glibc  && ! use loong64 ; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_amd64 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use arm; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_arm }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use arm64 && ! use android ; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_arm64 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use ppc64 && ! use le ; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_ppc64 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use riscv; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_riscv }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use s390; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_s390 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use x86; then'
-                echo '    newexe "${{ env.chezmoi_binary_archived_name_x86 }}" "${{ env.chezmoi_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use amd64 && use glibc && ! use loong64 ; then'
-                echo '    newexe "${{ env.glibc_binary_archived_name_amd64 }}" "${{ env.glibc_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use ppc64 && use le; then'
-                echo '    newexe "${{ env.le_binary_archived_name_ppc64 }}" "${{ env.le_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
-                echo '  if use amd64 && use loong64 && ! use glibc ; then'
-                echo '    newexe "${{ env.loong64_binary_archived_name_amd64 }}" "${{ env.loong64_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
+                echo '	exeinto /opt/bin'
+                echo '	if use arm64 && use android; then'
+                echo '		newexe '\\
+                echo '			"${{ env.android_binary_archived_name_arm64 }}" '\\
+                echo '			"${{ env.android_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use amd64 && ! use glibc  && ! use loong64 ; then'
+                echo '		newexe '\\
+                echo '			"${{ env.chezmoi_binary_archived_name_amd64 }}" '\\
+                echo '			"${{ env.chezmoi_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use arm; then'
+                echo '		newexe '\\
+                echo '			"${{ env.chezmoi_binary_archived_name_arm }}" '\\
+                echo '			"${{ env.chezmoi_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use arm64 && ! use android ; then'
+                echo '		newexe '\\
+                echo '			"${{ env.chezmoi_binary_archived_name_arm64 }}" '\\
+                echo '			"${{ env.chezmoi_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use ppc64 && ! use le ; then'
+                echo '		newexe '\\
+                echo '			"${{ env.chezmoi_binary_archived_name_ppc64 }}" '\\
+                echo '			"${{ env.chezmoi_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use riscv; then'
+                echo '		newexe '\\
+                echo '			"${{ env.chezmoi_binary_archived_name_riscv }}" '\\
+                echo '			"${{ env.chezmoi_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use s390; then'
+                echo '		newexe '\\
+                echo '			"${{ env.chezmoi_binary_archived_name_s390 }}" '\\
+                echo '			"${{ env.chezmoi_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use x86; then'
+                echo '		newexe '\\
+                echo '			"${{ env.chezmoi_binary_archived_name_x86 }}" '\\
+                echo '			"${{ env.chezmoi_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use amd64 && use glibc && ! use loong64 ; then'
+                echo '		newexe '\\
+                echo '			"${{ env.glibc_binary_archived_name_amd64 }}" '\\
+                echo '			"${{ env.glibc_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use ppc64 && use le; then'
+                echo '		newexe '\\
+                echo '			"${{ env.le_binary_archived_name_ppc64 }}" '\\
+                echo '			"${{ env.le_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '	if use amd64 && use loong64 && ! use glibc ; then'
+                echo '		newexe '\\
+                echo '			"${{ env.loong64_binary_archived_name_amd64 }}" '\\
+                echo '			"${{ env.loong64_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
                 echo '}'
               } > "$tmp_ebuild_file"
               if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then

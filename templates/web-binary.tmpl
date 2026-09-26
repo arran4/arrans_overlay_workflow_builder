@@ -150,7 +150,12 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
+                echo '# Copyright [[ .Now.Format "2006" ]] Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
+                echo '# Generated via:'
+                echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
+                echo '#   commit: ${{ github.sha }}'
+                echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
@@ -192,27 +197,28 @@ jobs:
 [[- range $i, $externalResource := .ExternalResources ]]
   [[- if $externalResource.Archived ]]
     [[- $count := 0 ]]
-                echo '  if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe  ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
-                echo "    unpack \"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]\" || die \"Can't unpack archive file\""
-                echo '  fi'
+                echo '	if [[range $i, $uf := .MustHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe  ]][[end]][[range $i, $uf := .MustntHaveUseFlags]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-[[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]]\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
   [[ end ]]
 [[ end ]]
 [[- if $.HasCompressedManualPages ]]
-                echo '  if use man; then'
+                echo '	if use man; then'
     [[- range $i, $mans := $.CompressedManualPages ]]
         [[- if ne $mans.Keyword "" ]]
-                echo '    if use [[ $mans.Keyword ]]; then'
+                echo '		if use [[ $mans.Keyword ]]; then'
             [[- range $i, $man := $mans.Grouped ]]
-                echo '      [[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
+                echo '			[[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
             [[ end ]]
-                echo '    fi'
+                echo '		fi'
         [[ else ]]
             [[- range $i, $man := $mans.Grouped ]]
-                echo '    [[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
+                echo '		[[ $man.Decompressor ]] "[[ $man.SourceFilepath ]]" || die "Failed to decompress manual page [[ $man.DestinationFilename ]]"'
             [[ end ]]
         [[ end ]]
     [[ end ]]
-                echo '  fi'
+                echo '	fi'
 [[ end ]]
                 echo '}'
                 [[ else ]]
@@ -221,9 +227,9 @@ jobs:
                 echo ''
                 echo 'src_install() {'
 [[- if .EbuildInclude.src_install ]]
-[[ getEbuildIncludes .EbuildInclude "src_install" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[ getEbuildIncludes .EbuildInclude "src_install" | indent "\t" | shell_echo | indent (repeat 16 " ") ]]
 [[- end ]]
-                echo '  exeinto /opt/bin'
+                echo '	exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
                 echo "  dosym [[ $starget ]] [[ $sname ]]"
 [[- end ]]
@@ -232,83 +238,89 @@ jobs:
   [[- range $keyword, $binary := $prog.Binary ]]
     [[- if gt (len $binary) 2 ]]
         [[- $count := 0 ]]
-                echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
-                echo '    newexe "${{ env.[[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
-                echo '  fi'
+                echo '	if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf | UseFlagSafe ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf | UseFlagSafe ]] [[end]]; then'
+                echo '		newexe '\\
+                echo '			"${{ env.[[ join (filterEmpty $pname "binary_archived_name" $keyword) "_" ]] }}" '\\
+                echo '			"${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
     [[ else ]]
         [[- $count := 0 ]]
-                echo '  if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
-                echo '    newexe "${DISTDIR}/${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}" "${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" || die "Failed to install Binary"'
-                echo '  fi'
+                echo '	if [[range $i, $uf := $.GetMustHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]use [[ $uf ]][[end]][[range $i, $uf := $.GetMustntHaveUseFlags $pname $keyword ]][[ if gt $count 0]] && [[ end ]][[ $count = 1]]! use [[ $uf ]] [[end]]; then'
+                echo '		newexe '\\
+                echo '			"${DISTDIR}/${P}-${{ env.[[ join (filterEmpty $pname "release_name" $keyword) "_" ]] }}" \'
+                echo '			"${{ env.[[ join (filterEmpty $pname "binary_installed_name" ) "_" ]] }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
     [[ end ]]
   [[ end ]]
 [[ end ]]
 
 
 [[- range $i, $shell := $.ShellCompletionShells]]
-                echo '  if use [[ $shell ]]; then'
-                echo '    insinto "[[ $.ShellCompletionInstallPath $shell ]]"'
+                echo '	if use [[ $shell ]]; then'
+                echo '		insinto "[[ $.ShellCompletionInstallPath $shell ]]"'
     [[- range $i, $files := $.ShellCompletion $shell ]]
         [[- if ne $files.Keyword "" ]]
-                echo '    if use [[ $files.Keyword ]]; then'
+                echo '		if use [[ $files.Keyword ]]; then'
             [[- range $i, $file := $files.Grouped ]]
-                echo '      newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
+                echo '			newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
             [[ end ]]
-                echo '    fi'
+                echo '		fi'
         [[ else ]]
             [[- range $i, $file := $files.Grouped ]]
-                echo '    newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
+                echo '		newins "[[ $file.SourceFilepath ]]" "[[ $file.DestinationFilename ]]" || die "Failed to bash completion file"'
             [[ end ]]
         [[ end ]]
     [[ end ]]
-                echo '  fi'
+                echo '	fi'
 [[ end ]]
 [[- if $.HasManualPages ]]
-                echo '  if use man; then'
+                echo '	if use man; then'
     [[- range $i, $mans := $.ManualPages ]]
         [[- if ne $mans.Keyword "" ]]
-                echo '    if use [[ $mans.Keyword ]]; then'
+                echo '		if use [[ $mans.Keyword ]]; then'
             [[- range $i, $man := $mans.Grouped ]]
-                echo '      newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
+                echo '			newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
             [[ end ]]
-                echo '    fi'
+                echo '		fi'
         [[ else ]]
             [[- range $i, $man := $mans.Grouped ]]
-                echo '    newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
+                echo '		newman "[[ $man.UncompressedSourceFilepath ]]" "[[ $man.DestinationFilename ]]" || die "Failed to install manual page [[ $man.DestinationFilename ]]"'
             [[ end ]]
         [[ end ]]
     [[ end ]]
-                echo '  fi'
+                echo '	fi'
 [[ end ]]
 [[- if $.HasDocuments ]]
-                echo '  if use doc; then'
+                echo '	if use doc; then'
     [[- range $i, $docs := $.Documents ]]
         [[- if ne $docs.Keyword "" ]]
-                echo '    if use [[ $docs.Keyword ]]; then'
+                echo '		if use [[ $docs.Keyword ]]; then'
             [[- range $ii, $doc := $docs.Grouped ]]
                 [[- if eq $doc.SourceFilepath $doc.DestinationFilename ]]
-                echo '      dodoc "[[ $doc.SourceFilepath ]]" || die "Failed to install document [[ $doc.SourceFilepath ]]"'
+                echo '			dodoc "[[ $doc.SourceFilepath ]]" || die "Failed to install document [[ $doc.SourceFilepath ]]"'
             [[- else ]]
-                echo '      newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
+                echo '			newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
             [[- end ]]
             [[ end ]]
-                echo '    fi'
+                echo '		fi'
         [[ else ]]
             [[- range $ii, $doc := $docs.Grouped ]]
                 [[- if eq $doc.SourceFilepath $doc.DestinationFilename ]]
-                echo '    dodoc "[[ $doc.SourceFilepath ]]" || die "Failed to install document [[ $doc.SourceFilepath ]]"'
+                echo '		dodoc "[[ $doc.SourceFilepath ]]" || die "Failed to install document [[ $doc.SourceFilepath ]]"'
             [[- else ]]
-                echo '    newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
+                echo '		newdoc "[[ $doc.SourceFilepath ]]" "[[ $doc.DestinationFilename ]]" || die "Failed to install document [[ $doc.DestinationFilename ]]"'
             [[- end ]]
             [[ end ]]
         [[ end ]]
     [[ end ]]
-                echo '  fi'
+                echo '	fi'
 [[ end ]]
                 echo '}'
 [[- if .EbuildInclude.pkg_postinst ]]
                 echo 'pkg_postinst() {'
-[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent (repeat 4 " ") | shell_echo | indent (repeat 16 " ") ]]
+[[ getEbuildIncludes .EbuildInclude "pkg_postinst" | indent "\t" | shell_echo | indent (repeat 16 " ") ]]
                 echo '}'
 [[- end ]]
               } > "$tmp_ebuild_file"

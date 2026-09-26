@@ -1,28 +1,19 @@
-Test USE flag normalization, deduplication, and determinism
+This tests that the generated github binary workflow uses correct tabs, creates properly wrapped line continuations for long shell commands, correctly handles line lengths for `SRC_URI` with appending architecture targets, and adds the Gentoo copyright and GPLv2 headers.
+
 -- input.config --
 Type Github Binary Release
-GithubProjectUrl https://github.com/example/tool
-EbuildName tool-bin
+GithubProjectUrl https://github.com/example/foo
+EbuildName foo-bin
 Category app-misc
-Description Test tool for determinism
-Homepage https://example.com/tool
+Description test
 License MIT
-Workaround Programs as Alternatives => amd64:my-alt arm64:my_alt
-IUse doc bash my_alt extra_opt
-ProgramName tool
-Binary amd64[+extra_flag]=>tool_${VERSION}_linux_amd64.tar.gz > tool > tool
-Binary arm64=>tool_${VERSION}_linux_arm64.tar.gz > tool > tool
-ProgramName my-alt
-Binary amd64=>tool_alt_${VERSION}_linux_amd64.tar.gz > tool > tool
-ProgramName my_alt
-Binary arm64=>tool_alt_${VERSION}_linux_arm64.tar.gz > tool > tool
-Document amd64=>tool_${VERSION}_linux_amd64.tar.gz > README.md > README.md
-ManualPage amd64=>tool_${VERSION}_linux_amd64.tar.gz > tool.1 > tool.1
-ShellCompletionScript amd64:bash=>tool_${VERSION}_linux_amd64.tar.gz > completions/bash > tool
+ProgramName foo
+Binary amd64=>foo-very-long-asset-name-to-test-wrapping-${VERSION}-x86_64-linux-gnu.tar.gz > foo-very-long-archive-name-inside > foo-very-long-installed-name
+Binary arm64=>foo-very-long-asset-name-to-test-wrapping-${VERSION}-aarch64-linux-gnu.tar.gz > foo-very-long-archive-name-inside > foo-very-long-installed-name
 -- expected.yaml --
 # Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC
 
-name: app-misc/tool-bin update
+name: app-misc/foo-bin update
 
 permissions:
   contents: write
@@ -33,28 +24,22 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/app-misc-tool-bin-update.yaml'
+      - '.github/workflows/app-misc-foo-bin-update.yaml'
 
 env:
   ecn: app-misc
-  epn: tool-bin
-  description: "Test tool for determinism"
-  homepage: "https://example.com/tool"
+  epn: foo-bin
+  description: "test"
+  homepage: ""
   github_owner: example
-  github_repo: tool
+  github_repo: foo
   keywords: ~amd64 ~arm64
-  workflow_filename: app-misc-tool-bin-update.yaml
-  my-alt_binary_installed_name: 'tool'
-  my-alt_binary_archived_name_amd64: 'tool'
-  my-alt_release_name_amd64: 'tool_alt_${version}_linux_amd64.tar.gz'
-  my_alt_binary_installed_name: 'tool'
-  my_alt_binary_archived_name_arm64: 'tool'
-  my_alt_release_name_arm64: 'tool_alt_${version}_linux_arm64.tar.gz'
-  tool_binary_installed_name: 'tool'
-  tool_binary_archived_name_amd64[+extra_flag]: 'tool'
-  tool_release_name_amd64[+extra_flag]: 'tool_${version}_linux_amd64.tar.gz'
-  tool_binary_archived_name_arm64: 'tool'
-  tool_release_name_arm64: 'tool_${version}_linux_arm64.tar.gz'
+  workflow_filename: app-misc-foo-bin-update.yaml
+  foo_binary_installed_name: 'foo-very-long-installed-name'
+  foo_binary_archived_name_amd64: 'foo-very-long-archive-name-inside'
+  foo_release_name_amd64: 'foo-very-long-asset-name-to-test-wrapping-${version}-x86_64-linux-gnu.tar.gz'
+  foo_binary_archived_name_arm64: 'foo-very-long-archive-name-inside'
+  foo_release_name_arm64: 'foo-very-long-asset-name-to-test-wrapping-${version}-aarch64-linux-gnu.tar.gz'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -81,7 +66,7 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:example/tool" --use-add "bash:Install bash completion" --use-add "doc:Install documentation" --use-add "extra_flag:Enable extra_flag" --use-add "extra_opt:Enable extra_opt" --use-add "man:Install manual pages" --use-add "my_alt:Install my-alt binary" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:example/foo" "$metadata_file"
           declare -A releaseTypes=()
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
@@ -123,95 +108,50 @@ jobs:
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
                 echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? ( extra_flag? ( !my_alt? (  \""
+                echo "SRC_URI+=\" amd64? (  \""
                 echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
-                echo "SRC_URI+=\" -> \${P}-tool_\${PV}_linux_amd64.tar.gz  )  )  )  \""
-                echo "SRC_URI+=\" amd64? ( my_alt? (  \""
+                echo "SRC_URI+=\" -> \${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-x86_64-linux-gnu.tar.gz  )  \""
+                echo "SRC_URI+=\" arm64? (  \""
                 echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
-                echo "SRC_URI+=\" -> \${P}-tool_alt_\${PV}_linux_amd64.tar.gz  )  )  \""
-                echo "SRC_URI+=\" arm64? ( !my_alt? (  \""
-                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
-                echo "SRC_URI+=\" -> \${P}-tool_\${PV}_linux_arm64.tar.gz  )  )  \""
-                echo "SRC_URI+=\" arm64? ( my_alt? (  \""
-                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
-                echo "SRC_URI+=\" -> \${P}-tool_alt_\${PV}_linux_arm64.tar.gz  )  )  \""
+                echo "SRC_URI+=\" -> \${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-aarch64-linux-gnu.tar.gz  )  \""
                 echo 'LICENSE="MIT"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
                 echo -n 'IUSE="'
-                echo -n ' bash doc extra_flag extra_opt man my_alt'
                 echo '"'
                 echo ''
                 echo -n 'REQUIRED_USE="'
-                echo -n 'my_alt? ( || ( amd64  ) ) my_alt? ( || ( arm64  ) ) '
                 echo '"'
                 echo ''
                 echo -n 'RDEPEND="'
-                echo -n ''
                 echo '"'
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
                 echo 'src_unpack() {'
-                echo '	if use amd64 && use extra_flag && ! use my_alt ; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-tool_\${PV}_linux_amd64.tar.gz\" "\\
+                echo '	if use amd64; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-x86_64-linux-gnu.tar.gz\" "\\
                 echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
-                echo '	if use amd64 && use my_alt; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-tool_alt_\${PV}_linux_amd64.tar.gz\" "\\
-                echo "			|| die \"Failed to unpack archive file\""
-                echo '	fi'
-                echo '	if use arm64 && ! use my_alt ; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-tool_\${PV}_linux_arm64.tar.gz\" "\\
-                echo "			|| die \"Failed to unpack archive file\""
-                echo '	fi'
-                echo '	if use arm64 && use my_alt; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-tool_alt_\${PV}_linux_arm64.tar.gz\" "\\
+                echo '	if use arm64; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-aarch64-linux-gnu.tar.gz\" "\\
                 echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
                 echo ''
                 echo 'src_install() {'
                 echo '	exeinto /opt/bin'
-                echo '	if use amd64 && use my_alt; then'
+                echo '	if use amd64; then'
                 echo '		newexe '\\
-                echo '			"${{ env.my-alt_binary_archived_name_amd64 }}" '\\
-                echo '			"${{ env.my-alt_binary_installed_name }}" '\\
+                echo '			"${{ env.foo_binary_archived_name_amd64 }}" '\\
+                echo '			"${{ env.foo_binary_installed_name }}" '\\
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
-                echo '	if use arm64 && use my_alt; then'
+                echo '	if use arm64; then'
                 echo '		newexe '\\
-                echo '			"${{ env.my_alt_binary_archived_name_arm64 }}" '\\
-                echo '			"${{ env.my_alt_binary_installed_name }}" '\\
+                echo '			"${{ env.foo_binary_archived_name_arm64 }}" '\\
+                echo '			"${{ env.foo_binary_installed_name }}" '\\
                 echo '			|| die "Failed to install Binary"'
-                echo '	fi'
-                echo '	if use amd64 && use extra_flag && ! use my_alt ; then'
-                echo '		newexe '\\
-                echo '			"${{ env.tool_binary_archived_name_amd64[+extra_flag] }}" '\\
-                echo '			"${{ env.tool_binary_installed_name }}" '\\
-                echo '			|| die "Failed to install Binary"'
-                echo '	fi'
-                echo '	if use arm64 && ! use my_alt ; then'
-                echo '		newexe '\\
-                echo '			"${{ env.tool_binary_archived_name_arm64 }}" '\\
-                echo '			"${{ env.tool_binary_installed_name }}" '\\
-                echo '			|| die "Failed to install Binary"'
-                echo '	fi'
-                echo '	if use bash; then'
-                echo '		insinto "/usr/share/bash-completion/completions"'
-                echo '		if use amd64; then'
-                echo '			newins "completions/bash" "tool" || die "Failed to bash completion file"'
-                echo '		fi'
-                echo '	fi'
-                echo '	if use man; then'
-                echo '		if use amd64; then'
-                echo '			newman "tool.1" "tool.1" || die "Failed to install manual page tool.1"'
-                echo '		fi'
-                echo '	fi'
-                echo '	if use doc; then'
-                echo '		if use amd64; then'
-                echo '			dodoc "README.md" || die "Failed to install document README.md"'
-                echo '		fi'
                 echo '	fi'
                 echo '}'
               } > "$tmp_ebuild_file"
@@ -226,10 +166,8 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-tool_${version}_linux_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-tool_alt_${version}_linux_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-tool_${version}_linux_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-tool_alt_${version}_linux_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-foo-very-long-asset-name-to-test-wrapping-${version}-x86_64-linux-gnu.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/${version}" "${{ env.epn }}-${version}-foo-very-long-asset-name-to-test-wrapping-${version}-aarch64-linux-gnu.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

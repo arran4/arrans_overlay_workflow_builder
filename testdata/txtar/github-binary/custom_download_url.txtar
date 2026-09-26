@@ -97,13 +97,19 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'
+                echo '# Copyright 2026 Gentoo Authors'
+                echo '# Distributed under the terms of the GNU General Public License v2'
+                echo '# Generated via:'
+                echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
+                echo '#   commit: ${{ github.sha }}'
+                echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
                 echo 'EAPI=8'
                 echo "DESCRIPTION=\"${{ env.description }}\""
                 echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'SRC_URI="'
-                echo "	amd64? (  https://example.com/download/${tag}/example-${tag}.tar.gz -> \${P}-example-${tag}.tar.gz  )  "
-                echo '"'
+                echo 'SRC_URI=""'
+                echo "SRC_URI+=\" amd64? (  \""
+                echo "SRC_URI+=\" https://example.com/download/${tag}/example-${tag}.tar.gz \""
+                echo "SRC_URI+=\" -> \${P}-example-${tag}.tar.gz  )  \""
                 echo 'LICENSE="MIT License"'
                 echo 'SLOT="0"'
                 echo 'KEYWORDS="${{ env.keywords }}"'
@@ -121,10 +127,13 @@ jobs:
                 echo 'src_unpack() { :; }'
                 echo ''
                 echo 'src_install() {'
-                echo '  exeinto /opt/bin'
-                echo '  if use amd64; then'
-                echo '    newexe "${DISTDIR}/${P}-${{ env.example_release_name_amd64 }}" "${{ env.example_binary_installed_name }}" || die "Failed to install Binary"'
-                echo '  fi'
+                echo '	exeinto /opt/bin'
+                echo '	if use amd64; then'
+                echo '		newexe '\\
+                echo '			"${DISTDIR}/${P}-${{ env.example_release_name_amd64 }}" \'
+                echo '			"${{ env.example_binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
                 echo '}'
               } > "$tmp_ebuild_file"
               if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then

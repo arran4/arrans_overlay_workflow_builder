@@ -277,7 +277,10 @@ func TestSemanticGenerateOverlayRender(t *testing.T) {
 
 			// Check provenance
 			if family != "Github Cmake Release" {
-				assert.Contains(t, outExplicit, "echo '# Generated via: ${{ github.server_url }}/${{ github.repository }}/blob/${{ github.sha }}/.github/workflows/${{ env.workflow_filename }}'")
+				assert.Contains(t, outExplicit, "echo '# Generated via:'")
+				assert.Contains(t, outExplicit, "echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'")
+				assert.Contains(t, outExplicit, "echo '#   commit: ${{ github.sha }}'")
+				assert.Contains(t, outExplicit, "echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'")
 			}
 			assert.NotContains(t, outExplicit, "https://github.com/arran4/arrans_overlay/blob/main")
 
