@@ -105,22 +105,61 @@ jobs:
             {
               echo '# Copyright 2026 Gentoo Authors'
               echo '# Distributed under the terms of the GNU General Public License v2'
-              echo '# Generated via:'
-              echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
-              echo '#   commit: ${{ github.sha }}'
-              echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
+                # Shell helper to wrap provenance fields at exactly 80 chars
+                # Shell helper to wrap metadata fields at exactly 80 chars
+                emit_metadata_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="${label}+=\""
+                    local width
+                    echo "${label}=\"\""
+                    while [ -n "$value" ]; do
+                        width=$((80 - ${#prefix} - 1)) # -1 for closing quote
+                        if ((${#value} <= width)); then
+                            printf '%s%s\"\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\"\n' "$prefix" "${value:0:width}"
+                        value="${value:width}"
+                    done
+                }
+                emit_provenance_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="#   ${label}: "
+                    local continuation
+                    local width
+                    printf -v continuation '%*s' "${#prefix}" ''
+                    continuation="#${continuation:1}"
+                    while :; do
+                        width=$((80 - ${#prefix}))
+                        if ((${#value} <= width)); then
+                            printf '%s%s\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\n' "$prefix" "${value:0:width}"
+                        value=${value:width}
+                        prefix=$continuation
+                    done
+                }
+                echo '# Generated via:'
+                emit_provenance_field "repository" "${{ github.server_url }}/${{ github.repository }}"
+                emit_provenance_field "commit" "${{ github.sha }}"
+                emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
+
               echo 'EAPI=8'
-              echo "DESCRIPTION=\"${{ env.description }}\""
-              echo "HOMEPAGE=\"${{ env.homepage }}\""
-              echo 'LICENSE="MIT"'
+              emit_metadata_field "DESCRIPTION" "${{ env.description }}"
+              emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+              emit_metadata_field "LICENSE" "MIT"
               echo 'SLOT="0"'
-              echo 'KEYWORDS="${{ env.keywords }}"'
+              emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
               echo 'IUSE=""'
               echo 'DEPEND=""'
               echo 'RDEPEND="sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
               echo 'S="${WORKDIR}"'
               echo 'RESTRICT="strip"'
-              echo "SRC_URI=\"${appimage_url} -> \\${P}.${appimage_extension}\""
+              src_uri_val="${appimage_url} -> \\${P}.${appimage_extension}"
+              emit_metadata_field "SRC_URI" "$src_uri_val"
               echo ''
               echo 'inherit xdg-utils'
               echo ''
