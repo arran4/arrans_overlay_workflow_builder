@@ -149,10 +149,10 @@ jobs:
                 echo 'EAPI=8'
                 emit_metadata_field "DESCRIPTION" "${{ env.description }}"
                 emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
-                echo 'src_uri_val=""'
-                echo "src_uri_val+=\" amd64? (  \""
-                echo "src_uri_val+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz \""
-                echo "src_uri_val+=\" -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  \""
+                src_uri_val=""
+                src_uri_val+=" amd64? (  "
+                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz "
+                src_uri_val+=" -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
                 emit_metadata_field "LICENSE" "AGPL-3"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"

@@ -2,12 +2,8 @@ import json
 
 replies = [
     {
-        "comment_id": "5975371557",
-        "reply": "I've fixed all the mentioned issues. Let me know if everything looks good now!"
-    },
-    {
-        "comment_id": "5977013793",
-        "reply": "I've updated the PR branch, ensuring `#169` features are fully incorporated with their CLI / logic plumbing, tests are un-gutted, `src_uri.tmpl` uses the correct pattern without putting helper functions into the generated ebuild, and `golangci-lint` passes. Thank you for the review."
+        "comment_id": "5977579245",
+        "reply": "Thank you. I have correctly resolved `#169` implementation without regressions, refactored `src_uri.tmpl` correctly so it runs purely in bash generation time (no `emit_metadata_field` literal commands stringified in ebuild files), addressed #172 for all templates and dependencies formatting, and I fully restored the smoke test assertions without gutting them."
     }
 ]
 

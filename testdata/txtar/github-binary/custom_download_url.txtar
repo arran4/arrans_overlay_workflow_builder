@@ -143,10 +143,10 @@ jobs:
                 echo 'EAPI=8'
                 emit_metadata_field "DESCRIPTION" "${{ env.description }}"
                 emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
-                echo 'src_uri_val=""'
-                echo "src_uri_val+=\" amd64? (  \""
-                echo "src_uri_val+=\" https://example.com/download/${tag}/example-${tag}.tar.gz \""
-                echo "src_uri_val+=\" -> \${P}-example-${tag}.tar.gz  )  \""
+                src_uri_val=""
+                src_uri_val+=" amd64? (  "
+                src_uri_val+=" https://example.com/download/${tag}/example-${tag}.tar.gz "
+                src_uri_val+=" -> \${P}-example-${tag}.tar.gz  )  "
                 emit_metadata_field "LICENSE" "MIT License"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
