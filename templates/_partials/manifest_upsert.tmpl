@@ -14,9 +14,9 @@
                           [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                       [[- end -]]
                       [[- if $externalResource.ReleaseFilename -]]
-                          [[- $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" -]]
+                          [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                       [[- else -]]
-                          [[- $i | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" -]]
+                          [[- $i | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                       [[- end -]]
                   [[- end -]]
               [[- end ]]" "${{ env.epn }}-${version}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | actionvardoublequoted ]][[ else ]][[ $i | actionvardoublequoted ]][[ end ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
@@ -33,9 +33,9 @@
                           [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                       [[- end -]]
                       [[- if $externalResource.ReleaseFilename -]]
-                          [[- $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" -]]
+                          [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                       [[- else -]]
-                          [[- $i | actionvardoublequoted | replace "${version}" "${originalVersion}" -]]
+                          [[- $i | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                       [[- end -]]
                   [[- end -]]
               [[- end ]]" "${{ env.epn }}-${version}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | actionvardoublequoted ]][[ else ]][[ $i | actionvardoublequoted ]][[ end ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
@@ -53,7 +53,7 @@
                       [[- else -]]
                           [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                       [[- end -]]
-                      [[- $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" | replace "\\${P}" "${{ env.epn }}-${originalVersion}" -]]
+                      [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                   [[- end -]]
               [[- end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
         [[- else ]]
@@ -68,7 +68,7 @@
                       [[- else -]]
                           [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                       [[- end -]]
-                      [[- $externalResource.ReleaseFilename | actionvardoublequoted | replace "${version}" "${originalVersion}" -]]
+                      [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                   [[- end -]]
               [[- end ]]" "${{ env.epn }}-${version}-[[ $externalResource.ReleaseFilename | actionvardoublequoted ]]" "${ebuild_dir}/Manifest"; then failed=1; fi
         [[- end ]]
