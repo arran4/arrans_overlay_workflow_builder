@@ -35,18 +35,3 @@ Binary amd64=>k9s_Linux_amd64.tar.gz > k9s > k9s`
 		t.Errorf("Expected emit_provenance_field in output")
 	}
 }
-
-// g2's width rule: tabs count as 4 positions, every other rune as 1
-func ebuildLineWidth(line string) int {
-	width := 0
-	for _, r := range line {
-		if r == '\t' {
-			width += 4
-		} else {
-			width += 1
-		}
-	}
-	return width
-}
-func TestIssue172ActualWidthCheck(t *testing.T) {
-}

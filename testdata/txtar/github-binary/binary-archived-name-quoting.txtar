@@ -142,11 +142,10 @@ jobs:
                 echo 'EAPI=8'
                 emit_metadata_field "DESCRIPTION" "${{ env.description }}"
                 emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
-                src_uri_val=""
-                src_uri_val+=" amd64? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/k9s_Linux_amd64.tar.gz "
-                src_uri_val+=" -> \${P}-k9s_Linux_amd64.tar.gz  )  "
-                emit_metadata_field "SRC_URI" "$src_uri_val"
+                echo 'src_uri_val=""'
+                echo "src_uri_val+=\" amd64? (  \""
+                echo "src_uri_val+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/k9s_Linux_amd64.tar.gz \""
+                echo "src_uri_val+=\" -> \${P}-k9s_Linux_amd64.tar.gz  )  \""
                 emit_metadata_field "LICENSE" "Apache-2.0"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"

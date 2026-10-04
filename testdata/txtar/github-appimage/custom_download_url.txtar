@@ -148,11 +148,10 @@ jobs:
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
                 echo ''
-                src_uri_val=""
-                src_uri_val+=" amd64? ( "
-                src_uri_val+=" https://example.com/download/${tag}/example-${tag}.AppImage "
-                src_uri_val+=" -> \${P}-example-${tag}.AppImage ) "
-                emit_metadata_field "SRC_URI" "$src_uri_val"
+                echo 'src_uri_val=""'
+                echo "src_uri_val+=\" amd64? ( \""
+                echo "src_uri_val+=\" https://example.com/download/${tag}/example-${tag}.AppImage \""
+                echo "src_uri_val+=\" -> \${P}-example-${tag}.AppImage ) \""
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'

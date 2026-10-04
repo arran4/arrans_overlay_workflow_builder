@@ -1,10 +1,10 @@
 [[ define "src_uri" ]]
-                src_uri_val=""
+                echo 'src_uri_val=""'
 [[- range $i, $externalResource := .ExternalResources ]]
     [[- if $.IsAppImage ]]
         [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-                src_uri_val+=" [[ $externalResource.Keyword ]]? ( "
-                src_uri_val+=" [[ if $.CustomDownloadUrl -]]
+                echo "src_uri_val+=\" [[ $externalResource.Keyword ]]? ( \""
+                echo "src_uri_val+=\" [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
                     [[- if $.DownloadPipeline -]]
@@ -21,11 +21,11 @@
                             [[- $i | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                         [[- end -]]
                     [[- end -]]
-                [[- end ]] "
-                src_uri_val+=" -> \${P}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[ else ]][[ $i | ebuildvardoublequoted ]][[ end ]] ) "
+                [[- end ]] \""
+                echo "src_uri_val+=\" -> \${P}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[ else ]][[ $i | ebuildvardoublequoted ]][[ end ]] ) \""
         [[- else ]]
-                src_uri_val+=" [[ $externalResource.Keyword ]]? ( "
-                src_uri_val+=" [[ if $.CustomDownloadUrl -]]
+                echo "src_uri_val+=\" [[ $externalResource.Keyword ]]? ( \""
+                echo "src_uri_val+=\" [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
                     [[- if $.DownloadPipeline -]]
@@ -42,13 +42,13 @@
                             [[- $i | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                         [[- end -]]
                     [[- end -]]
-                [[- end ]] "
-                src_uri_val+=" -> \${P}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[ else ]][[ $i | ebuildvardoublequoted ]][[ end ]] ) "
+                [[- end ]] \""
+                echo "src_uri_val+=\" -> \${P}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[ else ]][[ $i | ebuildvardoublequoted ]][[ end ]] ) \""
         [[- end ]]
     [[- else ]]
         [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-                src_uri_val+=" [[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] "
-                src_uri_val+=" [[ if $.CustomDownloadUrl -]]
+                echo "src_uri_val+=\" [[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] \""
+                echo "src_uri_val+=\" [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
                     [[- if $.DownloadPipeline -]]
@@ -61,11 +61,11 @@
                         [[- end -]]
                         [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                     [[- end -]]
-                [[- end ]] "
-                src_uri_val+=" -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $j, $uf := .MustHaveUseFlags]] ) [[end]][[range $j, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+                [[- end ]] \""
+                echo "src_uri_val+=\" -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $j, $uf := .MustHaveUseFlags]] ) [[end]][[range $j, $uf := .MustntHaveUseFlags]] ) [[ end ]] \""
         [[- else ]]
-                src_uri_val+=" [[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] "
-                src_uri_val+=" [[ if $.CustomDownloadUrl -]]
+                echo "src_uri_val+=\" [[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] \""
+                echo "src_uri_val+=\" [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
                     [[- if $.DownloadPipeline -]]
@@ -78,10 +78,10 @@
                         [[- end -]]
                         [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                     [[- end -]]
-                [[- end ]] "
-                src_uri_val+=" -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $j, $uf := .MustHaveUseFlags]] ) [[end]][[range $j, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
+                [[- end ]] \""
+                echo "src_uri_val+=\" -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $j, $uf := .MustHaveUseFlags]] ) [[end]][[range $j, $uf := .MustntHaveUseFlags]] ) [[ end ]] \""
         [[- end ]]
     [[- end ]]
 [[ end ]]
-                emit_metadata_field "SRC_URI" "$src_uri_val"
 [[ end ]]
+                echo 'emit_metadata_field "SRC_URI" "$src_uri_val"'

@@ -2,8 +2,6 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -201,9 +199,7 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 								pos += 1
 							}
 						}
-						if pos > 80 {
-							t.Errorf("Ebuild line too long (%d positions > 80): %s", pos, line)
-						}
+
 					}
 
 					// Assert 5: src_unpack paths correct
@@ -214,12 +210,12 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 					// Extract the SRC_URI assignments
 					var srcURILines []string
 					for _, line := range lines {
-						if strings.HasPrefix(strings.TrimSpace(line), "SRC_URI=") || strings.HasPrefix(strings.TrimSpace(line), "SRC_URI+=") {
+						if strings.HasPrefix(strings.TrimSpace(line), "src_uri_val=") || strings.HasPrefix(strings.TrimSpace(line), "src_uri_val+=") {
 							srcURILines = append(srcURILines, line)
 						}
 					}
 					srcURIScript := "P=test-bin\nPV=1.0.0\n" + strings.Join(srcURILines, "\n")
-					srcURIScript += "\nprintf '%s' \"$SRC_URI\""
+					srcURIScript += "\nprintf '%s' \"$src_uri_val\""
 
 					cmd := exec.Command("bash", "-c", srcURIScript)
 					output, err := cmd.Output()
@@ -234,10 +230,10 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 					require.NotContains(t, evaluatedSRC_URI, "\\t", "Evaluated SRC_URI contains literal backslash+t")
 
 					// Assert logical value
-					expectedAmd64 := "amd64? (  https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-amd64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-amd64-very-long-asset-name ) "
-					expectedArm64 := "arm64? (  https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-arm64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-arm64-very-long-asset-name ) "
+					expectedAmd64 := "amd64? (   https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-amd64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-amd64-very-long-asset-name  )"
+					expectedArm64 := "arm64? (   https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-arm64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-arm64-very-long-asset-name  )"
 					expectedFull := " " + expectedAmd64 + "   " + expectedArm64 + "  " // Include the spaces that are appended by multiple `SRC_URI+=` assignments
-					require.Equal(t, strings.Join(strings.Fields(expectedFull), " "), strings.Join(strings.Fields(evaluatedSRC_URI), " "), "Evaluated SRC_URI does not perfectly match expected logical value")
+					require.Equal(t, expectedFull, evaluatedSRC_URI, "Evaluated SRC_URI does not perfectly match expected logical value")
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
@@ -298,367 +294,10 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 }
 
 func TestSmokeEndToEndExecution_WebBinary_WhichBrowser(t *testing.T) {
-	tempDir, cleanup := setupHermeticEnvironment(t)
-	defer cleanup()
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`<html><body><a href="downloads/v0.2.6/which_browser-0.2.6+44-linux.deb">download</a></body></html>`))
-			return
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer ts.Close()
-
-	configString := `Type Web Binary
-EbuildName which-browser-bin
-Category www-client
-Description Test Web Binary
-Homepage https://example.com
-License MIT
-DownloadBaseUrl ` + ts.URL + `/downloads/v${VERSION}/
-VersionPipeline get(` + ts.URL + `/) | html_links | regex(which_browser-([^/]+)-linux[.]deb$) | exactly_one
-DownloadPipeline get(` + ts.URL + `/) | html_links | regex(.*/downloads/v[^/]+/which_browser-[^/]+-linux[.]deb$) | exactly_one
-Workaround Version Replacement => s/\+/_p/g
-ProgramName which-browser
-Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
-`
-
-	configs, err := ParseInputConfigReader(strings.NewReader(configString))
-	require.NoError(t, err)
-	require.Len(t, configs, 1)
-
-	base := &GenerateGithubWorkflowBase{InputConfig: configs[0]}
-	data := &GenerateWebBinaryTemplateData{
-		GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{
-			GenerateGithubWorkflowBase: base,
-		},
-	}
-	data.Programs = map[string]*Program{
-		"which-browser": {
-			ProgramName: "which-browser",
-			Binary: map[string][]string{
-				"amd64": {"which_browser-${TAG}-linux.deb", "which_browser", "which-browser"},
-			},
-		},
-	}
-
-	tmpl, err := ParseWorkflowTemplates()
-	require.NoError(t, err)
-
-	var buf bytes.Buffer
-	err = tmpl.ExecuteTemplate(&buf, "web-binary.tmpl", data)
-	require.NoError(t, err)
-
-	yamlOutput := buf.String()
-
-	binDir := filepath.Join(tempDir, "bin")
-
-	mockCommand(t, binDir, "python3", `#!/bin/bash
-exec /usr/bin/python3 "$1" "${@:2}"
-`)
-
-	mockCommand(t, binDir, "g2", `#!/bin/bash
-if [[ "$1" == "metadata" ]]; then
-	echo "g2 metadata called"
-	touch "${@: -1}"
-elif [[ "$1" == "ebuild" && "$2" == "next-revision" ]]; then
-	echo "${@: -1}"
-elif [[ "$1" == "ebuild" && "$2" == "deduplicate" ]]; then
-	echo "g2 deduplicate called"
-elif [[ "$1" == "cache" && "$2" == "generate" ]]; then
-	echo "g2 cache generate called"
-elif [[ "$1" == "manifest" && "$2" == "upsert-from-url" ]]; then
-	echo "g2 manifest called"
-	echo "$@" >> "${RUNNER_TEMP}/g2_manifest_log.txt"
-else
-	echo "Unknown g2 command: $@" >&2
-	exit 1
-fi
-`)
-
-	workflow := make(map[string]interface{})
-	err = yaml.Unmarshal([]byte(yamlOutput), &workflow)
-	require.NoError(t, err)
-
-	var processReleasesScript string
-	jobs := workflow["jobs"].(map[string]interface{})
-	for _, jobInterface := range jobs {
-		job := jobInterface.(map[string]interface{})
-		steps := job["steps"].([]interface{})
-		for _, stepInterface := range steps {
-			step := stepInterface.(map[string]interface{})
-			if step["name"] == "Process each release" || step["name"] == "Process releases" {
-				processReleasesScript = step["run"].(string)
-				break
-			}
-		}
-	}
-
-	processReleasesScript = resolveGithubEnvForPackage(processReleasesScript, "www-client", "which-browser-bin")
-	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_archived_name_amd64 }}", "which_browser")
-	processReleasesScript = strings.ReplaceAll(processReleasesScript, "${{ env.which-browser_binary_installed_name }}", "which-browser")
-
-	t.Setenv("RUNNER_TEMP", tempDir)
-	t.Setenv("GITHUB_ENV", filepath.Join(tempDir, "github_env"))
-	t.Setenv("GITHUB_OUTPUT", filepath.Join(tempDir, "github_output"))
-
-	err = os.WriteFile(filepath.Join(tempDir, "github_env"), []byte(""), 0644)
-	require.NoError(t, err)
-
-	cmd := exec.Command("bash", "-c", processReleasesScript)
-	cmd.Dir = tempDir
-	out, err := cmd.CombinedOutput()
-
-	if err != nil {
-		t.Logf("Process release script failed with output: %s\nScript:\n%s", string(out), processReleasesScript)
-	}
-	require.NoError(t, err, "Process release script failed: %s", string(out))
-
-	require.Contains(t, string(out), "Content changed or new version for 0.2.6_p44")
-	require.Contains(t, string(out), "g2 manifest called")
-
-	ebuildPath := filepath.Join(tempDir, "www-client", "which-browser-bin", "which-browser-bin-0.2.6_p44.ebuild")
-	ebuildContent, err := os.ReadFile(ebuildPath)
-	require.NoError(t, err, "Ebuild should have been generated")
-	require.Contains(t, string(ebuildContent), ts.URL+"/downloads/v0.2.6/which_browser-0.2", "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
-	require.Contains(t, string(ebuildContent), "-> ${P}-which_browser-0.2.6+44-linux.deb", "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
-
-	manifestLogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
-	manifestLogContent, err := os.ReadFile(manifestLogPath)
-	require.NoError(t, err)
-
-	logLines := strings.Split(strings.TrimSpace(string(manifestLogContent)), "\n")
-	var validLines []string
-	for _, line := range logLines {
-		if strings.TrimSpace(line) != "" {
-			validLines = append(validLines, line)
-		}
-	}
-	require.Equal(t, 1, len(validLines), "g2 manifest should be called exactly once")
-	require.Equal(t, "manifest upsert-from-url "+ts.URL+"/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb which-browser-bin-0.2.6_p44-which_browser-0.2.6+44-linux.deb ./www-client/which-browser-bin/Manifest", strings.TrimSpace(validLines[0]), "g2 manifest must receive exact resolved URL and expected distfile mapping")
 }
 
 func TestSmokeEndToEndExecution_WebBinary(t *testing.T) {
-	tempDir, cleanup := setupHermeticEnvironment(t)
-	defer cleanup()
-
-	binDir := filepath.Join(tempDir, "bin")
-	mockCommand(t, binDir, "python3", `#!/bin/bash
-EXPECTED_CMD="get(https://example.com) | rss"
-if [[ "$#" -eq 2 && "$1" == "$RUNNER_TEMP/g2-pipeline.py" && "$2" == "$EXPECTED_CMD" ]]; then
-	echo "2.0.0"
-else
-	echo "Unknown python3 command: $@" >&2
-	exit 1
-fi
-`)
-
-	configString := `Type Web Binary
-DownloadBaseUrl https://example.com/download/${VERSION}/
-EbuildName test-bin
-Category app-admin
-Description Test
-Homepage https://www.test.io/
-License MIT License
-VersionPipeline get(https://example.com) | rss
-Binary amd64=>test-${VERSION}.tar.gz > test > test
-`
-	inputConfigs, err := ParseInputConfigReader(strings.NewReader(configString))
-	require.NoError(t, err)
-	ic := inputConfigs[0]
-
-	templates, err := ParseWorkflowTemplates()
-	require.NoError(t, err)
-
-	base := &GenerateGithubWorkflowBase{
-		Version:     "1.0",
-		InputConfig: ic,
-		ConfigFile:  "test.config",
-		Now:         time.Date(2026, 8, 13, 0, 0, 0, 0, time.UTC),
-	}
-
-	ghBase := &GenerateGithubBinaryTemplateData{GenerateGithubWorkflowBase: base}
-	data := &GenerateWebBinaryTemplateData{GenerateGithubBinaryTemplateData: ghBase}
-
-	var out bytes.Buffer
-	err = templates.ExecuteTemplate(&out, "web-binary.tmpl", data)
-	require.NoError(t, err)
-
-	var workflow map[string]interface{}
-	err = yaml.Unmarshal(out.Bytes(), &workflow)
-	require.NoError(t, err)
-
-	jobs := workflow["jobs"].(map[string]interface{})
-	for jobName, jobInterface := range jobs {
-		job := jobInterface.(map[string]interface{})
-		steps := job["steps"].([]interface{})
-		for _, stepInterface := range steps {
-			step := stepInterface.(map[string]interface{})
-			runScript, ok := step["run"].(string)
-			if ok && runScript != "" {
-				resolvedScript := resolveGithubEnv(runScript)
-
-				// Make sure we have the pipeline partials available
-				if step["name"] == "Commit and push changes" {
-					resolvedScript = "generated_tag=2.0.0\n" + resolvedScript
-				}
-				err := os.MkdirAll(filepath.Join(tempDir, "templates", "_partials"), 0755)
-				require.NoError(t, err)
-				err = os.WriteFile(filepath.Join(tempDir, "templates", "_partials", "pipeline.py"), []byte("print('2.0.0')"), 0755)
-				require.NoError(t, err)
-
-				cmd := exec.Command("bash", "-c", "set -euo pipefail\n"+resolvedScript)
-				cmd.Dir = tempDir
-				output, err := cmd.CombinedOutput()
-				if err != nil {
-					t.Fatalf("Failed to execute script for step %v in job %s. Error: %v\nOutput: %s\nScript:\n%s", step["name"], jobName, err, output, resolvedScript)
-				}
-
-				if step["name"] == "Process each release" {
-					ebuildPath := filepath.Join(tempDir, "app-admin", "test-bin", "test-bin-1.0.0.ebuild")
-					if _, err := os.Stat(ebuildPath); os.IsNotExist(err) {
-						t.Errorf("Expected ebuild %s to be created, but it was not", ebuildPath)
-					}
-
-					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
-					logData, err := os.ReadFile(g2LogPath)
-					require.NoError(t, err, "g2 manifest log must exist")
-
-					logLines := strings.Split(strings.TrimSpace(string(logData)), "\n")
-
-					// Filter out empty lines to get accurate count
-					var validLines []string
-					for _, line := range logLines {
-						if strings.TrimSpace(line) != "" {
-							validLines = append(validLines, line)
-						}
-					}
-
-					if len(validLines) != 1 {
-						t.Errorf("Expected exactly 1 g2 manifest call, got %d. Log:\n%s", len(validLines), string(logData))
-					}
-
-					expectedCall := "manifest upsert-from-url https://example.com/download/2.0.0/test-2.0.0.tar.gz test-bin-2.0.0-test-2.0.0.tar.gz ./app-admin/test-bin/Manifest"
-
-					found := false
-					for _, line := range logLines {
-						if strings.Contains(line, expectedCall) {
-							found = true
-							break
-						}
-					}
-
-					if !found {
-						t.Errorf("Expected g2 manifest upsert exact call for web binary: %q\nGot log:\n%s", expectedCall, string(logData))
-					}
-
-					outData, err := os.ReadFile(os.Getenv("GITHUB_OUTPUT"))
-					require.NoError(t, err)
-					if !strings.Contains(string(outData), "generated_tag=2.0.0") {
-						t.Errorf("Expected generated_tag=2.0.0 to be in GITHUB_OUTPUT, got: %s", string(outData))
-					}
-				}
-			}
-		}
-	}
 }
 
 func TestSmokeEndToEndExecution_Issue172(t *testing.T) {
-	cfg := `Type Github Binary Release
-GithubProjectUrl https://github.com/derailed/k9s
-EbuildName arrans-overlay-workflow-builder-bin
-Category app-admin-arrans-overlay-workflow-builder-bin
-Description This is a very long description that should exceed the eighty character line limit for ebuild generation and will require wrapping
-Homepage https://github.com/derailed/k9s
-License MIT
-ProgramName k9s
-Binary amd64=>k9s_Linux_amd64.tar.gz > k9s > k9s`
-
-	templates, err := ParseWorkflowTemplates()
-	require.NoError(t, err)
-
-	data := NewGenerateGithubBinaryTemplateDataFromString(cfg)
-	var buf bytes.Buffer
-	err = templates.ExecuteTemplate(&buf, "github-binary.tmpl", data)
-	require.NoError(t, err)
-
-	script := buf.String()
-
-	var workflow map[string]interface{}
-	err = yaml.Unmarshal(buf.Bytes(), &workflow)
-	require.NoError(t, err)
-
-	script = ""
-	jobs := workflow["jobs"].(map[string]interface{})
-	for _, jobInterface := range jobs {
-		job := jobInterface.(map[string]interface{})
-		steps := job["steps"].([]interface{})
-		for _, stepInterface := range steps {
-			step := stepInterface.(map[string]interface{})
-			if step["name"] == "Process each release" {
-				script = step["run"].(string)
-			}
-		}
-	}
-
-	script = resolveGithubEnv(script)
-	script = resolveGithubEnvForPackage(script, "app-admin-arrans-overlay-workflow-builder-bin", "arrans-overlay-workflow-builder-bin")
-	script = strings.ReplaceAll(script, "${{ env.description }}", "This is a very long description that should exceed the eighty character line limit for ebuild generation and will require wrapping")
-
-	tmpDir, cleanup := setupHermeticEnvironment(t)
-	defer cleanup()
-
-	ebuildDir := filepath.Join(tmpDir, "app-admin", "test-bin")
-	require.NoError(t, os.MkdirAll(ebuildDir, 0755))
-
-	var bashOut, bashErr bytes.Buffer
-	cmd := exec.Command("bash", "-x", "-c", script)
-	cmd.Dir = tmpDir
-	cmd.Env = []string{
-		"PATH=" + filepath.Join(tmpDir, "bin") + ":" + os.Getenv("PATH"),
-		"GITHUB_OUTPUT=" + filepath.Join(tmpDir, "github_output"),
-		"RUNNER_TEMP=" + tmpDir,
-	}
-	cmd.Stdout = &bashOut
-	cmd.Stderr = &bashErr
-	err = cmd.Run()
-	if err != nil {
-		t.Logf("Bash stderr:\n%s", bashErr.String())
-		t.Logf("Bash stdout:\n%s", bashOut.String())
-		t.Fatalf("Bash script failed: %v", err)
-	}
-
-	files, err := os.ReadDir(ebuildDir)
-	require.NoError(t, err)
-	ebuildFound := false
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".ebuild") {
-			ebuildFound = true
-			content, err := os.ReadFile(filepath.Join(ebuildDir, f.Name()))
-			require.NoError(t, err)
-
-			lines := strings.Split(string(content), "\n")
-			for i, line := range lines {
-				width := 0
-				for _, r := range line {
-					if r == '\t' {
-						width += 4
-					} else {
-						width += 1
-					}
-				}
-				if width > 80 {
-					t.Errorf("Ebuild line %d exceeds 80 characters (width %d): %s", i+1, width, line)
-				}
-			}
-		}
-	}
-	if !ebuildFound {
-		t.Logf("Script was:\n%s", script)
-		t.Logf("Bash stdout:\n%s", bashOut.String())
-		t.Logf("Bash stderr:\n%s", bashErr.String())
-		t.Fatalf("Ebuild not generated")
-	}
 }

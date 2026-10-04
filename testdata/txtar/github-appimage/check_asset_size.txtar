@@ -159,14 +159,13 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                src_uri_val=""
-                src_uri_val+=" arm64? ( "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-aarch64.AppImage "
-                src_uri_val+=" -> \${P}-rustdesk-${tag}-aarch64.AppImage ) "
-                src_uri_val+=" amd64? ( "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-x86_64.AppImage "
-                src_uri_val+=" -> \${P}-rustdesk-${tag}-x86_64.AppImage ) "
-                emit_metadata_field "SRC_URI" "$src_uri_val"
+                echo 'src_uri_val=""'
+                echo "src_uri_val+=\" arm64? ( \""
+                echo "src_uri_val+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-aarch64.AppImage \""
+                echo "src_uri_val+=\" -> \${P}-rustdesk-${tag}-aarch64.AppImage ) \""
+                echo "src_uri_val+=\" amd64? ( \""
+                echo "src_uri_val+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${tag}-x86_64.AppImage \""
+                echo "src_uri_val+=\" -> \${P}-rustdesk-${tag}-x86_64.AppImage ) \""
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'

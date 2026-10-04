@@ -143,11 +143,10 @@ jobs:
                 echo 'EAPI=8'
                 emit_metadata_field "DESCRIPTION" "${{ env.description }}"
                 emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
-                src_uri_val=""
-                src_uri_val+=" amd64? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/foo-${version}.tar.gz "
-                src_uri_val+=" -> \${P}-foo-\${PV}.tar.gz  )  "
-                emit_metadata_field "SRC_URI" "$src_uri_val"
+                echo 'src_uri_val=""'
+                echo "src_uri_val+=\" amd64? (  \""
+                echo "src_uri_val+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/foo-${version}.tar.gz \""
+                echo "src_uri_val+=\" -> \${P}-foo-\${PV}.tar.gz  )  \""
                 emit_metadata_field "LICENSE" "MIT"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
