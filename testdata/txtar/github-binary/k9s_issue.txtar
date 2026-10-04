@@ -1,24 +1,17 @@
-This fixture verifies Web Binary rendering from stable, repository-owned input data.
-It covers the tag command, architecture-specific downloads, and manifest upserts.
-
+Test for #159 k9s issue
 -- input.config --
-Type Web Binary
-EbuildName google-cloud-sdk
-Category app-admin
-Description Google Cloud SDK
-Homepage https://cloud.google.com/sdk/
-License Apache-2.0
-DownloadBaseUrl https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/
-TagsCommand curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text="[0-9]+\.[0-9]+\.[0-9]+' | cut -d '"' -f 2
-ProgramName google-cloud-cli
-Binary amd64=>google-cloud-cli-${VERSION}-linux-x86_64.tar.gz > gcloud > gcloud
-Binary x86=>google-cloud-cli-${VERSION}-linux-x86.tar.gz > gcloud > gcloud
-Binary arm64=>google-cloud-cli-${VERSION}-linux-arm.tar.gz > gcloud > gcloud
-
+Type Github Binary Release
+GithubProjectUrl https://github.com/derailed/k9s
+EbuildName k9s-bin
+Category app-misc
+Description test
+License MIT
+ProgramName k9s
+Binary amd64=>k9s_Linux_amd64.tar.gz > k9s > k9s
 -- expected.yaml --
-# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Web Binary test.config 2026-07-12 00:00:00 +0000 UTC
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC
 
-name: app-admin/google-cloud-sdk-bin update
+name: app-misc/k9s-bin update
 
 permissions:
   contents: write
@@ -29,22 +22,20 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - '.github/workflows/app-admin-google-cloud-sdk-bin-update.yaml'
+      - '.github/workflows/app-misc-k9s-bin-update.yaml'
 
 env:
-  ecn: app-admin
-  epn: google-cloud-sdk-bin
-  description: "Google Cloud SDK"
-  homepage: "https://cloud.google.com/sdk/"
-  keywords: ~amd64 ~arm64 ~x86
-  workflow_filename: app-admin-google-cloud-sdk-bin-update.yaml
-  google-cloud-cli_binary_installed_name: 'gcloud'
-  google-cloud-cli_binary_archived_name_amd64: 'gcloud'
-  google-cloud-cli_release_name_amd64: 'google-cloud-cli-${version}-linux-x86_64.tar.gz'
-  google-cloud-cli_binary_archived_name_arm64: 'gcloud'
-  google-cloud-cli_release_name_arm64: 'google-cloud-cli-${version}-linux-arm.tar.gz'
-  google-cloud-cli_binary_archived_name_x86: 'gcloud'
-  google-cloud-cli_release_name_x86: 'google-cloud-cli-${version}-linux-x86.tar.gz'
+  ecn: app-misc
+  epn: k9s-bin
+  description: "test"
+  homepage: ""
+  github_owner: derailed
+  github_repo: k9s
+  keywords: ~amd64
+  workflow_filename: app-misc-k9s-bin-update.yaml
+  k9s_binary_installed_name: 'k9s'
+  k9s_binary_archived_name_amd64: 'k9s'
+  k9s_release_name_amd64: 'k9s_Linux_amd64.tar.gz'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -71,15 +62,13 @@ jobs:
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
           metadata_file="${ebuild_dir}/metadata.xml"
-          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" "$metadata_file"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:derailed/k9s" "$metadata_file"
           declare -A releaseTypes=()
-          tags=$(curl -s -L https://cloud.google.com/sdk/docs/release-notes | grep -m 1 -oE 'data-text="[0-9]+\.[0-9]+\.[0-9]+' | cut -d '"' -f 2)
+          tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
           for tag in $tags; do
             version="${tag#v}"
-            if echo "$tag" | grep -qE '^v?[0-9]'; then
-                version="${tag#v}"
-            elif [ "${version}" = "${tag}" ]; then
+            if [ "${version}" = "${tag}" ]; then
                 echo "$version == $tag so there is no v removed skipping"
                 continue
             fi
@@ -102,8 +91,6 @@ jobs:
                 continue
             fi
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
-            # Resolve download URLs once per external resource
-            declare -A resolved_download_urls=()
 
               # shellcheck disable=SC2016
               {
@@ -155,16 +142,10 @@ jobs:
                 emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
                 src_uri_val=""
                 src_uri_val+=" amd64? (  "
-                src_uri_val+=" https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86_64.tar.gz "
-                src_uri_val+=" -> \${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz  )  "
-                src_uri_val+=" arm64? (  "
-                src_uri_val+=" https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-arm.tar.gz "
-                src_uri_val+=" -> \${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz  )  "
-                src_uri_val+=" x86? (  "
-                src_uri_val+=" https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86.tar.gz "
-                src_uri_val+=" -> \${P}-google-cloud-cli-\${PV}-linux-x86.tar.gz  )  "
+                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/k9s_Linux_amd64.tar.gz "
+                src_uri_val+=" -> \${P}-k9s_Linux_amd64.tar.gz  )  "
                 emit_metadata_field "SRC_URI" "$src_uri_val"
-                emit_metadata_field "LICENSE" "Apache-2.0"
+                emit_metadata_field "LICENSE" "MIT"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
                                 iuse_val=""
@@ -180,15 +161,7 @@ jobs:
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-x86_64.tar.gz\" "\\
-                echo "			|| die \"Failed to unpack archive file\""
-                echo '	fi'
-                echo '	if use arm64; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-arm.tar.gz\" "\\
-                echo "			|| die \"Failed to unpack archive file\""
-                echo '	fi'
-                echo '	if use x86; then'
-                echo "		unpack \"\${DISTDIR}/\${P}-google-cloud-cli-\${PV}-linux-x86.tar.gz\" "\\
+                echo "		unpack \"\${DISTDIR}/\${P}-k9s_Linux_amd64.tar.gz\" "\\
                 echo "			|| die \"Failed to unpack archive file\""
                 echo '	fi'
                 echo '}'
@@ -197,20 +170,8 @@ jobs:
                 echo '	exeinto /opt/bin'
                 echo '	if use amd64; then'
                 echo '		newexe '\\
-                echo '			"${{ env.google-cloud-cli_binary_archived_name_amd64 }}" '\\
-                echo '			"${{ env.google-cloud-cli_binary_installed_name }}" '\\
-                echo '			|| die "Failed to install Binary"'
-                echo '	fi'
-                echo '	if use arm64; then'
-                echo '		newexe '\\
-                echo '			"${{ env.google-cloud-cli_binary_archived_name_arm64 }}" '\\
-                echo '			"${{ env.google-cloud-cli_binary_installed_name }}" '\\
-                echo '			|| die "Failed to install Binary"'
-                echo '	fi'
-                echo '	if use x86; then'
-                echo '		newexe '\\
-                echo '			"${{ env.google-cloud-cli_binary_archived_name_x86 }}" '\\
-                echo '			"${{ env.google-cloud-cli_binary_installed_name }}" '\\
+                echo '			"${{ env.k9s_binary_archived_name_amd64 }}" '\\
+                echo '			"${{ env.k9s_binary_installed_name }}" '\\
                 echo '			|| die "Failed to install Binary"'
                 echo '	fi'
                 echo '}'
@@ -226,9 +187,7 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86_64.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-arm.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-arm.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-${version}-linux-x86.tar.gz" "${{ env.epn }}-${version}-google-cloud-cli-${version}-linux-x86.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/k9s_Linux_amd64.tar.gz" "${{ env.epn }}-${version}-k9s_Linux_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"

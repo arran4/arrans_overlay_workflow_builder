@@ -1,10 +1,10 @@
 [[ define "src_uri" ]]
-                echo 'SRC_URI=""'
+                src_uri_val=""
 [[- range $i, $externalResource := .ExternalResources ]]
     [[- if $.IsAppImage ]]
         [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-                echo "SRC_URI+=\" [[ $externalResource.Keyword ]]? ( \""
-                echo "SRC_URI+=\" [[ if $.CustomDownloadUrl -]]
+                src_uri_val+=" [[ $externalResource.Keyword ]]? ( "
+                src_uri_val+=" [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
                     [[- if $.DownloadPipeline -]]
@@ -16,16 +16,16 @@
                             [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                         [[- end -]]
                         [[- if $externalResource.ReleaseFilename -]]
-                            [[- $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" -]]
+                            [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                         [[- else -]]
-                            [[- $i | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" -]]
+                            [[- $i | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                         [[- end -]]
                     [[- end -]]
-                [[- end ]] \""
-                echo "SRC_URI+=\" -> \${P}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[ else ]][[ $i | ebuildvardoublequoted ]][[ end ]] ) \""
+                [[- end ]] "
+                src_uri_val+=" -> \${P}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[ else ]][[ $i | ebuildvardoublequoted ]][[ end ]] ) "
         [[- else ]]
-                echo "SRC_URI+=\" [[ $externalResource.Keyword ]]? ( \""
-                echo "SRC_URI+=\" [[ if $.CustomDownloadUrl -]]
+                src_uri_val+=" [[ $externalResource.Keyword ]]? ( "
+                src_uri_val+=" [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
                     [[- if $.DownloadPipeline -]]
@@ -37,18 +37,18 @@
                             [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                         [[- end -]]
                         [[- if $externalResource.ReleaseFilename -]]
-                            [[- $externalResource.ReleaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" -]]
+                            [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                         [[- else -]]
-                            [[- $i | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" -]]
+                            [[- $i | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                         [[- end -]]
                     [[- end -]]
-                [[- end ]] \""
-                echo "SRC_URI+=\" -> \${P}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[ else ]][[ $i | ebuildvardoublequoted ]][[ end ]] ) \""
+                [[- end ]] "
+                src_uri_val+=" -> \${P}-[[ if $externalResource.ReleaseFilename ]][[ $externalResource.ReleaseFilename | ebuildvardoublequoted ]][[ else ]][[ $i | ebuildvardoublequoted ]][[ end ]] ) "
         [[- end ]]
     [[- else ]]
         [[- if $.WorkaroundSemanticVersionPrereleaseHack1 ]]
-                echo "SRC_URI+=\" [[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] \""
-                echo "SRC_URI+=\" [[ if $.CustomDownloadUrl -]]
+                src_uri_val+=" [[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] "
+                src_uri_val+=" [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
                     [[- if $.DownloadPipeline -]]
@@ -59,13 +59,13 @@
                         [[- else -]]
                             [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                         [[- end -]]
-                        [[- $externalResource.ReleaseFilename | ebuildvardoublequotedSemanticVersionPrereleaseHack1 | replace "\\${PV}" "${originalVersion}" -]]
+                        [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                     [[- end -]]
-                [[- end ]] \""
-                echo "SRC_URI+=\" -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $j, $uf := .MustHaveUseFlags]] ) [[end]][[range $j, $uf := .MustntHaveUseFlags]] ) [[ end ]] \""
+                [[- end ]] "
+                src_uri_val+=" -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $j, $uf := .MustHaveUseFlags]] ) [[end]][[range $j, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
         [[- else ]]
-                echo "SRC_URI+=\" [[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] \""
-                echo "SRC_URI+=\" [[ if $.CustomDownloadUrl -]]
+                src_uri_val+=" [[range $j, $uf := .MustHaveUseFlags]][[ $uf | UseFlagSafe ]]? ( [[end]][[range $j, $uf := .MustntHaveUseFlags]]![[ $uf | UseFlagSafe ]]? ( [[end]] "
+                src_uri_val+=" [[ if $.CustomDownloadUrl -]]
                     [[- $.CustomDownloadUrl | ebuildvardoublequoted -]]
                 [[- else -]]
                     [[- if $.DownloadPipeline -]]
@@ -76,11 +76,12 @@
                         [[- else -]]
                             [[- "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/" -]]
                         [[- end -]]
-                        [[- $externalResource.ReleaseFilename | ebuildvardoublequoted | replace "\\${PV}" "${originalVersion}" -]]
+                        [[- $externalResource.ReleaseFilename | formatReleaseFilenameForUrl $.WorkaroundSemanticVersionPrereleaseHack1 -]]
                     [[- end -]]
-                [[- end ]] \""
-                echo "SRC_URI+=\" -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $j, $uf := .MustHaveUseFlags]] ) [[end]][[range $j, $uf := .MustntHaveUseFlags]] ) [[ end ]] \""
+                [[- end ]] "
+                src_uri_val+=" -> \${P}-[[ $externalResource.ReleaseFilename  | ebuildvardoublequoted ]] [[range $j, $uf := .MustHaveUseFlags]] ) [[end]][[range $j, $uf := .MustntHaveUseFlags]] ) [[ end ]] "
         [[- end ]]
     [[- end ]]
 [[ end ]]
+                emit_metadata_field "SRC_URI" "$src_uri_val"
 [[ end ]]
