@@ -81,8 +81,7 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Copyright 2026 Gentoo Authors'
-                echo '# Distributed under the terms of the GNU General Public License v2'
+                echo "# SPDX-License-Identifier: MIT"
                 # Shell helper to wrap provenance fields at exactly 80 chars
                 # Shell helper to wrap metadata fields at exactly 80 chars
                 emit_metadata_field() {
@@ -138,10 +137,10 @@ jobs:
                 echo ''
                 echo "inherit xdg-utils"
                 echo ''
-                echo 'src_uri_val=""'
-                echo "src_uri_val+=\" amd64? ( \""
-                echo "src_uri_val+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/Anytype-${originalVersion}.AppImage \""
-                echo "src_uri_val+=\" -> \${P}-Anytype-\${PV}.AppImage ) \""
+                src_uri_val=""
+                src_uri_val+=" amd64? ( "
+                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/Anytype-${originalVersion}.AppImage "
+                src_uri_val+=" -> \${P}-Anytype-\${PV}.AppImage ) "
                 echo ''
                 echo 'src_unpack() {'
                 echo '	if use amd64; then'

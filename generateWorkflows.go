@@ -345,6 +345,8 @@ type OptGenerateMd5Cache bool
 type OptGenerateOverlay bool
 type OptOverlayRepoName string
 type OptUpsertOverlayRepoName bool
+type OptGentooAuthors bool
+type OptSourceLicense string
 
 type GenerateGithubWorkflowBase struct {
 	*InputConfig
@@ -357,6 +359,8 @@ type GenerateGithubWorkflowBase struct {
 	GlobalGenerateOverlay       bool
 	GlobalOverlayRepoName       *string
 	GlobalUpsertOverlayRepoName bool
+	GentooAuthors               bool
+	SourceLicense               string
 }
 
 func (b *GenerateGithubWorkflowBase) GetOverlayRepoName() string {
@@ -441,11 +445,32 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		WorkflowFileName() string
 		TemplateFileName() string
 	}
+	gentooAuthors := false
+	sourceLicense := "MIT"
+
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case OptGentooAuthors:
+			gentooAuthors = bool(o)
+		case OptSourceLicense:
+			sourceLicense = string(o)
+		}
+	}
+
+	if ic.GentooAuthors != nil {
+		gentooAuthors = *ic.GentooAuthors
+	}
+	if ic.SourceLicense != nil && *ic.SourceLicense != "" {
+		sourceLicense = *ic.SourceLicense
+	}
+
 	base := &GenerateGithubWorkflowBase{
-		Version:     version,
-		Now:         now,
-		ConfigFile:  file,
-		InputConfig: ic,
+		Version:       version,
+		Now:           now,
+		ConfigFile:    file,
+		InputConfig:   ic,
+		GentooAuthors: gentooAuthors,
+		SourceLicense: sourceLicense,
 	}
 	for _, opt := range ops {
 		switch o := opt.(type) {

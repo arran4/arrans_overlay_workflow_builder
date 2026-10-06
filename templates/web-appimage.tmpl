@@ -124,8 +124,12 @@ jobs:
           tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
             # shellcheck disable=SC2016
             {
+[[- if .GentooAuthors ]]
               echo '# Copyright [[ .Now.Format "2006" ]] Gentoo Authors'
               echo '# Distributed under the terms of the GNU General Public License v2'
+[[- else ]]
+              echo "# SPDX-License-Identifier: [[ .SourceLicense ]]"
+[[- end ]]
 [[- template "provenance" . ]]
               echo 'EAPI=8'
               emit_metadata_field "DESCRIPTION" "${{ env.description }}"

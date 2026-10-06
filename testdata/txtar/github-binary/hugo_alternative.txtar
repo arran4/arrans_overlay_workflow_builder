@@ -110,8 +110,7 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Copyright 2026 Gentoo Authors'
-                echo '# Distributed under the terms of the GNU General Public License v2'
+                echo "# SPDX-License-Identifier: "
                 # Shell helper to wrap provenance fields at exactly 80 chars
                 # Shell helper to wrap metadata fields at exactly 80 chars
                 emit_metadata_field() {

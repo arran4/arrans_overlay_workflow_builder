@@ -174,8 +174,7 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 					require.NoError(t, err)
 
 					// Assert 1: Standard header
-					require.Contains(t, string(ebuildContent), "# Copyright 2026 Gentoo Authors", "Ebuild missing Copyright header")
-					require.Contains(t, string(ebuildContent), "# Distributed under the terms of the GNU General Public License v2", "Ebuild missing License header")
+					require.Contains(t, string(ebuildContent), "# SPDX-License-Identifier:", "Ebuild missing SPDX header")
 
 					// Assert 2: Literal ebuild variables survive
 					require.Contains(t, string(ebuildContent), "${DISTDIR}", "Ebuild missing literal ${DISTDIR}")

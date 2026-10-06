@@ -85,30 +85,91 @@ jobs:
               kf6_packages=$(echo "$cmake_content" | grep -i "find_package(KF6" | tr '()' '  ' | grep -iv COMPONENTS | awk '{print $2}' | grep -i "^KF6" | sed 's/KF6//i' | sort -u || true)
               # shellcheck disable=SC2001
               kf6_components=$(echo "$cmake_content" | grep -i "find_package(KF6" | grep -i COMPONENTS | tr '()' '  ' | sed 's/.*COMPONENTS//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED' | sort -u || true)
+                emit_metadata_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="${label}+=\""
+                    local width
+                    echo "${label}=\"\""
+                    while [ -n "$value" ]; do
+                        width=$((80 - ${#prefix} - 1)) # -1 for closing quote
+                        if ((${#value} <= width)); then
+                            printf '%s%s\"\n' "$prefix" "$value"
+                            break
+                        fi
+                        # Find the last space within the width to break cleanly if possible
+                        # If no space, just break at width. But wait, space inside might be needed.
+                        # Wait, the issue says:
+                        # "Use valid Bash/ebuild assignment or append syntax so physical source lines remain <=80 positions while the final evaluated metadata value remains exactly the intended value."
+                        printf '%s%s\"\n' "$prefix" "${value:0:width}"
+                        value="${value:width}"
+                    done
+                }
+
               DEPEND=""
               if [ -n "$qt6_components" ]; then
                 # shellcheck disable=SC2001
                 qt6_flags=$(echo "$qt6_components" | grep -ivE 'Test|Svg' | tr '\n' ',' | sed 's/,$//' | tr '[:upper:]' '[:lower:]')
                 if [ -n "$qt6_flags" ]; then
-                  DEPEND="$DEPEND\n\tdev-qt/qtbase:6[$qt6_flags]"
+                  DEPEND="$DEPEND dev-qt/qtbase:6[$qt6_flags]"
                 else
-                  DEPEND="$DEPEND\n\tdev-qt/qtbase:6"
+                  DEPEND="$DEPEND dev-qt/qtbase:6"
                 fi
                 # Handling qt6 components that map to different Gentoo packages if needed
-                if echo "$qt6_components" | grep -iq "Svg"; then DEPEND="$DEPEND\n\tdev-qt/qtsvg:6"; fi
+                if echo "$qt6_components" | grep -iq "Svg"; then DEPEND="$DEPEND dev-qt/qtsvg:6"; fi
               fi
-              BDEPEND="virtual/pkgconfig\n\tkde-frameworks/extra-cmake-modules:0"
+              BDEPEND="virtual/pkgconfig kde-frameworks/extra-cmake-modules:0"
               if echo "$qt6_components" | grep -iq "Test"; then
-                 BDEPEND="$BDEPEND\n\tdev-qt/qttools:6[linguist]"
+                 BDEPEND="$BDEPEND dev-qt/qttools:6[linguist]"
               fi
               for pkg in $kf6_packages $kf6_components; do
                  # Basic mapping logic for KF6
                  mapped=$(echo "$pkg" | tr '[:upper:]' '[:lower:]')
-                 DEPEND="$DEPEND\n\tkde-frameworks/k${mapped}:6"
+                 DEPEND="$DEPEND kde-frameworks/k${mapped}:6"
               done
               {
-                echo "# Copyright $(date +%Y) Gentoo Authors"
-                echo "# Distributed under the terms of the GNU General Public License v2"
+                echo "# SPDX-License-Identifier: "
+                # Shell helper to wrap provenance fields at exactly 80 chars
+                # Shell helper to wrap metadata fields at exactly 80 chars
+                emit_metadata_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="${label}+=\""
+                    local width
+                    echo "${label}=\"\""
+                    while [ -n "$value" ]; do
+                        width=$((80 - ${#prefix} - 1)) # -1 for closing quote
+                        if ((${#value} <= width)); then
+                            printf '%s%s\"\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\"\n' "$prefix" "${value:0:width}"
+                        value="${value:width}"
+                    done
+                }
+                emit_provenance_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="#   ${label}: "
+                    local continuation
+                    local width
+                    printf -v continuation '%*s' "${#prefix}" ''
+                    continuation="#${continuation:1}"
+                    while :; do
+                        width=$((80 - ${#prefix}))
+                        if ((${#value} <= width)); then
+                            printf '%s%s\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\n' "$prefix" "${value:0:width}"
+                        value=${value:width}
+                        prefix=$continuation
+                    done
+                }
+                echo '# Generated via:'
+                emit_provenance_field "repository" "${{ github.server_url }}/${{ github.repository }}"
+                emit_provenance_field "commit" "${{ github.sha }}"
+                emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
                 echo ""
                 echo "EAPI=8"
                 echo ""
@@ -119,14 +180,14 @@ jobs:
                 src_uri_val="https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz -> \${P}.tar.gz"
                 emit_metadata_field "SRC_URI" "$src_uri_val"
                 echo ""
-                echo "LICENSE=\"MIT\""
+                emit_metadata_field "LICENSE" "MIT"
                 echo "SLOT=\"0\""
                 emit_metadata_field "KEYWORDS" "~amd64"
                 echo "IUSE=\"debug\""
                 echo ""
-                emit_metadata_field "DEPEND" "$(echo -e "$DEPEND")"
+                emit_metadata_field "DEPEND" "$DEPEND"
                 echo "RDEPEND=\"\${DEPEND}\""
-                emit_metadata_field "BDEPEND" "$(echo -e "$BDEPEND")"
+                emit_metadata_field "BDEPEND" "$BDEPEND"
                 echo ""
               } > "$tmp_ebuild_file"
               if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then
