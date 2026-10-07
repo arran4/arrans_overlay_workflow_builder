@@ -85,27 +85,6 @@ jobs:
               kf6_packages=$(echo "$cmake_content" | grep -i "find_package(KF6" | tr '()' '  ' | grep -iv COMPONENTS | awk '{print $2}' | grep -i "^KF6" | sed 's/KF6//i' | sort -u || true)
               # shellcheck disable=SC2001
               kf6_components=$(echo "$cmake_content" | grep -i "find_package(KF6" | grep -i COMPONENTS | tr '()' '  ' | sed 's/.*COMPONENTS//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED' | sort -u || true)
-                emit_metadata_field() {
-                    local label=$1
-                    local value=$2
-                    local prefix="${label}+=\""
-                    local width
-                    echo "${label}=\"\""
-                    while [ -n "$value" ]; do
-                        width=$((80 - ${#prefix} - 1)) # -1 for closing quote
-                        if ((${#value} <= width)); then
-                            printf '%s%s\"\n' "$prefix" "$value"
-                            break
-                        fi
-                        # Find the last space within the width to break cleanly if possible
-                        # If no space, just break at width. But wait, space inside might be needed.
-                        # Wait, the issue says:
-                        # "Use valid Bash/ebuild assignment or append syntax so physical source lines remain <=80 positions while the final evaluated metadata value remains exactly the intended value."
-                        printf '%s%s\"\n' "$prefix" "${value:0:width}"
-                        value="${value:width}"
-                    done
-                }
-
               DEPEND=""
               if [ -n "$qt6_components" ]; then
                 # shellcheck disable=SC2001

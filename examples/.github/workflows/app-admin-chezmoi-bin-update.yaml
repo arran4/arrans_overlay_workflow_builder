@@ -107,7 +107,7 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo "# SPDX-License-Identifier: MIT"
+                echo "# SPDX-License-Identifier: "
                 # Shell helper to wrap provenance fields at exactly 80 chars
                 # Shell helper to wrap metadata fields at exactly 80 chars
                 emit_metadata_field() {

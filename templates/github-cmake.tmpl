@@ -90,7 +90,6 @@ jobs:
               # shellcheck disable=SC2001
               kf6_components=$(echo "$cmake_content" | grep -i "find_package(KF6" | grep -i COMPONENTS | tr '()' '  ' | sed 's/.*COMPONENTS//i' | tr -s ' ' '\n' | grep -ivE 'REQUIRED' | sort -u || true)
 
-[[- template "metadata" . ]]
               DEPEND=""
               if [ -n "$qt6_components" ]; then
                 # shellcheck disable=SC2001
