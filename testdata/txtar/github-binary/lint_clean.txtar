@@ -150,6 +150,7 @@ jobs:
                 src_uri_val+=" arm64? (  "
                 src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/foo-very-long-asset-name-to-test-wrapping-${version}-aarch64-linux-gnu.tar.gz "
                 src_uri_val+=" -> \${P}-foo-very-long-asset-name-to-test-wrapping-\${PV}-aarch64-linux-gnu.tar.gz  )  "
+                emit_metadata_field "SRC_URI" "$src_uri_val"
                 emit_metadata_field "LICENSE" "MIT"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"

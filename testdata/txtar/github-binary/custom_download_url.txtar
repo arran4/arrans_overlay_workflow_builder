@@ -146,6 +146,7 @@ jobs:
                 src_uri_val+=" amd64? (  "
                 src_uri_val+=" https://example.com/download/${tag}/example-${tag}.tar.gz "
                 src_uri_val+=" -> \${P}-example-${tag}.tar.gz  )  "
+                emit_metadata_field "SRC_URI" "$src_uri_val"
                 emit_metadata_field "LICENSE" "MIT License"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"

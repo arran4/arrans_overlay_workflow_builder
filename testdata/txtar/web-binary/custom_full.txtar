@@ -153,6 +153,7 @@ jobs:
                 src_uri_val+=" amd64? (  "
                 src_uri_val+=" https://example.com/archive/${version}/example.tar.gz "
                 src_uri_val+=" -> \${P}-example-linux-amd64.tar.gz  )  "
+                emit_metadata_field "SRC_URI" "$src_uri_val"
                 emit_metadata_field "LICENSE" "MIT"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"

@@ -182,6 +182,7 @@ jobs:
                 src_uri_val+=" arm64? (  "
                 src_uri_val+=" ${resolved_download_urls["1"]} "
                 src_uri_val+=" -> \${P}-example-arm64-\${PV}.tar.gz  )  "
+                emit_metadata_field "SRC_URI" "$src_uri_val"
                 emit_metadata_field "LICENSE" "unknown"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"

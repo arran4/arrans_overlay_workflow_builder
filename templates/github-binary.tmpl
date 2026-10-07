@@ -124,7 +124,11 @@ jobs:
               {
 [[- if .GentooAuthors ]]
                 echo '# Copyright [[ .Now.Format "2006" ]] Gentoo Authors'
+                [[- if eq .SourceLicense "MIT" ]]
                 echo '# Distributed under the terms of the GNU General Public License v2'
+                [[- else ]]
+                echo "# SPDX-License-Identifier: [[ .SourceLicense ]]"
+                [[- end ]]
 [[- else ]]
                 echo "# SPDX-License-Identifier: [[ .SourceLicense ]]"
 [[- end ]]

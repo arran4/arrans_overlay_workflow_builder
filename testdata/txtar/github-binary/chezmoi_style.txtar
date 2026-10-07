@@ -196,6 +196,7 @@ jobs:
                 src_uri_val+=" ppc64? ( le? (  "
                 src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_ppc64le.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz  )  )  "
+                emit_metadata_field "SRC_URI" "$src_uri_val"
                 emit_metadata_field "LICENSE" "MIT License"
                 echo 'SLOT="0"'
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
