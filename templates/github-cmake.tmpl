@@ -116,12 +116,7 @@ jobs:
               done
 
               {
-[[- if .GentooAuthors ]]
-                echo "# Copyright $(date +%Y) Gentoo Authors"
-                echo "# Distributed under the terms of the GNU General Public License v2"
-[[- else ]]
-                echo "# SPDX-License-Identifier: [[ .SourceLicense ]]"
-[[- end ]]
+                echo "[[ .GetHeader | ebuildvardoublequoted ]]"
 [[- template "provenance" . ]]
                 echo ""
                 echo "EAPI=8"
