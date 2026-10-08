@@ -202,7 +202,11 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 		}
 
 		opts = append(opts, arrans_overlay_workflow_builder.OptGentooAuthors(*gentooAuthors))
-		opts = append(opts, arrans_overlay_workflow_builder.OptSourceLicense(*sourceLicense))
+		if *sourceLicense != "" {
+			if *sourceLicense != "" {
+				opts = append(opts, arrans_overlay_workflow_builder.OptSourceLicense(*sourceLicense))
+			}
+		}
 		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))

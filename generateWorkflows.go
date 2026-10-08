@@ -361,6 +361,7 @@ type GenerateGithubWorkflowBase struct {
 	GlobalUpsertOverlayRepoName bool
 	GentooAuthors               bool
 	SourceLicense               string
+	HasExplicitSourceLicense    bool
 }
 
 func (b *GenerateGithubWorkflowBase) GetOverlayRepoName() string {
@@ -447,6 +448,7 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 	}
 	gentooAuthors := false
 	sourceLicense := "MIT"
+	hasExplicitSourceLicense := false
 
 	for _, opt := range ops {
 		switch o := opt.(type) {
@@ -454,6 +456,7 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 			gentooAuthors = bool(o)
 		case OptSourceLicense:
 			sourceLicense = string(o)
+			hasExplicitSourceLicense = true
 		}
 	}
 
@@ -462,15 +465,17 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 	}
 	if ic.SourceLicense != nil && *ic.SourceLicense != "" {
 		sourceLicense = *ic.SourceLicense
+		hasExplicitSourceLicense = true
 	}
 
 	base := &GenerateGithubWorkflowBase{
-		Version:       version,
-		Now:           now,
-		ConfigFile:    file,
-		InputConfig:   ic,
-		GentooAuthors: gentooAuthors,
-		SourceLicense: sourceLicense,
+		Version:                  version,
+		Now:                      now,
+		ConfigFile:               file,
+		InputConfig:              ic,
+		GentooAuthors:            gentooAuthors,
+		SourceLicense:            sourceLicense,
+		HasExplicitSourceLicense: hasExplicitSourceLicense,
 	}
 	for _, opt := range ops {
 		switch o := opt.(type) {
@@ -596,4 +601,16 @@ func (b *GenerateGithubWorkflowBase) GetVersionPipelineBase64() string {
 
 func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
 	return base64.StdEncoding.EncodeToString([]byte(b.GetDownloadPipeline()))
+}
+
+func (b *GenerateGithubWorkflowBase) GetHeader() string {
+	if b.GentooAuthors {
+		if !b.HasExplicitSourceLicense {
+			return fmt.Sprintf("# Copyright %s Gentoo Authors\n# Distributed under the terms of the GNU General Public License v2", b.Now.Format("2006"))
+		} else {
+			return fmt.Sprintf("# Copyright %s Gentoo Authors\n# SPDX-License-Identifier: %s", b.Now.Format("2006"), b.SourceLicense)
+		}
+	} else {
+		return fmt.Sprintf("# SPDX-License-Identifier: %s", b.SourceLicense)
+	}
 }

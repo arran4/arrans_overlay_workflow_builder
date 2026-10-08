@@ -234,8 +234,8 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 
 					// Assert logical value
 					expectedAmd64 := " amd64? (   https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-amd64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-amd64-very-long-asset-name  ) "
-					expectedArm64 := " arm64? (   https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-arm64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-arm64-very-long-asset-name  )  "
-					expectedFull := expectedAmd64 + " " + expectedArm64 // Include the spaces that are appended by multiple `SRC_URI+=` assignments
+					expectedArm64 := "arm64? (   https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-arm64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-arm64-very-long-asset-name  )"
+					expectedFull := expectedAmd64 + "  " + expectedArm64 + "  "
 					require.Equal(t, expectedFull, evaluatedSRC_URI, "Evaluated SRC_URI does not perfectly match expected logical value")
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
