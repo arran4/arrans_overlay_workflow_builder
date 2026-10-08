@@ -446,37 +446,13 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		WorkflowFileName() string
 		TemplateFileName() string
 	}
-	gentooAuthors := false
-	sourceLicense := "MIT"
-	hasExplicitSourceLicense := false
-
-	for _, opt := range ops {
-		switch o := opt.(type) {
-		case OptGentooAuthors:
-			gentooAuthors = bool(o)
-		case OptSourceLicense:
-			sourceLicense = string(o)
-			hasExplicitSourceLicense = true
-		}
-	}
-
-	if ic.GentooAuthors != nil {
-		gentooAuthors = *ic.GentooAuthors
-	}
-	if ic.SourceLicense != nil && *ic.SourceLicense != "" {
-		sourceLicense = *ic.SourceLicense
-		hasExplicitSourceLicense = true
-	}
-
 	base := &GenerateGithubWorkflowBase{
-		Version:                  version,
-		Now:                      now,
-		ConfigFile:               file,
-		InputConfig:              ic,
-		GentooAuthors:            gentooAuthors,
-		SourceLicense:            sourceLicense,
-		HasExplicitSourceLicense: hasExplicitSourceLicense,
+		Version:     version,
+		Now:         now,
+		ConfigFile:  file,
+		InputConfig: ic,
 	}
+	base.ResolveHeaderPolicy(ops...)
 	for _, opt := range ops {
 		switch o := opt.(type) {
 		case OptGenerateMd5Cache:
@@ -613,4 +589,32 @@ func (b *GenerateGithubWorkflowBase) GetHeader() string {
 	} else {
 		return fmt.Sprintf("# SPDX-License-Identifier: %s", b.SourceLicense)
 	}
+}
+
+func (b *GenerateGithubWorkflowBase) ResolveHeaderPolicy(ops ...any) {
+	gentooAuthors := false
+	sourceLicense := "MIT"
+	hasExplicitSourceLicense := false
+
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case OptGentooAuthors:
+			gentooAuthors = bool(o)
+		case OptSourceLicense:
+			sourceLicense = string(o)
+			hasExplicitSourceLicense = true
+		}
+	}
+
+	if b.InputConfig.GentooAuthors != nil {
+		gentooAuthors = *b.InputConfig.GentooAuthors
+	}
+	if b.InputConfig.SourceLicense != nil && *b.InputConfig.SourceLicense != "" {
+		sourceLicense = *b.InputConfig.SourceLicense
+		hasExplicitSourceLicense = true
+	}
+
+	b.GentooAuthors = gentooAuthors
+	b.SourceLicense = sourceLicense
+	b.HasExplicitSourceLicense = hasExplicitSourceLicense
 }
