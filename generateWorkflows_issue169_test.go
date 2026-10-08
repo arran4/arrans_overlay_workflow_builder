@@ -75,31 +75,7 @@ func TestIssue169GetHeaderMatrix(t *testing.T) {
 			InputConfig: ic,
 		}
 
-		gentooAuthors := false
-		sourceLicense := "MIT"
-		hasExplicitSourceLicense := false
-
-		for _, opt := range ops {
-			switch o := opt.(type) {
-			case OptGentooAuthors:
-				gentooAuthors = bool(o)
-			case OptSourceLicense:
-				sourceLicense = string(o)
-				hasExplicitSourceLicense = true
-			}
-		}
-
-		if ic.GentooAuthors != nil {
-			gentooAuthors = *ic.GentooAuthors
-		}
-		if ic.SourceLicense != nil && *ic.SourceLicense != "" {
-			sourceLicense = *ic.SourceLicense
-			hasExplicitSourceLicense = true
-		}
-
-		base.GentooAuthors = gentooAuthors
-		base.SourceLicense = sourceLicense
-		base.HasExplicitSourceLicense = hasExplicitSourceLicense
+		base.ResolveHeaderPolicy(ops...)
 
 		actual := base.GetHeader()
 		require.Equal(t, expected, actual)
