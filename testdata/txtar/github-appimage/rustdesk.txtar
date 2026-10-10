@@ -110,7 +110,7 @@ jobs:
                     echo "${label}=\"\""
                     while [ -n "$value" ]; do
                         width=$((80 - ${#prefix} - 1))
-                        if ((${#value} <= width)); then
+                        if [ "${#value}" -le "$width" ]; then
                             printf '%s%s\"\n' "$prefix" "$value"
                             break
                         fi
@@ -125,12 +125,12 @@ jobs:
                         done
                         local last_open_var=-1
                         for ((i=$width-1; i>=0; i--)); do
-                            if [ "${chunk:i:2}" = "\\${" ] || [ "${chunk:i:2}" = "\${" ]; then
+                            if [ "${chunk:i:2}" = "\${" ]; then
                                 last_open_var=$i
                                 break
                             fi
                         done
-                        if (( last_open_var != -1 )); then
+                        if [ "$last_open_var" != "-1" ]; then
                             local has_close=0
                             for ((i=last_open_var; i<width; i++)); do
                                 if [ "${chunk:i:1}" = "}" ]; then
@@ -138,14 +138,14 @@ jobs:
                                     break
                                 fi
                             done
-                            if (( has_close == 0 )); then
+                            if [ "$has_close" = "0" ]; then
                                 break_idx=$last_open_var
                             fi
                         fi
-                        if (( break_idx == width && last_space != -1 && last_space > 0 )); then
+                        if [ "$break_idx" = "$width" ] && [ "$last_space" != "-1" ] && [ "$last_space" -gt 0 ]; then
                             break_idx=$((last_space + 1))
                         fi
-                        if (( break_idx == 0 )); then
+                        if [ "$break_idx" = "0" ]; then
                             local close_idx=-1
                             for ((i=0; i<${#value}; i++)); do
                                 if [ "${value:i:1}" = "}" ]; then
@@ -153,7 +153,7 @@ jobs:
                                     break
                                 fi
                             done
-                            if (( close_idx != -1 && close_idx < ${#value} )); then
+                            if [ "$close_idx" != "-1" ] && [ "$close_idx" -lt "${#value}" ]; then
                                 break_idx=$((close_idx + 1))
                             else
                                 break_idx=$width

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os/exec"
 	"strings"
+	"fmt"
 	"testing"
 	"time"
 
@@ -144,7 +145,8 @@ License MIT License
 						cmd := exec.Command("bash", "-n")
 						cmd.Stdin = strings.NewReader(runScript)
 						out, err := cmd.CombinedOutput()
-						require.NoError(t, err, "Syntax error in bash script for job '%s' step '%v':\n%s\nScript:\n%s", jobName, step["name"], string(out), runScript)
+						fmt.Println(runScript)
+							require.NoError(t, err, "Syntax error in bash script for job '%s' step '%v':\n%s\nScript:\n%s", jobName, step["name"], string(out), runScript)
 					}
 				}
 			}
