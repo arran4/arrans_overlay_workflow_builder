@@ -131,7 +131,8 @@ jobs:
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
                 echo 'IUSE=""'
                 echo 'DEPEND=""'
-                echo 'RDEPEND="sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"'
+                rdepend_val="sys-fs/fuse:0 sys-libs/glibc sys-libs/zlib"
+                emit_metadata_field "RDEPEND" "$rdepend_val"
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
                 echo ''

@@ -148,7 +148,8 @@ jobs:
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
                 echo 'IUSE=""'
                 echo 'DEPEND=""'
-                echo 'RDEPEND="sys-fs/fuse:0 gui-libs/wayland"'
+                rdepend_val="sys-fs/fuse:0 gui-libs/wayland"
+                emit_metadata_field "RDEPEND" "$rdepend_val"
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
                 echo ''

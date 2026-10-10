@@ -128,7 +128,8 @@ jobs:
                 emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
                 echo 'IUSE=""'
                 echo 'DEPEND=""'
-                echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"'
+                rdepend_val="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"
+                emit_metadata_field "RDEPEND" "$rdepend_val"
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
 [[- if .HasDesktopFile ]]
