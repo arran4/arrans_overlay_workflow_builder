@@ -1,11 +1,11 @@
 package arrans_overlay_workflow_builder
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
-	"os"
-	"path/filepath"
 
 	"github.com/stretchr/testify/require"
 )

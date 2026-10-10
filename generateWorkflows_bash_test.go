@@ -2,9 +2,9 @@ package arrans_overlay_workflow_builder
 
 import (
 	"bytes"
+	"fmt"
 	"os/exec"
 	"strings"
-	"fmt"
 	"testing"
 	"time"
 
@@ -146,7 +146,7 @@ License MIT License
 						cmd.Stdin = strings.NewReader(runScript)
 						out, err := cmd.CombinedOutput()
 						fmt.Println(runScript)
-							require.NoError(t, err, "Syntax error in bash script for job '%s' step '%v':\n%s\nScript:\n%s", jobName, step["name"], string(out), runScript)
+						require.NoError(t, err, "Syntax error in bash script for job '%s' step '%v':\n%s\nScript:\n%s", jobName, step["name"], string(out), runScript)
 					}
 				}
 			}
