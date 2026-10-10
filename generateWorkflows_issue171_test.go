@@ -32,7 +32,7 @@ Binary amd64=>k9s_Linux_amd64.tar.gz > k9s > k9s`
 
 	output := buf.String()
 
-	if !strings.Contains(output, "echo \"\tdosym /usr/bin/k9s k9s\"") {
-		t.Errorf("Expected dosym to be indented with a tab, but got output: %s", output)
+	if !strings.Contains(output, "echo '\tdosym \"/usr/bin/k9s\" \"k9s\"'") {
+		t.Errorf("Expected dosym to be indented with a tab and double quotes around args, but got output: %s", output)
 	}
 }

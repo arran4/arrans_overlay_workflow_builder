@@ -103,8 +103,6 @@ jobs:
               # shellcheck disable=SC2016
               {
                 echo "# SPDX-License-Identifier: "
-                # Shell helper to wrap provenance fields at exactly 80 chars
-                # Shell helper to wrap metadata fields at exactly 80 chars
                 emit_metadata_field() {
                     local label=$1
                     local value=$2
@@ -112,15 +110,61 @@ jobs:
                     local width
                     echo "${label}=\"\""
                     while [ -n "$value" ]; do
-                        width=$((80 - ${#prefix} - 1)) # -1 for closing quote
+                        width=$((80 - ${#prefix} - 1))
                         if ((${#value} <= width)); then
                             printf '%s%s\"\n' "$prefix" "$value"
                             break
                         fi
-                        printf '%s%s\"\n' "$prefix" "${value:0:width}"
-                        value="${value:width}"
+                        local chunk="${value:0:width}"
+                        local break_idx=$width
+                        local last_space=-1
+                        for ((i=$width-1; i>=0; i--)); do
+                            if [ "${chunk:i:1}" = " " ]; then
+                                last_space=$i
+                                break
+                            fi
+                        done
+                        local last_open_var=-1
+                        for ((i=$width-1; i>=0; i--)); do
+                            if [ "${chunk:i:2}" = "\\${" ] || [ "${chunk:i:2}" = "\${" ]; then
+                                last_open_var=$i
+                                break
+                            fi
+                        done
+                        if (( last_open_var != -1 )); then
+                            local has_close=0
+                            for ((i=last_open_var; i<width; i++)); do
+                                if [ "${chunk:i:1}" = "}" ]; then
+                                    has_close=1
+                                    break
+                                fi
+                            done
+                            if (( has_close == 0 )); then
+                                break_idx=$last_open_var
+                            fi
+                        fi
+                        if (( break_idx == width && last_space != -1 && last_space > 0 )); then
+                            break_idx=$((last_space + 1))
+                        fi
+                        if (( break_idx == 0 )); then
+                            local close_idx=-1
+                            for ((i=0; i<${#value}; i++)); do
+                                if [ "${value:i:1}" = "}" ]; then
+                                    close_idx=$i
+                                    break
+                                fi
+                            done
+                            if (( close_idx != -1 && close_idx < ${#value} )); then
+                                break_idx=$((close_idx + 1))
+                            else
+                                break_idx=$width
+                            fi
+                        fi
+                        printf '%s%s\"\n' "$prefix" "${value:0:break_idx}"
+                        value="${value:break_idx}"
                     done
                 }
+                # Shell helper to wrap provenance fields at exactly 80 chars
                 emit_provenance_field() {
                     local label=$1
                     local value=$2

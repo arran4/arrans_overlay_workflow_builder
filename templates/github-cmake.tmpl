@@ -21,6 +21,7 @@ env:
   homepage: [[ .Homepage  | quoteStr ]]
   github_owner: [[ .GithubOwner ]]
   github_repo: [[ .GithubRepo ]]
+  workflow_filename: [[ .WorkflowFileName ]]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -134,7 +135,8 @@ jobs:
                 echo "IUSE=\"debug\""
                 echo ""
                 emit_metadata_field "DEPEND" "$DEPEND"
-                echo "RDEPEND=\"\${DEPEND}\""
+                rdepend_val="\${DEPEND}"
+                emit_metadata_field "RDEPEND" "$rdepend_val"
                 emit_metadata_field "BDEPEND" "$BDEPEND"
                 echo ""
               } > "$tmp_ebuild_file"

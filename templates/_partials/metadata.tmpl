@@ -18,7 +18,7 @@
 
                         local last_space=-1
                         for ((i=$width-1; i>=0; i--)); do
-                            if test "${chunk:i:1}" = " "; then
+                            if [ "${chunk:i:1}" = " " ]; then
                                 last_space=$i
                                 break
                             fi
@@ -26,7 +26,7 @@
 
                         local last_open_var=-1
                         for ((i=$width-1; i>=0; i--)); do
-                            if test "${chunk:i:2}" = "\\${" || test "${chunk:i:2}" = "\${"; then
+                            if [ "${chunk:i:2}" = "\\${" ] || [ "${chunk:i:2}" = "\${" ]; then
                                 last_open_var=$i
                                 break
                             fi
@@ -34,8 +34,8 @@
 
                         if (( last_open_var != -1 )); then
                             local has_close=0
-                            for ((i=last_open_var; i<$width; i++)); do
-                                if test "${chunk:i:1}" = "}"; then
+                            for ((i=last_open_var; i<width; i++)); do
+                                if [ "${chunk:i:1}" = "}" ]; then
                                     has_close=1
                                     break
                                 fi
@@ -52,7 +52,7 @@
                         if (( break_idx == 0 )); then
                             local close_idx=-1
                             for ((i=0; i<${#value}; i++)); do
-                                if test "${value:i:1}" = "}"; then
+                                if [ "${value:i:1}" = "}" ]; then
                                     close_idx=$i
                                     break
                                 fi
