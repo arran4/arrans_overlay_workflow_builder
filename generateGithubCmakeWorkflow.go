@@ -7,6 +7,8 @@ import (
 
 type GenerateGithubCmakeTemplateData struct {
 	*GenerateGithubWorkflowBase
+	GentooAuthors bool
+	SourceLicense string
 }
 
 func (ggctd *GenerateGithubCmakeTemplateData) TemplateFileName() string {

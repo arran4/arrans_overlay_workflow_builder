@@ -265,6 +265,29 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					}
 				})
 			},
+
+			"formatReleaseFilenameForUrl": func(originalVersion interface{}, filename interface{}) string {
+				filenameStr := fmt.Sprintf("%v", filename)
+				return os.Expand(filenameStr, func(s string) string {
+					switch s {
+					case "VERSION":
+						if fmt.Sprintf("%v", originalVersion) == "true" {
+							return "${originalVersion}"
+						}
+						return "${version}"
+					case "PV":
+						return "${version}"
+					case "TAG":
+						return "${tag}"
+					case "GITHUB_OWNER":
+						return "${{ env.github_owner }}"
+					case "GITHUB_REPO":
+						return "${{ env.github_repo }}"
+					default:
+						return "${" + s + "}"
+					}
+				})
+			},
 			"UseFlagSafe": strcase.SnakeCase,
 			"ebuildvardoublequoted": func(s string) string {
 				return os.Expand(s, func(s string) string {
@@ -322,6 +345,8 @@ type OptGenerateMd5Cache bool
 type OptGenerateOverlay bool
 type OptOverlayRepoName string
 type OptUpsertOverlayRepoName bool
+type OptGentooAuthors bool
+type OptSourceLicense string
 
 type GenerateGithubWorkflowBase struct {
 	*InputConfig
@@ -334,6 +359,9 @@ type GenerateGithubWorkflowBase struct {
 	GlobalGenerateOverlay       bool
 	GlobalOverlayRepoName       *string
 	GlobalUpsertOverlayRepoName bool
+	GentooAuthors               bool
+	SourceLicense               string
+	HasExplicitSourceLicense    bool
 }
 
 func (b *GenerateGithubWorkflowBase) GetOverlayRepoName() string {
@@ -418,11 +446,36 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		WorkflowFileName() string
 		TemplateFileName() string
 	}
+	gentooAuthors := false
+	sourceLicense := "MIT"
+	hasExplicitSourceLicense := false
+
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case OptGentooAuthors:
+			gentooAuthors = bool(o)
+		case OptSourceLicense:
+			sourceLicense = string(o)
+			hasExplicitSourceLicense = true
+		}
+	}
+
+	if ic.GentooAuthors != nil {
+		gentooAuthors = *ic.GentooAuthors
+	}
+	if ic.SourceLicense != nil && *ic.SourceLicense != "" {
+		sourceLicense = *ic.SourceLicense
+		hasExplicitSourceLicense = true
+	}
+
 	base := &GenerateGithubWorkflowBase{
-		Version:     version,
-		Now:         now,
-		ConfigFile:  file,
-		InputConfig: ic,
+		Version:                  version,
+		Now:                      now,
+		ConfigFile:               file,
+		InputConfig:              ic,
+		GentooAuthors:            gentooAuthors,
+		SourceLicense:            sourceLicense,
+		HasExplicitSourceLicense: hasExplicitSourceLicense,
 	}
 	for _, opt := range ops {
 		switch o := opt.(type) {
@@ -548,4 +601,16 @@ func (b *GenerateGithubWorkflowBase) GetVersionPipelineBase64() string {
 
 func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
 	return base64.StdEncoding.EncodeToString([]byte(b.GetDownloadPipeline()))
+}
+
+func (b *GenerateGithubWorkflowBase) GetHeader() string {
+	if b.GentooAuthors {
+		if !b.HasExplicitSourceLicense {
+			return fmt.Sprintf("# Copyright %s Gentoo Authors\n# Distributed under the terms of the GNU General Public License v2", b.Now.Format("2006"))
+		} else {
+			return fmt.Sprintf("# Copyright %s Gentoo Authors\n# SPDX-License-Identifier: %s", b.Now.Format("2006"), b.SourceLicense)
+		}
+	} else {
+		return fmt.Sprintf("# SPDX-License-Identifier: %s", b.SourceLicense)
+	}
 }

@@ -118,21 +118,18 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Copyright [[ .Now.Format "2006" ]] Gentoo Authors'
-                echo '# Distributed under the terms of the GNU General Public License v2'
-                echo '# Generated via:'
-                echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
-                echo '#   commit: ${{ github.sha }}'
-                echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
+                echo "[[ .GetHeader | ebuildvardoublequoted ]]"
+[[- template "provenance" . ]]
                 echo 'EAPI=8'
-                echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'LICENSE="[[ .License ]]"'
+                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
+                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                emit_metadata_field "LICENSE" "[[ .License ]]"
                 echo 'SLOT="0"'
-                echo 'KEYWORDS="${{ env.keywords }}"'
+                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
                 echo 'IUSE=""'
                 echo 'DEPEND=""'
-                echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"'
+                rdepend_val="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"
+                emit_metadata_field "RDEPEND" "$rdepend_val"
                 echo 'S="${WORKDIR}"'
                 echo 'RESTRICT="strip"'
 [[- if .HasDesktopFile ]]

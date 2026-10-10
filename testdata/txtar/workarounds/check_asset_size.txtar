@@ -103,30 +103,111 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Copyright 2026 Gentoo Authors'
-                echo '# Distributed under the terms of the GNU General Public License v2'
+                echo "# SPDX-License-Identifier: "
+                emit_metadata_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="${label}+=\""
+                    local width
+                    echo "${label}=\"\""
+                    while [ -n "$value" ]; do
+                        width=$((80 - ${#prefix} - 1))
+                        if [ "${#value}" -le "$width" ]; then
+                            printf '%s%s\"\n' "$prefix" "$value"
+                            break
+                        fi
+                        local chunk="${value:0:width}"
+                        local break_idx=$width
+                        local last_space=-1
+                        for ((i=$width-1; i>=0; i--)); do
+                            if [ "${chunk:i:1}" = " " ]; then
+                                last_space=$i
+                                break
+                            fi
+                        done
+                        local last_open_var=-1
+                        for ((i=$width-1; i>=0; i--)); do
+                            if [ "${chunk:i:2}" = "\${" ]; then
+                                last_open_var=$i
+                                break
+                            fi
+                        done
+                        if [ "$last_open_var" != "-1" ]; then
+                            local has_close=0
+                            for ((i=last_open_var; i<width; i++)); do
+                                if [ "${chunk:i:1}" = "}" ]; then
+                                    has_close=1
+                                    break
+                                fi
+                            done
+                            if [ "$has_close" = "0" ]; then
+                                break_idx=$last_open_var
+                            fi
+                        fi
+                        if [ "$break_idx" = "$width" ] && [ "$last_space" != "-1" ] && [ "$last_space" -gt 0 ]; then
+                            break_idx=$((last_space + 1))
+                        fi
+                        if [ "$break_idx" = "0" ]; then
+                            local close_idx=-1
+                            for ((i=0; i<${#value}; i++)); do
+                                if [ "${value:i:1}" = "}" ]; then
+                                    close_idx=$i
+                                    break
+                                fi
+                            done
+                            if [ "$close_idx" != "-1" ] && [ "$close_idx" -lt "${#value}" ]; then
+                                break_idx=$((close_idx + 1))
+                            else
+                                break_idx=$width
+                            fi
+                        fi
+                        printf '%s%s\"\n' "$prefix" "${value:0:break_idx}"
+                        value="${value:break_idx}"
+                    done
+                }
+                # Shell helper to wrap provenance fields at exactly 80 chars
+                emit_provenance_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="#   ${label}: "
+                    local continuation
+                    local width
+                    printf -v continuation '%*s' "${#prefix}" ''
+                    continuation="#${continuation:1}"
+                    while :; do
+                        width=$((80 - ${#prefix}))
+                        if ((${#value} <= width)); then
+                            printf '%s%s\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\n' "$prefix" "${value:0:width}"
+                        value=${value:width}
+                        prefix=$continuation
+                    done
+                }
                 echo '# Generated via:'
-                echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
-                echo '#   commit: ${{ github.sha }}'
-                echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
+                emit_provenance_field "repository" "${{ github.server_url }}/${{ github.repository }}"
+                emit_provenance_field "commit" "${{ github.sha }}"
+                emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
                 echo 'EAPI=8'
-                echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? (  \""
-                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
-                echo "SRC_URI+=\" -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  \""
-                echo 'LICENSE="AGPL-3"'
+                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
+                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                src_uri_val=""
+                src_uri_val+=" amd64? (  "
+                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz "
+                src_uri_val+=" -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
+                emit_metadata_field "SRC_URI" "$src_uri_val"
+                emit_metadata_field "LICENSE" "AGPL-3"
                 echo 'SLOT="0"'
-                echo 'KEYWORDS="${{ env.keywords }}"'
-                echo -n 'IUSE="'
-                echo '"'
+                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+                                iuse_val=""
+                emit_metadata_field "IUSE" "$iuse_val"
                 echo ''
-                echo -n 'REQUIRED_USE="'
-                echo '"'
+                ruse_val=""
+                emit_metadata_field "REQUIRED_USE" "$ruse_val"
                 echo ''
-                echo -n 'RDEPEND="'
-                echo '"'
+                rdepend_val=""
+                emit_metadata_field "RDEPEND" "$rdepend_val"
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
@@ -156,7 +237,7 @@ jobs:
                   highest_rev_ebuild=$(find "${ebuild_dir}" -maxdepth 1 \( -name "${{ env.epn }}-${version}.ebuild" -o -name "${{ env.epn }}-${version}-r*.ebuild" \) 2>/dev/null | sort -V | tail -n 1)
                   highest_rev_file=$(basename "$highest_rev_ebuild")
                   highest_rev_p="${highest_rev_file%.ebuild}"
-                  remote_size=$(curl -sL --head "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV}" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
+                  remote_size=$(curl -sL --head "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz" | grep -i 'content-length' | awk '{print $2}' | tr -d '\r')
                   local_distfile="${highest_rev_p}-rustdesk-${version}-x86_64.tar.gz"
                   local_size=$(grep "DIST $local_distfile " "${ebuild_dir}/Manifest" | awk '{print $3}')
                   if [ -n "$remote_size" ] && [ -n "$local_size" ] && [ "$remote_size" != "$local_size" ]; then
@@ -178,7 +259,7 @@ jobs:
                   fi
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${P}" "${{ env.epn }}-${version}-rustdesk-${version}-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz" "${{ env.epn }}-${version}-rustdesk-${version}-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
