@@ -98,16 +98,19 @@ func TestIssue172GithubAppImageRDEPENDWidthAndSemantics(t *testing.T) {
 	tempDir, cleanup := setupHermeticEnvironment(t)
 	defer cleanup()
 
+	// Deliberately unsorted, with a duplicate, to exercise canonical output.
 	dependencies := []string{
-		"dev-libs/glib",
-		"dev-libs/libxml2",
-		"dev-libs/openssl",
-		"media-libs/freetype",
 		"sys-libs/zlib",
-		"x11-libs/libX11",
-		"x11-libs/libXext",
-		"x11-libs/libXrender",
+		"dev-libs/openssl",
+		"media-libs/fontconfig",
+		"dev-libs/glib",
 		"x11-libs/libxcb",
+		"media-libs/freetype",
+		"dev-libs/libxml2",
+		"x11-libs/libXrender",
+		"x11-libs/libXext",
+		"x11-libs/libX11",
+		"dev-libs/glib",
 	}
 	configString := `Type Github AppImage Release
 GithubProjectUrl https://github.com/test/test
@@ -168,8 +171,13 @@ Binary amd64=>test-${TAG}.AppImage > test.AppImage
 
 	got := evalIssue172Field(t, lines, "RDEPEND", "")
 
-	require.Equal(t, "sys-fs/fuse:0 "+strings.Join(dependencies, " "), got,
-		"the AppImage RDEPEND order and whitespace must be unchanged")
+	// The generator sorts and deduplicates AppImage dependencies. Assert the
+	// explicit canonical result independently of the input fixture and helper.
+	want := "sys-fs/fuse:0 dev-libs/glib dev-libs/libxml2 dev-libs/openssl" +
+		" media-libs/fontconfig media-libs/freetype sys-libs/zlib" +
+		" x11-libs/libX11 x11-libs/libXext x11-libs/libXrender x11-libs/libxcb"
+	require.Equal(t, want, got,
+		"AppImage RDEPEND must preserve the exact canonical order and spacing")
 }
 
 func TestIssue172GithubCmakeDependencyWidthAndSemantics(t *testing.T) {

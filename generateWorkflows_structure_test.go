@@ -10,8 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEmptyStructureTestThatNeedToBeReplaced(t *testing.T) {
-	// Ensure the config file parsing is valid
+func TestGeneratedStructureHasValidEbuildPath(t *testing.T) {
 	configString := `Type Github Binary Release
 GithubProjectUrl https://github.com/test/test
 Category app-admin
