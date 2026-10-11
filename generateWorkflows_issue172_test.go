@@ -62,7 +62,8 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 	binDir := filepath.Join(tempDir, "bin")
 	mockCommand(t, binDir, "g2", "#!/bin/bash\nif [[ \"$1\" == \"ebuild\" && \"$2\" == \"next-revision\" ]]; then echo \"${@: -1}\"; fi\n")
 	mockCommand(t, binDir, "gh", "#!/bin/bash\necho v1.0.0\n")
-	script = strings.ReplaceAll(script, "emit_metadata_field \"DESCRIPTION\" \"An extremely long description that will definitely exceed the eighty character limit that we have set for ebuilds to ensure they wrap correctly\"", "emit_metadata_field \"DESCRIPTION\" \"123456789012345678901234567890123456789012345678901234567890123\\${P}\"")
+	script = strings.ReplaceAll(script, "emit_metadata_field \"DESCRIPTION\" \"Test\"", "emit_metadata_field \"DESCRIPTION\" \"123456789012345678901234567890123456789012345678901234567890123\\${P}\"")
+	script = strings.ReplaceAll(script, "DESCRIPTION+=\"Test\"", "DESCRIPTION+=\"123456789012345678901234567890123456789012345678901234567890123${P}\"")
 
 	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=test-bin\nset -euo pipefail\n"+script)
 	cmd.Dir = tempDir
