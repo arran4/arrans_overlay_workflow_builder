@@ -112,14 +112,14 @@ jobs:
                         local chunk="${value:0:width}"
                         local break_idx=$width
                         local last_space=-1
-                        for ((i=$width-1; i>=0; i--)); do
+                        for ((i=width-1; i>=0; i--)); do
                             if [ "${chunk:i:1}" = " " ]; then
                                 last_space=$i
                                 break
                             fi
                         done
                         local last_open_var=-1
-                        for ((i=$width-1; i>=0; i--)); do
+                        for ((i=width-1; i>=0; i--)); do
                             if [ "${chunk:i:2}" = "\${" ]; then
                                 last_open_var=$i
                                 break
