@@ -436,6 +436,32 @@ func (b *GenerateGithubWorkflowBase) G2MetadataArgs() string {
 	return strings.TrimSpace(args)
 }
 
+// ResolveHeaderPolicy combines global options with per-entry overrides.
+// The third result distinguishes an explicitly configured source license from
+// the default MIT source header (which controls the Gentoo Authors GPL-2 header).
+func (ic *InputConfig) ResolveHeaderPolicy(ops ...any) (gentooAuthors bool, sourceLicense string, hasExplicitSourceLicense bool) {
+	sourceLicense = "MIT"
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case OptGentooAuthors:
+			gentooAuthors = bool(o)
+		case OptSourceLicense:
+			sourceLicense = string(o)
+			hasExplicitSourceLicense = true
+		}
+	}
+	if ic != nil {
+		if ic.GentooAuthors != nil {
+			gentooAuthors = *ic.GentooAuthors
+		}
+		if ic.SourceLicense != nil && *ic.SourceLicense != "" {
+			sourceLicense = *ic.SourceLicense
+			hasExplicitSourceLicense = true
+		}
+	}
+	return gentooAuthors, sourceLicense, hasExplicitSourceLicense
+}
+
 func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) error {
 	if err := ic.Validate(); err != nil {
 		return fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
@@ -446,27 +472,7 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		WorkflowFileName() string
 		TemplateFileName() string
 	}
-	gentooAuthors := false
-	sourceLicense := "MIT"
-	hasExplicitSourceLicense := false
-
-	for _, opt := range ops {
-		switch o := opt.(type) {
-		case OptGentooAuthors:
-			gentooAuthors = bool(o)
-		case OptSourceLicense:
-			sourceLicense = string(o)
-			hasExplicitSourceLicense = true
-		}
-	}
-
-	if ic.GentooAuthors != nil {
-		gentooAuthors = *ic.GentooAuthors
-	}
-	if ic.SourceLicense != nil && *ic.SourceLicense != "" {
-		sourceLicense = *ic.SourceLicense
-		hasExplicitSourceLicense = true
-	}
+	gentooAuthors, sourceLicense, hasExplicitSourceLicense := ic.ResolveHeaderPolicy(ops...)
 
 	base := &GenerateGithubWorkflowBase{
 		Version:                  version,

@@ -28,15 +28,8 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 	err := os.WriteFile(inputPath, []byte(configString), 0644)
 	require.NoError(t, err)
 
-	// Wait, testing CLI directly from main package is hard because main is in cmd/generate.
-	// I will call `GenerateGithubWorkflows` just like `main.go` does.
-	// Or I can build main.go and execute it!
-
-	cmd := exec.Command("go", "run", "../../cmd/generate/main.go", "generate", "workflows", "-input-file", inputPath, "-output-dir", tempDir)
-	cmd.Dir = "testdata" // Any dir where go mod is accessible, wait!
-	// Since we are running go test from package arrans_overlay_workflow_builder, we can run "go run ./cmd/generate/main.go"
-	cmd = exec.Command("go", "run", "./cmd/generate/main.go", "generate", "workflows", "-input-file", inputPath, "-output-dir", tempDir)
-	// This executes the CLI path
+	// Exercise the actual CLI entrypoint once, without abandoned subprocess setup.
+	cmd := exec.Command("go", "run", "./cmd/generate/main.go", "generate", "workflows", "-input-file", inputPath, "-output-dir", tempDir)
 	err = cmd.Run()
 	require.NoError(t, err)
 
@@ -71,36 +64,14 @@ func TestIssue169GetHeaderMatrix(t *testing.T) {
 			ops = append(ops, OptSourceLicense(globalLicense))
 		}
 
+		gentooAuthors, sourceLicense, hasExplicitSourceLicense := ic.ResolveHeaderPolicy(ops...)
 		base := &GenerateGithubWorkflowBase{
-			Now:         time.Date(2026, 8, 13, 0, 0, 0, 0, time.UTC),
-			InputConfig: ic,
+			Now:                      time.Date(2026, 8, 13, 0, 0, 0, 0, time.UTC),
+			InputConfig:              ic,
+			GentooAuthors:            gentooAuthors,
+			SourceLicense:            sourceLicense,
+			HasExplicitSourceLicense: hasExplicitSourceLicense,
 		}
-
-		gentooAuthors := false
-		sourceLicense := "MIT"
-		hasExplicitSourceLicense := false
-
-		for _, opt := range ops {
-			switch o := opt.(type) {
-			case OptGentooAuthors:
-				gentooAuthors = bool(o)
-			case OptSourceLicense:
-				sourceLicense = string(o)
-				hasExplicitSourceLicense = true
-			}
-		}
-
-		if ic.GentooAuthors != nil {
-			gentooAuthors = *ic.GentooAuthors
-		}
-		if ic.SourceLicense != nil && *ic.SourceLicense != "" {
-			sourceLicense = *ic.SourceLicense
-			hasExplicitSourceLicense = true
-		}
-
-		base.GentooAuthors = gentooAuthors
-		base.SourceLicense = sourceLicense
-		base.HasExplicitSourceLicense = hasExplicitSourceLicense
 
 		actual := base.GetHeader()
 		require.Equal(t, expected, actual)
