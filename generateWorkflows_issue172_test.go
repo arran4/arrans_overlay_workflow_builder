@@ -87,11 +87,10 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 			t.Errorf("Ebuild line %d exceeds 80 characters (width %d): %s", i+1, pos, line)
 		}
 	}
-}
-
-func TestIssue172ActualWidthCheck(t *testing.T) {
-	// The metadata formatting logic dynamically cuts off values
-	// We want to test that exact logic works
+	// The fixture places a literal ${P} across the 65-column DESCRIPTION
+	// chunk boundary. Check semantic reconstruction, not just line widths.
+	got := evalIssue172Field(t, lines, "DESCRIPTION", "P=test-bin")
+	require.Equal(t, "123456789012345678901234567890123456789012345678901234567890123test-bin", got)
 }
 
 func TestIssue172GithubAppImageRDEPENDWidthAndSemantics(t *testing.T) {
@@ -169,9 +168,8 @@ Binary amd64=>test-${TAG}.AppImage > test.AppImage
 
 	got := evalIssue172Field(t, lines, "RDEPEND", "")
 
-	gotParts := strings.Split(got, " ")
-	expectedParts := append([]string{"sys-fs/fuse:0"}, dependencies...)
-	require.ElementsMatch(t, expectedParts, gotParts)
+	require.Equal(t, "sys-fs/fuse:0 "+strings.Join(dependencies, " "), got,
+		"the AppImage RDEPEND order and whitespace must be unchanged")
 }
 
 func TestIssue172GithubCmakeDependencyWidthAndSemantics(t *testing.T) {
