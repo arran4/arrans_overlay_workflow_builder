@@ -328,3 +328,8 @@ Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
 ## Testing
 
 This repository includes a deterministic, hermetic smoke test suite in `smoke_test.go`. The test harness renders the actual workflow templates, parses the yaml, substitutes github environment bindings, and executes the generated bash scripts natively within a stubbed shell context (`$PATH` is overridden). This proves that the templated paths function accurately from ebuild synthesis up through metadata and commit generation. When adding new template workflows or complicated edge conditions, consider adding a new scenario block to the smoke harness.
+
+## Contributing and engineering guidance
+
+Before changing public behaviour, tests, parsers or generation rules, see [repository-specific agent/contributor guidance](AGENTS.md). The applicable rationale is collected in [Suggested Coding Standards](https://arran4.github.io/blog/post/2026/055-suggested-coding-standards-for-repositories-and-agents/); this is selective guidance, not a blanket rewrite policy. The [standards adoption issue](https://github.com/arran4/arrans_overlay_workflow_builder/issues/177) tracks the required implementation/test audit separately from documentation.
+
