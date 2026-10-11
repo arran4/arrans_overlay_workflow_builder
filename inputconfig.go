@@ -556,6 +556,8 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"Description":           nil,
 				"Homepage":              nil,
 				"License":               {DefaultLicense},
+				"GentooAuthors":         nil,
+				"SourceLicense":         nil,
 				"MaintainerEmail":       nil,
 				"MaintainerName":        nil,
 				"ProgramName":           nil,
