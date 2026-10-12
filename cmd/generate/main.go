@@ -167,6 +167,9 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 	config.InputFile = fs.String("input-file", "input.config", "The input with config")
 	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
 	config.ForceDate = fs.String("force-date", "", "Force a specific date (e.g. 2026-08-13 00:00:00 +0000 UTC) for testing")
+	gentooAuthors := fs.Bool("gentoo-authors", false, "Emit Gentoo Authors copyright header instead of generic MIT.")
+	sourceLicense := fs.String("source-license", "", "Source-level license to emit in headers (e.g., MIT).")
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
@@ -198,6 +201,12 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
 		}
 
+		opts = append(opts, arrans_overlay_workflow_builder.OptGentooAuthors(*gentooAuthors))
+		if *sourceLicense != "" {
+			if *sourceLicense != "" {
+				opts = append(opts, arrans_overlay_workflow_builder.OptSourceLicense(*sourceLicense))
+			}
+		}
 		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))

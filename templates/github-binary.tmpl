@@ -122,42 +122,39 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Copyright [[ .Now.Format "2006" ]] Gentoo Authors'
-                echo '# Distributed under the terms of the GNU General Public License v2'
-                echo '# Generated via:'
-                echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
-                echo '#   commit: ${{ github.sha }}'
-                echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
+                echo "[[ .GetHeader | ebuildvardoublequoted ]]"
+[[- template "provenance" . ]]
                 echo 'EAPI=8'
-                echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
+                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
+                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
 [[- template "src_uri" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadBaseUrl" "" ) ]]
-                echo 'LICENSE="[[ .License ]]"'
+                emit_metadata_field "LICENSE" "[[ .License ]]"
                 echo 'SLOT="0"'
-                echo 'KEYWORDS="${{ env.keywords }}"'
-                echo -n 'IUSE="'
+                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+                                iuse_val=""
 [[- if $.IUseFlags ]]
-                echo -n '[[- range $i, $use := $.IUseFlags]] [[$use.Name | UseFlagSafe ]][[end]]'
+                iuse_val="[[- range $i, $use := $.IUseFlags]] [[$use.Name | UseFlagSafe ]][[end]]"
 [[- end ]]
-                echo '"'
+                emit_metadata_field "IUSE" "$iuse_val"
+
                 echo ''
-                echo -n 'REQUIRED_USE="'
+                ruse_val=""
 [[- if $.SortedReverseProgramsAsAlternatives ]]
-                echo -n '[[- range $i, $alt := $.SortedReverseProgramsAsAlternatives]][[$alt.UseFlag | UseFlagSafe ]]? ( || ( [[range $j, $arch := $alt.Architectures]][[$arch]] [[end]] ) ) [[end]]'
+                ruse_val+="[[- range $i, $alt := $.SortedReverseProgramsAsAlternatives]][[$alt.UseFlag | UseFlagSafe ]]? ( || ( [[range $j, $arch := $alt.Architectures]][[$arch]] [[end]] ) ) [[end]]"
 [[- end ]]
 [[- range $i, $ruse := $.RequiredUse]]
-                echo '		[[ $ruse ]]'
+                ruse_val+=" [[ $ruse ]]"
 [[- end]]
-                echo '"'
+                emit_metadata_field "REQUIRED_USE" "$ruse_val"
                 echo ''
-                echo -n 'RDEPEND="'
+                rdepend_val=""
 [[- if .MainDependencies ]]
-                echo -n '[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]'
+                rdepend_val+="[[range $i, $dep := .MainDependencies]][[$dep]] [[end]]"
 [[- end ]]
 [[- if .AlternativeDependencies ]]
-                echo -n '[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]'
+                rdepend_val+="[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]"
 [[- end ]]
-                echo '"'
+                emit_metadata_field "RDEPEND" "$rdepend_val"
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
@@ -203,7 +200,7 @@ jobs:
 [[- end ]]
                 echo '	exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
-                echo "  dosym [[ $starget ]] [[ $sname ]]"
+                echo '	dosym "[[ $starget ]]" "[[ $sname ]]"'
 [[- end ]]
 
 [[- range $pname, $prog := .Programs ]]

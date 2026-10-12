@@ -1,0 +1,31 @@
+[[ define "provenance" ]]
+[[- template "metadata" . ]]
+                # Shell helper to wrap provenance fields at exactly 80 chars
+
+                emit_provenance_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="#   ${label}: "
+                    local continuation
+                    local width
+
+                    printf -v continuation '%*s' "${#prefix}" ''
+                    continuation="#${continuation:1}"
+
+                    while :; do
+                        width=$((80 - ${#prefix}))
+                        if ((${#value} <= width)); then
+                            printf '%s%s\n' "$prefix" "$value"
+                            break
+                        fi
+
+                        printf '%s%s\n' "$prefix" "${value:0:width}"
+                        value=${value:width}
+                        prefix=$continuation
+                    done
+                }
+                echo '# Generated via:'
+                emit_provenance_field "repository" "${{ github.server_url }}/${{ github.repository }}"
+                emit_provenance_field "commit" "${{ github.sha }}"
+                emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
+[[ end ]]
