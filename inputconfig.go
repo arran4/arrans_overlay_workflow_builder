@@ -212,6 +212,10 @@ func (p *Program) ShellCompletion(shell string) (result []*KeywordedFilenameRefe
 
 // InputConfig represents a single configuration entry.
 type InputConfig struct {
+	GeneratedEbuildGentooAuthors *bool
+	GeneratedEbuildSourceLicense *string
+	GentooAuthors       *bool
+	SourceLicense       *string
 	EbuildInclude       map[string][]string
 	Symlinks            map[string]string
 	EntryNumber         int
@@ -361,6 +365,12 @@ func (ic *InputConfig) String() string {
 		if ic.License != "" {
 			fmt.Fprintf(&sb, "License %s\n", ic.License)
 		}
+		if ic.GentooAuthors != nil {
+			fmt.Fprintf(&sb, "GentooAuthors %v\n", *ic.GentooAuthors)
+		}
+		if ic.SourceLicense != nil {
+			fmt.Fprintf(&sb, "SourceLicense %s\n", *ic.SourceLicense)
+		}
 		if ic.MaintainerEmail != "" {
 			fmt.Fprintf(&sb, "MaintainerEmail %s\n", ic.MaintainerEmail)
 		}
@@ -421,6 +431,12 @@ func (ic *InputConfig) String() string {
 		}
 		if ic.License != "" {
 			fmt.Fprintf(&sb, "License %s\n", ic.License)
+		}
+		if ic.GentooAuthors != nil {
+			fmt.Fprintf(&sb, "GentooAuthors %v\n", *ic.GentooAuthors)
+		}
+		if ic.SourceLicense != nil {
+			fmt.Fprintf(&sb, "SourceLicense %s\n", *ic.SourceLicense)
 		}
 		if ic.MaintainerEmail != "" {
 			fmt.Fprintf(&sb, "MaintainerEmail %s\n", ic.MaintainerEmail)
@@ -542,8 +558,12 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 				"Description":           nil,
 				"Homepage":              nil,
 				"License":               {DefaultLicense},
+				"GentooAuthors":         nil,
+				"SourceLicense":         nil,
 				"MaintainerEmail":       nil,
 				"MaintainerName":        nil,
+				"GeneratedEbuildGentooAuthors": nil,
+				"GeneratedEbuildSourceLicense": nil,
 				"ProgramName":           nil,
 				"DesktopFile":           nil,
 				"Icons":                 nil,
@@ -777,6 +797,8 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	if err != nil {
 		return nil, fmt.Errorf("on License: %v: %w", parsedFields["License"], err)
 	}
+	currentConfig.GentooAuthors = emptyOrLastBoolPtr(parsedFields["GentooAuthors"])
+	currentConfig.SourceLicense = emptyOrLastPtr(parsedFields["SourceLicense"])
 	currentConfig.MaintainerEmail, err = emptyOrOnlyOrFail(parsedFields["MaintainerEmail"])
 	if err != nil {
 		return nil, fmt.Errorf("on MaintainerEmail: %v: %w", parsedFields["MaintainerEmail"], err)
@@ -1381,4 +1403,21 @@ func (ic *InputConfig) GetDownloadPipeline() string {
 		return fmt.Sprintf("get(%s) | html_links | regex(%s) | last", ic.DownloadPageUrl, ic.DownloadMatch)
 	}
 	return ""
+}
+
+func emptyOrLastBoolPtr(i []string) *bool {
+	if len(i) == 0 {
+		return nil
+	}
+	v := strings.ToLower(strings.TrimSpace(i[len(i)-1]))
+	b := v == "true" || v == "yes" || v == "1" || v == "on"
+	return &b
+}
+
+func emptyOrLastPtr(i []string) *string {
+	if len(i) == 0 {
+		return nil
+	}
+	v := i[len(i)-1]
+	return &v
 }

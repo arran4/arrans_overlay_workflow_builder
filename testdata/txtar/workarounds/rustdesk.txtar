@@ -74,6 +74,53 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:rustdesk/rustdesk" "$metadata_file"
           declare -A releaseTypes=()
+          emit_provenance_field() {
+              local label=$1
+              local value=$2
+              local prefix="#   ${label}: "
+              local continuation
+              local width
+              printf -v continuation '%*s' "${#prefix}" ''
+              continuation="#${continuation:1}"
+              while :; do
+                  width=$((80 - ${#prefix}))
+                  if ((${#value} <= width)); then
+                      printf '%s%s\n' "$prefix" "$value"
+                      break
+                  fi
+                  printf '%s%s\n' "$prefix" "${value:0:width}"
+                  value="${value:width}"
+                  prefix=$continuation
+              done
+          }
+          emit_ebuild_assignment() {
+              local name=$1
+              local value=$2
+              echo "${name}=\"\""
+              local clean_value="${value//$'\r'/}"
+              clean_value="${clean_value//$'\n'/ }"
+              clean_value="${clean_value//$'\t'/ }"
+              local current_chunk=""
+              while [ -n "$clean_value" ]; do
+                  local char="${clean_value:0:1}"
+                  clean_value="${clean_value:1}"
+                  local escaped_char="$char"
+                  # DO NOT escape $. It ruins variable expansion during ebuild sourcing!
+                  if [ "$char" = "\\" ] || [ "$char" = "\"" ]; then
+                      escaped_char="\\$char"
+                  fi
+                  local test_len=$((${#name} + 4 + ${#current_chunk} + ${#escaped_char} + 1))
+                  if [ $test_len -gt 80 ] && [ -n "$current_chunk" ]; then
+                      echo "${name}+=\"${current_chunk}\""
+                      current_chunk="$escaped_char"
+                  else
+                      current_chunk="${current_chunk}${escaped_char}"
+                  fi
+              done
+              if [ -n "$current_chunk" ]; then
+                  echo "${name}+=\"${current_chunk}\""
+              fi
+          }
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
           for tag in $tags; do
@@ -102,10 +149,7 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Copyright 2026 Gentoo Authors'
-                echo '# Distributed under the terms of the GNU General Public License v2'
-                # Shell helper to wrap provenance fields at exactly 80 chars
-                # Shell helper to wrap metadata fields at exactly 80 chars
+                echo "# SPDX-License-Identifier: "
                 emit_metadata_field() {
                     local label=$1
                     local value=$2
@@ -113,15 +157,61 @@ jobs:
                     local width
                     echo "${label}=\"\""
                     while [ -n "$value" ]; do
-                        width=$((80 - ${#prefix} - 1)) # -1 for closing quote
-                        if ((${#value} <= width)); then
+                        width=$((80 - ${#prefix} - 1))
+                        if [ "${#value}" -le "$width" ]; then
                             printf '%s%s\"\n' "$prefix" "$value"
                             break
                         fi
-                        printf '%s%s\"\n' "$prefix" "${value:0:width}"
-                        value="${value:width}"
+                        local chunk="${value:0:width}"
+                        local break_idx=$width
+                        local last_space=-1
+                        for ((i=width-1; i>=0; i--)); do
+                            if [ "${chunk:i:1}" = " " ]; then
+                                last_space=$i
+                                break
+                            fi
+                        done
+                        local last_open_var=-1
+                        for ((i=width-1; i>=0; i--)); do
+                            if [ "${chunk:i:2}" = "\${" ]; then
+                                last_open_var=$i
+                                break
+                            fi
+                        done
+                        if [ "$last_open_var" != "-1" ]; then
+                            local has_close=0
+                            for ((i=last_open_var; i<width; i++)); do
+                                if [ "${chunk:i:1}" = "}" ]; then
+                                    has_close=1
+                                    break
+                                fi
+                            done
+                            if [ "$has_close" = "0" ]; then
+                                break_idx=$last_open_var
+                            fi
+                        fi
+                        if [ "$break_idx" = "$width" ] && [ "$last_space" != "-1" ] && [ "$last_space" -gt 0 ]; then
+                            break_idx=$((last_space + 1))
+                        fi
+                        if [ "$break_idx" = "0" ]; then
+                            local close_idx=-1
+                            for ((i=0; i<${#value}; i++)); do
+                                if [ "${value:i:1}" = "}" ]; then
+                                    close_idx=$i
+                                    break
+                                fi
+                            done
+                            if [ "$close_idx" != "-1" ] && [ "$close_idx" -lt "${#value}" ]; then
+                                break_idx=$((close_idx + 1))
+                            else
+                                break_idx=$width
+                            fi
+                        fi
+                        printf '%s%s\"\n' "$prefix" "${value:0:break_idx}"
+                        value="${value:break_idx}"
                     done
                 }
+                # Shell helper to wrap provenance fields at exactly 80 chars
                 emit_provenance_field() {
                     local label=$1
                     local value=$2
@@ -146,24 +236,24 @@ jobs:
                 emit_provenance_field "commit" "${{ github.sha }}"
                 emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
                 echo 'EAPI=8'
-                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
-                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                emit_ebuild_assignment "DESCRIPTION" "${{ env.description }}"
+                emit_ebuild_assignment "HOMEPAGE" "${{ env.homepage }}"
                 src_uri_val=""
                 src_uri_val+=" amd64? (  "
                 src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz "
                 src_uri_val+=" -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
                 emit_metadata_field "SRC_URI" "$src_uri_val"
-                emit_metadata_field "LICENSE" "AGPL-3"
+                emit_ebuild_assignment "LICENSE" "AGPL-3"
                 echo 'SLOT="0"'
-                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+                emit_ebuild_assignment "KEYWORDS" "${{ env.keywords }}"
                                 iuse_val=""
-                emit_metadata_field "IUSE" "$iuse_val"
+                emit_ebuild_assignment "IUSE" "$iuse_val"
                 echo ''
                 ruse_val=""
-                emit_metadata_field "REQUIRED_USE" "$ruse_val"
+                emit_ebuild_assignment "REQUIRED_USE" "$ruse_val"
                 echo ''
                 rdepend_val=""
-                emit_metadata_field "RDEPEND" "$rdepend_val"
+                emit_ebuild_assignment "RDEPEND" "$rdepend_val"
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''

@@ -341,10 +341,14 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 	return templates, nil
 }
 
+type OptGeneratedEbuildGentooAuthors bool
+type OptGeneratedEbuildSourceLicense string
 type OptGenerateMd5Cache bool
 type OptGenerateOverlay bool
 type OptOverlayRepoName string
 type OptUpsertOverlayRepoName bool
+type OptGentooAuthors bool
+type OptSourceLicense string
 
 type GenerateGithubWorkflowBase struct {
 	*InputConfig
@@ -357,6 +361,47 @@ type GenerateGithubWorkflowBase struct {
 	GlobalGenerateOverlay       bool
 	GlobalOverlayRepoName       *string
 	GlobalUpsertOverlayRepoName bool
+	GlobalGeneratedEbuildGentooAuthors *bool
+	GlobalGeneratedEbuildSourceLicense *string
+	GentooAuthors               bool
+	SourceLicense               string
+	HasExplicitSourceLicense    bool
+}
+
+
+func (b *GenerateGithubWorkflowBase) GeneratedEbuildHeader() string {
+	gentooAuthors := false
+	if b.GlobalGeneratedEbuildGentooAuthors != nil {
+		gentooAuthors = *b.GlobalGeneratedEbuildGentooAuthors
+	}
+	if b.InputConfig.GeneratedEbuildGentooAuthors != nil {
+		gentooAuthors = *b.InputConfig.GeneratedEbuildGentooAuthors
+	}
+
+	var sourceLicense *string
+	if b.GlobalGeneratedEbuildSourceLicense != nil {
+		sourceLicense = b.GlobalGeneratedEbuildSourceLicense
+	}
+	if b.InputConfig.GeneratedEbuildSourceLicense != nil {
+		sourceLicense = b.InputConfig.GeneratedEbuildSourceLicense
+	}
+
+	var out string
+	if gentooAuthors {
+		out += fmt.Sprintf("# Copyright %s Gentoo Authors\n", b.Now.Format("2006"))
+		if sourceLicense != nil {
+			out += fmt.Sprintf("# SPDX-License-Identifier: %s", *sourceLicense)
+		} else {
+			out += "# Distributed under the terms of the GNU General Public License v2"
+		}
+	} else {
+		if sourceLicense != nil {
+			out += fmt.Sprintf("# SPDX-License-Identifier: %s", *sourceLicense)
+		} else {
+			out += "# SPDX-License-Identifier: MIT"
+		}
+	}
+	return out
 }
 
 func (b *GenerateGithubWorkflowBase) GetOverlayRepoName() string {
@@ -431,6 +476,32 @@ func (b *GenerateGithubWorkflowBase) G2MetadataArgs() string {
 	return strings.TrimSpace(args)
 }
 
+// ResolveHeaderPolicy combines global options with per-entry overrides.
+// The third result distinguishes an explicitly configured source license from
+// the default MIT source header (which controls the Gentoo Authors GPL-2 header).
+func (ic *InputConfig) ResolveHeaderPolicy(ops ...any) (gentooAuthors bool, sourceLicense string, hasExplicitSourceLicense bool) {
+	sourceLicense = "MIT"
+	for _, opt := range ops {
+		switch o := opt.(type) {
+		case OptGentooAuthors:
+			gentooAuthors = bool(o)
+		case OptSourceLicense:
+			sourceLicense = string(o)
+			hasExplicitSourceLicense = true
+		}
+	}
+	if ic != nil {
+		if ic.GentooAuthors != nil {
+			gentooAuthors = *ic.GentooAuthors
+		}
+		if ic.SourceLicense != nil && *ic.SourceLicense != "" {
+			sourceLicense = *ic.SourceLicense
+			hasExplicitSourceLicense = true
+		}
+	}
+	return gentooAuthors, sourceLicense, hasExplicitSourceLicense
+}
+
 func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) error {
 	if err := ic.Validate(); err != nil {
 		return fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
@@ -441,14 +512,25 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		WorkflowFileName() string
 		TemplateFileName() string
 	}
+	gentooAuthors, sourceLicense, hasExplicitSourceLicense := ic.ResolveHeaderPolicy(ops...)
+
 	base := &GenerateGithubWorkflowBase{
-		Version:     version,
-		Now:         now,
-		ConfigFile:  file,
-		InputConfig: ic,
+		Version:                  version,
+		Now:                      now,
+		ConfigFile:               file,
+		InputConfig:              ic,
+		GentooAuthors:            gentooAuthors,
+		SourceLicense:            sourceLicense,
+		HasExplicitSourceLicense: hasExplicitSourceLicense,
 	}
 	for _, opt := range ops {
 		switch o := opt.(type) {
+				case OptGeneratedEbuildGentooAuthors:
+			b := bool(o)
+			base.GlobalGeneratedEbuildGentooAuthors = &b
+		case OptGeneratedEbuildSourceLicense:
+			s := string(o)
+			base.GlobalGeneratedEbuildSourceLicense = &s
 		case OptGenerateMd5Cache:
 			base.GlobalGenerateMd5Cache = bool(o)
 		case OptGenerateOverlay:
@@ -571,4 +653,16 @@ func (b *GenerateGithubWorkflowBase) GetVersionPipelineBase64() string {
 
 func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
 	return base64.StdEncoding.EncodeToString([]byte(b.GetDownloadPipeline()))
+}
+
+func (b *GenerateGithubWorkflowBase) GetHeader() string {
+	if b.GentooAuthors {
+		if !b.HasExplicitSourceLicense {
+			return fmt.Sprintf("# Copyright %s Gentoo Authors\n# Distributed under the terms of the GNU General Public License v2", b.Now.Format("2006"))
+		} else {
+			return fmt.Sprintf("# Copyright %s Gentoo Authors\n# SPDX-License-Identifier: %s", b.Now.Format("2006"), b.SourceLicense)
+		}
+	} else {
+		return fmt.Sprintf("# SPDX-License-Identifier: %s", b.SourceLicense)
+	}
 }

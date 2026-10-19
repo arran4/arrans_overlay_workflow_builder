@@ -60,6 +60,7 @@ jobs:
           metadata_file="${ebuild_dir}/metadata.xml"
           g2 metadata [[ .G2MetadataArgs ]] "$metadata_file"
           declare -A releaseTypes=()
+[[ template "ebuild_output_helpers" . ]]
           [[- if or .GetVersionPipeline .InputConfig.GetDownloadPipeline ]]
           printf "%s" "[[ .PipelineScriptBase64 ]]" | base64 --decode > "$RUNNER_TEMP/g2-pipeline.py"
           [[- end ]]
@@ -150,21 +151,20 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo '# Copyright [[ .Now.Format "2006" ]] Gentoo Authors'
-                echo '# Distributed under the terms of the GNU General Public License v2'
+                echo "[[ .GetHeader | ebuildvardoublequoted ]]"
 [[- template "provenance" . ]]
                 echo 'EAPI=8'
-                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
-                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                emit_ebuild_assignment "DESCRIPTION" "${{ env.description }}"
+                emit_ebuild_assignment "HOMEPAGE" "${{ env.homepage }}"
 [[- template "src_uri" (dict "ExternalResources" .ExternalResources "IsAppImage" false "WorkaroundSemanticVersionPrereleaseHack1" $.WorkaroundSemanticVersionPrereleaseHack1 "CustomDownloadUrl" $.CustomDownloadUrl "DownloadPipeline" $.InputConfig.GetDownloadPipeline "DownloadBaseUrl" $.DownloadBaseUrl ) ]]
-                emit_metadata_field "LICENSE" "[[ .License ]]"
+                emit_ebuild_assignment "LICENSE" "[[ .License ]]"
                 echo 'SLOT="0"'
-                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+                emit_ebuild_assignment "KEYWORDS" "${{ env.keywords }}"
                                 iuse_val=""
 [[- if $.IUseFlags ]]
                 iuse_val="[[- range $i, $use := $.IUseFlags]] [[$use.Name | UseFlagSafe ]][[end]]"
 [[- end ]]
-                emit_metadata_field "IUSE" "$iuse_val"
+                emit_ebuild_assignment "IUSE" "$iuse_val"
 
                 echo ''
                 ruse_val=""
@@ -174,7 +174,7 @@ jobs:
 [[- range $i, $ruse := $.RequiredUse]]
                 ruse_val+=" [[ $ruse ]]"
 [[- end]]
-                emit_metadata_field "REQUIRED_USE" "$ruse_val"
+                emit_ebuild_assignment "REQUIRED_USE" "$ruse_val"
                 echo ''
                 rdepend_val=""
 [[- if .MainDependencies ]]
@@ -183,7 +183,7 @@ jobs:
 [[- if .AlternativeDependencies ]]
                 rdepend_val+="[[- range $prog, $deps := .AlternativeDependencies]][[ if gt (len $deps) 0 ]][[$prog]]? ( [[range $i, $dep := $deps]][[$dep]] [[end]] ) [[end]][[end -]]"
 [[- end ]]
-                emit_metadata_field "RDEPEND" "$rdepend_val"
+                emit_ebuild_assignment "RDEPEND" "$rdepend_val"
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
@@ -229,7 +229,7 @@ jobs:
 [[- end ]]
                 echo '	exeinto /opt/bin'
 [[- range $sname, $starget := .Symlinks ]]
-                echo "	dosym [[ $starget ]] [[ $sname ]]"
+                echo '	dosym "[[ $starget ]]" "[[ $sname ]]"'
 [[- end ]]
 
 [[- range $pname, $prog := .Programs ]]

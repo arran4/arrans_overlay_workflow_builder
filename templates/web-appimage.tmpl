@@ -124,22 +124,22 @@ jobs:
           tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
             # shellcheck disable=SC2016
             {
-              echo '# Copyright [[ .Now.Format "2006" ]] Gentoo Authors'
-              echo '# Distributed under the terms of the GNU General Public License v2'
+              echo "[[ .GetHeader | ebuildvardoublequoted ]]"
 [[- template "provenance" . ]]
               echo 'EAPI=8'
-              emit_metadata_field "DESCRIPTION" "${{ env.description }}"
-              emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
-              emit_metadata_field "LICENSE" "[[ .License ]]"
+              emit_ebuild_assignment "DESCRIPTION" "${{ env.description }}"
+              emit_ebuild_assignment "HOMEPAGE" "${{ env.homepage }}"
+              emit_ebuild_assignment "LICENSE" "[[ .License ]]"
               echo 'SLOT="0"'
-              emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+              emit_ebuild_assignment "KEYWORDS" "${{ env.keywords }}"
               echo 'IUSE=""'
               echo 'DEPEND=""'
-              echo 'RDEPEND="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"'
+              rdepend_val="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"
+              emit_ebuild_assignment "RDEPEND" "$rdepend_val"
               echo 'S="${WORKDIR}"'
               echo 'RESTRICT="strip"'
               src_uri_val="${appimage_url} -> \\${P}.${appimage_extension}"
-              emit_metadata_field "SRC_URI" "$src_uri_val"
+              emit_ebuild_assignment "SRC_URI" "$src_uri_val"
 [[ if .HasDesktopFile ]]
               echo ''
               echo 'inherit xdg-utils'

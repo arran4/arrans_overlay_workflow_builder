@@ -113,6 +113,7 @@ Homepage https://www.test.io/
 License MIT License
 Binary amd64=>test-${TAG}-linux-amd64-very-long-asset-name > test > test
 Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
+Symlink test=>/usr/bin/test
 `
 	inputConfigs, err := ParseInputConfigReader(strings.NewReader(configString))
 	require.NoError(t, err)
@@ -176,8 +177,7 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 					require.NoError(t, err)
 
 					// Assert 1: Standard header
-					require.Contains(t, string(ebuildContent), "# Copyright 2026 Gentoo Authors", "Ebuild missing Copyright header")
-					require.Contains(t, string(ebuildContent), "# Distributed under the terms of the GNU General Public License v2", "Ebuild missing License header")
+					require.Contains(t, string(ebuildContent), "# SPDX-License-Identifier:", "Ebuild missing SPDX header")
 
 					// Assert 2: Literal ebuild variables survive
 					require.Contains(t, string(ebuildContent), "${DISTDIR}", "Ebuild missing literal ${DISTDIR}")
@@ -188,6 +188,9 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 					// Assert 3: Tab indentation
 					require.Contains(t, string(ebuildContent), "\t\tunpack ", "Ebuild missing tab indentation for unpack")
 					require.NotContains(t, string(ebuildContent), "        unpack ", "Ebuild uses space indentation for unpack")
+					// Issue #171: verify the physical output, not the echoed template text.
+					require.Contains(t, string(ebuildContent), "\tdosym \"/usr/bin/test\" \"test\"")
+					require.NotContains(t, string(ebuildContent), "    dosym \"/usr/bin/test\" \"test\"")
 
 					// Assert 4: No overlong lines
 					// g2's IndentingWhitespaceLintRule: tabs=4 positions, limit=80
@@ -234,10 +237,10 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 					require.NotContains(t, evaluatedSRC_URI, "\\t", "Evaluated SRC_URI contains literal backslash+t")
 
 					// Assert logical value
-					expectedAmd64 := "amd64? (  https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-amd64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-amd64-very-long-asset-name ) "
-					expectedArm64 := "arm64? (  https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-arm64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-arm64-very-long-asset-name ) "
-					expectedFull := " " + expectedAmd64 + "   " + expectedArm64 + "  " // Include the spaces that are appended by multiple `SRC_URI+=` assignments
-					require.Equal(t, strings.Join(strings.Fields(expectedFull), " "), strings.Join(strings.Fields(evaluatedSRC_URI), " "), "Evaluated SRC_URI does not perfectly match expected logical value")
+					expectedAmd64 := " amd64? (   https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-amd64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-amd64-very-long-asset-name  ) "
+					expectedArm64 := "arm64? (   https://github.com/test/test/releases/download/v1.0.0/test-v1.0.0-linux-arm64-very-long-asset-name  -> test-bin-test-v1.0.0-linux-arm64-very-long-asset-name  )"
+					expectedFull := expectedAmd64 + "  " + expectedArm64 + "  "
+					require.Equal(t, expectedFull, evaluatedSRC_URI, "Evaluated SRC_URI does not perfectly match expected logical value")
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
@@ -422,8 +425,25 @@ fi
 	ebuildPath := filepath.Join(tempDir, "www-client", "which-browser-bin", "which-browser-bin-0.2.6_p44.ebuild")
 	ebuildContent, err := os.ReadFile(ebuildPath)
 	require.NoError(t, err, "Ebuild should have been generated")
-	require.Contains(t, string(ebuildContent), ts.URL+"/downloads/v0.2.6/which_browser-0.2", "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
-	require.Contains(t, string(ebuildContent), "-> ${P}-which_browser-0.2.6+44-linux.deb", "SRC_URI must map precisely to Gentoo variable while preserving raw artifact name")
+
+	// Evaluate SRC_URI
+	var srcURILines []string
+	ebuildLines := strings.Split(string(ebuildContent), "\n")
+	for _, line := range ebuildLines {
+		if strings.HasPrefix(strings.TrimSpace(line), "SRC_URI=") || strings.HasPrefix(strings.TrimSpace(line), "SRC_URI+=") {
+			srcURILines = append(srcURILines, line)
+		}
+	}
+	srcURIScript := "P=which-browser-bin\nPV=0.2.6_p44\n" + strings.Join(srcURILines, "\n")
+	srcURIScript += "\nprintf '%s' \"$SRC_URI\""
+
+	evalCmd := exec.Command("bash", "-c", srcURIScript)
+	output, evalErr := evalCmd.Output()
+	require.NoError(t, evalErr, "Evaluating SRC_URI failed")
+	evaluatedSRCURI := string(output)
+
+	expectedURI := " amd64? (   " + ts.URL + "/downloads/v0.2.6/which_browser-0.2.6+44-linux.deb  -> which-browser-bin-which_browser-0.2.6+44-linux.deb  )  "
+	require.Equal(t, expectedURI, evaluatedSRCURI)
 
 	manifestLogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 	manifestLogContent, err := os.ReadFile(manifestLogPath)
@@ -464,6 +484,7 @@ Homepage https://www.test.io/
 License MIT License
 VersionPipeline get(https://example.com) | rss
 Binary amd64=>test-${VERSION}.tar.gz > test > test
+Symlink test=>/usr/bin/test
 `
 	inputConfigs, err := ParseInputConfigReader(strings.NewReader(configString))
 	require.NoError(t, err)
@@ -521,6 +542,11 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 					if _, err := os.Stat(ebuildPath); os.IsNotExist(err) {
 						t.Errorf("Expected ebuild %s to be created, but it was not", ebuildPath)
 					}
+					// Exercise the physical ebuild generated by the Web Binary workflow.
+					ebuildData, err := os.ReadFile(ebuildPath)
+					require.NoError(t, err)
+					require.Contains(t, string(ebuildData), "\tdosym \"/usr/bin/test\" \"test\"")
+					require.NotContains(t, string(ebuildData), "    dosym \"/usr/bin/test\" \"test\"")
 
 					g2LogPath := filepath.Join(tempDir, "g2_manifest_log.txt")
 					logData, err := os.ReadFile(g2LogPath)
@@ -562,103 +588,5 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 				}
 			}
 		}
-	}
-}
-
-func TestSmokeEndToEndExecution_Issue172(t *testing.T) {
-	cfg := `Type Github Binary Release
-GithubProjectUrl https://github.com/derailed/k9s
-EbuildName arrans-overlay-workflow-builder-bin
-Category app-admin-arrans-overlay-workflow-builder-bin
-Description This is a very long description that should exceed the eighty character line limit for ebuild generation and will require wrapping
-Homepage https://github.com/derailed/k9s
-License MIT
-ProgramName k9s
-Binary amd64=>k9s_Linux_amd64.tar.gz > k9s > k9s`
-
-	templates, err := ParseWorkflowTemplates()
-	require.NoError(t, err)
-
-	data := NewGenerateGithubBinaryTemplateDataFromString(cfg)
-	var buf bytes.Buffer
-	err = templates.ExecuteTemplate(&buf, "github-binary.tmpl", data)
-	require.NoError(t, err)
-
-	script := buf.String()
-
-	var workflow map[string]interface{}
-	err = yaml.Unmarshal(buf.Bytes(), &workflow)
-	require.NoError(t, err)
-
-	script = ""
-	jobs := workflow["jobs"].(map[string]interface{})
-	for _, jobInterface := range jobs {
-		job := jobInterface.(map[string]interface{})
-		steps := job["steps"].([]interface{})
-		for _, stepInterface := range steps {
-			step := stepInterface.(map[string]interface{})
-			if step["name"] == "Process each release" {
-				script = step["run"].(string)
-			}
-		}
-	}
-
-	script = resolveGithubEnv(script)
-	script = resolveGithubEnvForPackage(script, "app-admin-arrans-overlay-workflow-builder-bin", "arrans-overlay-workflow-builder-bin")
-	script = strings.ReplaceAll(script, "${{ env.description }}", "This is a very long description that should exceed the eighty character line limit for ebuild generation and will require wrapping")
-
-	tmpDir, cleanup := setupHermeticEnvironment(t)
-	defer cleanup()
-
-	ebuildDir := filepath.Join(tmpDir, "app-admin", "test-bin")
-	require.NoError(t, os.MkdirAll(ebuildDir, 0755))
-
-	var bashOut, bashErr bytes.Buffer
-	cmd := exec.Command("bash", "-x", "-c", script)
-	cmd.Dir = tmpDir
-	cmd.Env = []string{
-		"PATH=" + filepath.Join(tmpDir, "bin") + ":" + os.Getenv("PATH"),
-		"GITHUB_OUTPUT=" + filepath.Join(tmpDir, "github_output"),
-		"RUNNER_TEMP=" + tmpDir,
-	}
-	cmd.Stdout = &bashOut
-	cmd.Stderr = &bashErr
-	err = cmd.Run()
-	if err != nil {
-		t.Logf("Bash stderr:\n%s", bashErr.String())
-		t.Logf("Bash stdout:\n%s", bashOut.String())
-		t.Fatalf("Bash script failed: %v", err)
-	}
-
-	files, err := os.ReadDir(ebuildDir)
-	require.NoError(t, err)
-	ebuildFound := false
-	for _, f := range files {
-		if strings.HasSuffix(f.Name(), ".ebuild") {
-			ebuildFound = true
-			content, err := os.ReadFile(filepath.Join(ebuildDir, f.Name()))
-			require.NoError(t, err)
-
-			lines := strings.Split(string(content), "\n")
-			for i, line := range lines {
-				width := 0
-				for _, r := range line {
-					if r == '\t' {
-						width += 4
-					} else {
-						width += 1
-					}
-				}
-				if width > 80 {
-					t.Errorf("Ebuild line %d exceeds 80 characters (width %d): %s", i+1, width, line)
-				}
-			}
-		}
-	}
-	if !ebuildFound {
-		t.Logf("Script was:\n%s", script)
-		t.Logf("Bash stdout:\n%s", bashOut.String())
-		t.Logf("Bash stderr:\n%s", bashErr.String())
-		t.Fatalf("Ebuild not generated")
 	}
 }
