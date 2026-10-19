@@ -81,14 +81,14 @@ func TestIssue169GetHeaderMatrix(t *testing.T) {
 	sPtr := func(s string) *string { return &s }
 
 	checkHeader(false, "", nil, nil, "# SPDX-License-Identifier: MIT")
-	checkHeader(true, "", nil, nil, "# Copyright 2026 Gentoo Authors\n# Distributed under the terms of the GNU General Public License v2")
-	checkHeader(false, "", tPtr(true), nil, "# Copyright 2026 Gentoo Authors\n# Distributed under the terms of the GNU General Public License v2")
+	checkHeader(true, "", nil, nil, "# Copyright 2026 Gentoo Authors\"\n                echo \"# Distributed under the terms of the GNU General Public License v2")
+	checkHeader(false, "", tPtr(true), nil, "# Copyright 2026 Gentoo Authors\"\n                echo \"# Distributed under the terms of the GNU General Public License v2")
 	checkHeader(true, "", tPtr(false), nil, "# SPDX-License-Identifier: MIT")
 	checkHeader(false, "Apache-2.0", nil, nil, "# SPDX-License-Identifier: Apache-2.0")
 	checkHeader(false, "Apache-2.0", nil, sPtr("GPL-3.0"), "# SPDX-License-Identifier: GPL-3.0")
 	checkHeader(false, "", nil, sPtr("Apache-2.0"), "# SPDX-License-Identifier: Apache-2.0")
-	checkHeader(true, "", nil, sPtr("Apache-2.0"), "# Copyright 2026 Gentoo Authors\n# SPDX-License-Identifier: Apache-2.0")
-	checkHeader(true, "", nil, sPtr("MIT"), "# Copyright 2026 Gentoo Authors\n# SPDX-License-Identifier: MIT")
+	checkHeader(true, "", nil, sPtr("Apache-2.0"), "# Copyright 2026 Gentoo Authors\"\n                echo \"# SPDX-License-Identifier: Apache-2.0")
+	checkHeader(true, "", nil, sPtr("MIT"), "# Copyright 2026 Gentoo Authors\"\n                echo \"# SPDX-License-Identifier: MIT")
 }
 
 // TestIssue169HeaderOptionsRoundTrip protects the distinction between an

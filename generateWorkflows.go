@@ -485,7 +485,12 @@ func (ic *InputConfig) ResolveHeaderPolicy(ops ...any) (gentooAuthors bool, sour
 		switch o := opt.(type) {
 		case OptGentooAuthors:
 			gentooAuthors = bool(o)
+		case OptGeneratedEbuildGentooAuthors:
+			gentooAuthors = bool(o)
 		case OptSourceLicense:
+			sourceLicense = string(o)
+			hasExplicitSourceLicense = true
+		case OptGeneratedEbuildSourceLicense:
 			sourceLicense = string(o)
 			hasExplicitSourceLicense = true
 		}
@@ -494,8 +499,15 @@ func (ic *InputConfig) ResolveHeaderPolicy(ops ...any) (gentooAuthors bool, sour
 		if ic.GentooAuthors != nil {
 			gentooAuthors = *ic.GentooAuthors
 		}
+		if ic.GeneratedEbuildGentooAuthors != nil {
+			gentooAuthors = *ic.GeneratedEbuildGentooAuthors
+		}
 		if ic.SourceLicense != nil && *ic.SourceLicense != "" {
 			sourceLicense = *ic.SourceLicense
+			hasExplicitSourceLicense = true
+		}
+		if ic.GeneratedEbuildSourceLicense != nil && *ic.GeneratedEbuildSourceLicense != "" {
+			sourceLicense = *ic.GeneratedEbuildSourceLicense
 			hasExplicitSourceLicense = true
 		}
 	}
@@ -656,13 +668,25 @@ func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
 }
 
 func (b *GenerateGithubWorkflowBase) GetHeader() string {
+	var lines []string
 	if b.GentooAuthors {
 		if !b.HasExplicitSourceLicense {
-			return fmt.Sprintf("# Copyright %s Gentoo Authors\n# Distributed under the terms of the GNU General Public License v2", b.Now.Format("2006"))
+			lines = append(lines, fmt.Sprintf("# Copyright %s Gentoo Authors", b.Now.Format("2006")))
+			lines = append(lines, "# Distributed under the terms of the GNU General Public License v2")
 		} else {
-			return fmt.Sprintf("# Copyright %s Gentoo Authors\n# SPDX-License-Identifier: %s", b.Now.Format("2006"), b.SourceLicense)
+			lines = append(lines, fmt.Sprintf("# Copyright %s Gentoo Authors", b.Now.Format("2006")))
+			lines = append(lines, fmt.Sprintf("# SPDX-License-Identifier: %s", b.SourceLicense))
 		}
 	} else {
-		return fmt.Sprintf("# SPDX-License-Identifier: %s", b.SourceLicense)
+		lines = append(lines, fmt.Sprintf("# SPDX-License-Identifier: %s", b.SourceLicense))
 	}
+	var res []string
+	for i, l := range lines {
+		if i == 0 {
+			res = append(res, l)
+		} else {
+			res = append(res, "\"\n                echo \"" + l)
+		}
+	}
+	return strings.Join(res, "")
 }

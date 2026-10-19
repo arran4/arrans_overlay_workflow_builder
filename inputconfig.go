@@ -799,6 +799,19 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	}
 	currentConfig.GentooAuthors = emptyOrLastBoolPtr(parsedFields["GentooAuthors"])
 	currentConfig.SourceLicense = emptyOrLastPtr(parsedFields["SourceLicense"])
+	if values, ok := parsedFields["GeneratedEbuildGentooAuthors"]; ok && len(values) > 0 {
+		val := strings.ToLower(strings.TrimSpace(values[len(values)-1]))
+		if val == "true" {
+			b := true
+			currentConfig.GeneratedEbuildGentooAuthors = &b
+		} else if val == "false" {
+			b := false
+			currentConfig.GeneratedEbuildGentooAuthors = &b
+		} else {
+			return nil, fmt.Errorf("invalid boolean value for GeneratedEbuildGentooAuthors: %s", val)
+		}
+	}
+	currentConfig.GeneratedEbuildSourceLicense = emptyOrLastPtr(parsedFields["GeneratedEbuildSourceLicense"])
 	currentConfig.MaintainerEmail, err = emptyOrOnlyOrFail(parsedFields["MaintainerEmail"])
 	if err != nil {
 		return nil, fmt.Errorf("on MaintainerEmail: %v: %w", parsedFields["MaintainerEmail"], err)
