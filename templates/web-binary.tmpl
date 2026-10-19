@@ -151,7 +151,9 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo "[[ .GetHeader | ebuildvardoublequoted ]]"
+                [[- range .GetHeader ]]
+                echo "[[ . | ebuildvardoublequoted ]]"
+[[- end ]]
 [[- template "provenance" . ]]
                 echo 'EAPI=8'
                 emit_ebuild_assignment "DESCRIPTION" "${{ env.description }}"

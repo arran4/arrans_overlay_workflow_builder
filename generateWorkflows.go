@@ -667,7 +667,7 @@ func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
 	return base64.StdEncoding.EncodeToString([]byte(b.GetDownloadPipeline()))
 }
 
-func (b *GenerateGithubWorkflowBase) GetHeader() string {
+func (b *GenerateGithubWorkflowBase) GetHeader() []string {
 	var lines []string
 	if b.GentooAuthors {
 		if !b.HasExplicitSourceLicense {
@@ -680,13 +680,5 @@ func (b *GenerateGithubWorkflowBase) GetHeader() string {
 	} else {
 		lines = append(lines, fmt.Sprintf("# SPDX-License-Identifier: %s", b.SourceLicense))
 	}
-	var res []string
-	for i, l := range lines {
-		if i == 0 {
-			res = append(res, l)
-		} else {
-			res = append(res, "\"\n                echo \"" + l)
-		}
-	}
-	return strings.Join(res, "")
+	return lines
 }

@@ -100,25 +100,29 @@ jobs:
               local name=$1
               local value=$2
               echo "${name}=\"\""
-              local prefix="${name}+=\" "
-              local suffix=" \""
-              local escaped_value="${value//\\/\\\\}"
-              escaped_value="${escaped_value//\"/\\\"}"
-              escaped_value="${escaped_value//\$/\\\$}"
-              escaped_value="${escaped_value//$'\r'/}"
-              escaped_value="${escaped_value//$'\n'/ }"
-              escaped_value="${escaped_value//$'\t'/ }"
-              local width=$((80 - ${#prefix} - ${#suffix}))
-              if [ "$width" -le 0 ]; then
-                  echo "${prefix}${escaped_value}${suffix}"
-                  return
-              fi
-              local current_value="$escaped_value"
-              while [ -n "$current_value" ]; do
-                  local chunk="${current_value:0:$width}"
-                  echo "${prefix}${chunk}${suffix}"
-                  current_value="${current_value:$width}"
+              local clean_value="${value//$'\r'/}"
+              clean_value="${clean_value//$'\n'/ }"
+              clean_value="${clean_value//$'\t'/ }"
+              local current_chunk=""
+              while [ -n "$clean_value" ]; do
+                  local char="${clean_value:0:1}"
+                  clean_value="${clean_value:1}"
+                  local escaped_char="$char"
+                  # DO NOT escape $. It ruins variable expansion during ebuild sourcing!
+                  if [ "$char" = "\\" ] || [ "$char" = "\"" ]; then
+                      escaped_char="\\$char"
+                  fi
+                  local test_len=$((${#name} + 4 + ${#current_chunk} + ${#escaped_char} + 1))
+                  if [ $test_len -gt 80 ] && [ -n "$current_chunk" ]; then
+                      echo "${name}+=\"${current_chunk}\""
+                      current_chunk="$escaped_char"
+                  else
+                      current_chunk="${current_chunk}${escaped_char}"
+                  fi
               done
+              if [ -n "$current_chunk" ]; then
+                  echo "${name}+=\"${current_chunk}\""
+              fi
           }
           tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
           # shellcheck disable=SC2086
