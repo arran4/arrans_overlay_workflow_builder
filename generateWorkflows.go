@@ -265,6 +265,29 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 					}
 				})
 			},
+
+			"formatReleaseFilenameForUrl": func(originalVersion interface{}, filename interface{}) string {
+				filenameStr := fmt.Sprintf("%v", filename)
+				return os.Expand(filenameStr, func(s string) string {
+					switch s {
+					case "VERSION":
+						if fmt.Sprintf("%v", originalVersion) == "true" {
+							return "${originalVersion}"
+						}
+						return "${version}"
+					case "PV":
+						return "${version}"
+					case "TAG":
+						return "${tag}"
+					case "GITHUB_OWNER":
+						return "${{ env.github_owner }}"
+					case "GITHUB_REPO":
+						return "${{ env.github_repo }}"
+					default:
+						return "${" + s + "}"
+					}
+				})
+			},
 			"UseFlagSafe": strcase.SnakeCase,
 			"ebuildvardoublequoted": func(s string) string {
 				return os.Expand(s, func(s string) string {

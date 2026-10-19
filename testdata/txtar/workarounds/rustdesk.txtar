@@ -104,28 +104,66 @@ jobs:
               {
                 echo '# Copyright 2026 Gentoo Authors'
                 echo '# Distributed under the terms of the GNU General Public License v2'
+                # Shell helper to wrap provenance fields at exactly 80 chars
+                # Shell helper to wrap metadata fields at exactly 80 chars
+                emit_metadata_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="${label}+=\""
+                    local width
+                    echo "${label}=\"\""
+                    while [ -n "$value" ]; do
+                        width=$((80 - ${#prefix} - 1)) # -1 for closing quote
+                        if ((${#value} <= width)); then
+                            printf '%s%s\"\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\"\n' "$prefix" "${value:0:width}"
+                        value="${value:width}"
+                    done
+                }
+                emit_provenance_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="#   ${label}: "
+                    local continuation
+                    local width
+                    printf -v continuation '%*s' "${#prefix}" ''
+                    continuation="#${continuation:1}"
+                    while :; do
+                        width=$((80 - ${#prefix}))
+                        if ((${#value} <= width)); then
+                            printf '%s%s\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\n' "$prefix" "${value:0:width}"
+                        value=${value:width}
+                        prefix=$continuation
+                    done
+                }
                 echo '# Generated via:'
-                echo '#   repository: ${{ github.server_url }}/${{ github.repository }}'
-                echo '#   commit: ${{ github.sha }}'
-                echo '#   workflow: .github/workflows/${{ env.workflow_filename }}'
+                emit_provenance_field "repository" "${{ github.server_url }}/${{ github.repository }}"
+                emit_provenance_field "commit" "${{ github.sha }}"
+                emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
                 echo 'EAPI=8'
-                echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo 'SRC_URI=""'
-                echo "SRC_URI+=\" amd64? (  \""
-                echo "SRC_URI+=\" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${PV} \""
-                echo "SRC_URI+=\" -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  \""
-                echo 'LICENSE="AGPL-3"'
+                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
+                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                src_uri_val=""
+                src_uri_val+=" amd64? (  "
+                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz "
+                src_uri_val+=" -> \${P}-rustdesk-\${PV}-x86_64.tar.gz  )  "
+                emit_metadata_field "SRC_URI" "$src_uri_val"
+                emit_metadata_field "LICENSE" "AGPL-3"
                 echo 'SLOT="0"'
-                echo 'KEYWORDS="${{ env.keywords }}"'
-                echo -n 'IUSE="'
-                echo '"'
+                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+                                iuse_val=""
+                emit_metadata_field "IUSE" "$iuse_val"
                 echo ''
-                echo -n 'REQUIRED_USE="'
-                echo '"'
+                ruse_val=""
+                emit_metadata_field "REQUIRED_USE" "$ruse_val"
                 echo ''
-                echo -n 'RDEPEND="'
-                echo '"'
+                rdepend_val=""
+                emit_metadata_field "RDEPEND" "$rdepend_val"
                 echo ''
                 echo 'S="${WORKDIR}"'
                 echo ''
@@ -157,7 +195,7 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/\${P}" "${{ env.epn }}-${version}-rustdesk-${version}-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/rustdesk-${originalVersion}-x86_64.tar.gz" "${{ env.epn }}-${version}-rustdesk-${version}-x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
