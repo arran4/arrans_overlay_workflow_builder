@@ -348,6 +348,8 @@ type OptOverlayRepoName string
 type OptUpsertOverlayRepoName bool
 type OptGentooAuthors bool
 type OptSourceLicense string
+type OptGeneratedEbuildGentooAuthors bool
+type OptGeneratedEbuildSourceLicense string
 
 type GenerateGithubWorkflowBase struct {
 	*InputConfig
@@ -446,7 +448,12 @@ func (ic *InputConfig) ResolveHeaderPolicy(ops ...any) (gentooAuthors bool, sour
 		switch o := opt.(type) {
 		case OptGentooAuthors:
 			gentooAuthors = bool(o)
+		case OptGeneratedEbuildGentooAuthors:
+			gentooAuthors = bool(o)
 		case OptSourceLicense:
+			sourceLicense = string(o)
+			hasExplicitSourceLicense = true
+		case OptGeneratedEbuildSourceLicense:
 			sourceLicense = string(o)
 			hasExplicitSourceLicense = true
 		}
@@ -455,8 +462,15 @@ func (ic *InputConfig) ResolveHeaderPolicy(ops ...any) (gentooAuthors bool, sour
 		if ic.GentooAuthors != nil {
 			gentooAuthors = *ic.GentooAuthors
 		}
+		if ic.GeneratedEbuildGentooAuthors != nil {
+			gentooAuthors = *ic.GeneratedEbuildGentooAuthors
+		}
 		if ic.SourceLicense != nil && *ic.SourceLicense != "" {
 			sourceLicense = *ic.SourceLicense
+			hasExplicitSourceLicense = true
+		}
+		if ic.GeneratedEbuildSourceLicense != nil && *ic.GeneratedEbuildSourceLicense != "" {
+			sourceLicense = *ic.GeneratedEbuildSourceLicense
 			hasExplicitSourceLicense = true
 		}
 	}

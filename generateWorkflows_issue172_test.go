@@ -1,6 +1,7 @@
 package arrans_overlay_workflow_builder
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -65,7 +66,7 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 	script = strings.ReplaceAll(script, "emit_metadata_field \"DESCRIPTION\" \"Test\"", "emit_metadata_field \"DESCRIPTION\" \"123456789012345678901234567890123456789012345678901234567890123\\${P}\"")
 	script = strings.ReplaceAll(script, "DESCRIPTION+=\"Test\"", "DESCRIPTION+=\"123456789012345678901234567890123456789012345678901234567890123${P}\"")
 
-	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=test-bin\nset -euo pipefail\n"+script)
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=test-bin\nPV=1.0.0\nset -euo pipefail\n"+script)
 	cmd.Dir = tempDir
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "generated workflow failed:\n%s", string(output))
@@ -308,4 +309,113 @@ func evalIssue172Field(t *testing.T, lines []string, name, preamble string) stri
 	require.NotContains(t, value, `\n`)
 	require.NotContains(t, value, `\t`)
 	return value
+}
+
+func TestIssue172AdversarialMetadataEscaping(t *testing.T) {
+	tempDir, cleanup := setupHermeticEnvironment(t)
+	defer cleanup()
+
+	canaryFile1 := filepath.Join(tempDir, "should_not_exist_subshell")
+	canaryFile2 := filepath.Join(tempDir, "should_not_exist_backticks")
+
+	adversarialInput := fmt.Sprintf(
+		`Package ${P}-${PV} with "double quotes", 'single quotes', \backslashes\, $(touch %s), `+"`touch %s`"+`, $SECRET_KEY and very-long-unbroken-token-that-exceeds-width-boundaries-01234567890123456789`,
+		canaryFile1, canaryFile2,
+	)
+
+	configString := fmt.Sprintf(`Type Github Binary Release
+GithubProjectUrl https://github.com/test/test
+EbuildName test-bin
+Category app-admin
+Description %s
+Homepage https://www.test.io/
+License MIT
+Binary amd64=>test-${TAG}-linux-amd64 > test > test
+`, adversarialInput)
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	err = configs[0].GenerateGithubWorkflow("test.config", time.Date(2026, 8, 13, 0, 0, 0, 0, time.UTC), tmpls, tempDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(tempDir, "app-admin-test-bin-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	var script string
+	for _, item := range steps {
+		step := item.(map[string]any)
+		if step["name"] == "Process each release" {
+			script = step["run"].(string)
+			break
+		}
+	}
+	require.NotEmpty(t, script)
+
+	binDir := filepath.Join(tempDir, "bin")
+	mockCommand(t, binDir, "g2", "#!/bin/bash\nif [[ \"$1\" == \"ebuild\" && \"$2\" == \"next-revision\" ]]; then echo \"${@: -1}\"; fi\nexit 0\n")
+	mockCommand(t, binDir, "gh", "#!/bin/bash\necho v1.0.0\nexit 0\n")
+
+	escapedScriptInput := strings.ReplaceAll(adversarialInput, `\`, `\\`)
+	escapedScriptInput = strings.ReplaceAll(escapedScriptInput, `"`, `\"`)
+	escapedScriptInput = strings.ReplaceAll(escapedScriptInput, `$`, `\$`)
+	escapedScriptInput = strings.ReplaceAll(escapedScriptInput, "`", "\\`")
+
+	script = strings.ReplaceAll(script, "${{ env.description }}", escapedScriptInput)
+	script = resolveGithubEnvForPackage(script, "app-admin", "test-bin")
+	script = strings.ReplaceAll(script, "${{ env.workflow_filename }}", "test.yml")
+
+	githubOutput := filepath.Join(tempDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(tempDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=test-bin\nPV=1.0.0\nset -euo pipefail\n"+script)
+	cmd.Dir = tempDir
+	cmd.Env = append(os.Environ(),
+		"RUNNER_TEMP="+tempDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "execution failed: %s", string(out))
+
+	// Assert canaries were NOT created (zero command execution)
+	_, err1 := os.Stat(canaryFile1)
+	require.True(t, os.IsNotExist(err1), "subshell command in metadata must NOT be executed: %s exists!", canaryFile1)
+	_, err2 := os.Stat(canaryFile2)
+	require.True(t, os.IsNotExist(err2), "backtick command in metadata must NOT be executed: %s exists!", canaryFile2)
+
+	ebuildPath := filepath.Join(tempDir, "app-admin", "test-bin", "test-bin-1.0.0.ebuild")
+	ebuildContent, err := os.ReadFile(ebuildPath)
+	require.NoError(t, err)
+
+	lines := strings.Split(string(ebuildContent), "\n")
+	assertIssue172Widths(t, lines)
+
+	// Evaluate with SECRET_KEY=leaked_value
+	got := evalIssue172Field(t, lines, "DESCRIPTION", "SECRET_KEY=leaked_value\nP=test-bin\nPV=1.0.0")
+
+	// Ensure SECRET_KEY was not expanded
+	require.NotContains(t, got, "leaked_value")
+	require.Contains(t, got, "$SECRET_KEY")
+
+	// Ensure ${P} and ${PV} were expanded
+	require.Contains(t, got, "Package test-bin-1.0.0 with")
+
+	// Ensure quotes and escapes are preserved
+	require.Contains(t, got, `"double quotes"`)
+	require.Contains(t, got, `'single quotes'`)
+	require.Contains(t, got, `\backslashes\`)
+	require.Contains(t, got, fmt.Sprintf(`$(touch %s)`, canaryFile1))
+	require.Contains(t, got, fmt.Sprintf("`touch %s`", canaryFile2))
 }
