@@ -33,6 +33,7 @@ env:
   homepage: "https://github.com/arran4/kjules"
   github_owner: arran4
   github_repo: kjules
+  workflow_filename: app-misc-kjules-update.yaml
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -90,46 +91,158 @@ jobs:
                 # shellcheck disable=SC2001
                 qt6_flags=$(echo "$qt6_components" | grep -ivE 'Test|Svg' | tr '\n' ',' | sed 's/,$//' | tr '[:upper:]' '[:lower:]')
                 if [ -n "$qt6_flags" ]; then
-                  DEPEND="$DEPEND\n\tdev-qt/qtbase:6[$qt6_flags]"
+                  DEPEND="$DEPEND dev-qt/qtbase:6[$qt6_flags]"
                 else
-                  DEPEND="$DEPEND\n\tdev-qt/qtbase:6"
+                  DEPEND="$DEPEND dev-qt/qtbase:6"
                 fi
                 # Handling qt6 components that map to different Gentoo packages if needed
-                if echo "$qt6_components" | grep -iq "Svg"; then DEPEND="$DEPEND\n\tdev-qt/qtsvg:6"; fi
+                if echo "$qt6_components" | grep -iq "Svg"; then DEPEND="$DEPEND dev-qt/qtsvg:6"; fi
               fi
-              BDEPEND="virtual/pkgconfig\n\tkde-frameworks/extra-cmake-modules:0"
+              BDEPEND="virtual/pkgconfig kde-frameworks/extra-cmake-modules:0"
               if echo "$qt6_components" | grep -iq "Test"; then
-                 BDEPEND="$BDEPEND\n\tdev-qt/qttools:6[linguist]"
+                 BDEPEND="$BDEPEND dev-qt/qttools:6[linguist]"
               fi
               for pkg in $kf6_packages $kf6_components; do
                  # Basic mapping logic for KF6
                  mapped=$(echo "$pkg" | tr '[:upper:]' '[:lower:]')
-                 DEPEND="$DEPEND\n\tkde-frameworks/k${mapped}:6"
+                 DEPEND="$DEPEND kde-frameworks/k${mapped}:6"
               done
               {
-                echo "# Copyright $(date +%Y) Gentoo Authors"
-                echo "# Distributed under the terms of the GNU General Public License v2"
+                printf '%s\n' '# SPDX-License-Identifier: '
+                emit_metadata_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="${label}+=\""
+                    local max_chunk=$((80 - ${#prefix} - 1))
+                    echo "${label}=\"\""
+                    [ -z "$value" ] && return 0
+                    local clean_value="${value//$'\r'/}"
+                    clean_value="${clean_value//$'\n'/ }"
+                    local tokens=()
+                    local len=${#clean_value}
+                    local i=0
+                    while [ $i -lt $len ]; do
+                        if [ "${clean_value:i:4}" = "\${P}" ]; then
+                            tokens+=("\${P}")
+                            i=$((i + 4))
+                        elif [ "${clean_value:i:5}" = "\${PV}" ]; then
+                            tokens+=("\${PV}")
+                            i=$((i + 5))
+                        elif [ "${clean_value:i:5}" = "\${PN}" ]; then
+                            tokens+=("\${PN}")
+                            i=$((i + 5))
+                        elif [ "${clean_value:i:9}" = "\${DEPEND}" ]; then
+                            tokens+=("\${DEPEND}")
+                            i=$((i + 9))
+                        else
+                            local c="${clean_value:i:1}"
+                            case "$c" in
+                                \"|\\|\`|\$)
+                                    tokens+=("\\$c")
+                                    ;;
+                                *)
+                                    tokens+=("$c")
+                                    ;;
+                            esac
+                            i=$((i + 1))
+                        fi
+                    done
+                    local current_line=""
+                    local pending_after_space=""
+                    for tok in "${tokens[@]}"; do
+                        if [ $((${#current_line} + ${#pending_after_space} + ${#tok})) -le $max_chunk ]; then
+                            if [ "$tok" = " " ]; then
+                                current_line="${current_line}${pending_after_space} "
+                                pending_after_space=""
+                            else
+                                pending_after_space="${pending_after_space}${tok}"
+                            fi
+                        else
+                            if [ -n "$current_line" ]; then
+                                printf "%s%s\"\n" "$prefix" "$current_line"
+                                current_line=""
+                                if [ $((${#pending_after_space} + ${#tok})) -le $max_chunk ]; then
+                                    if [ "$tok" = " " ]; then
+                                        current_line="${pending_after_space} "
+                                        pending_after_space=""
+                                    else
+                                        pending_after_space="${pending_after_space}${tok}"
+                                    fi
+                                else
+                                    if [ -n "$pending_after_space" ]; then
+                                        printf "%s%s\"\n" "$prefix" "$pending_after_space"
+                                    fi
+                                    if [ "$tok" = " " ]; then
+                                        current_line=" "
+                                        pending_after_space=""
+                                    else
+                                        pending_after_space="$tok"
+                                    fi
+                                fi
+                            else
+                                if [ -n "$pending_after_space" ]; then
+                                    printf "%s%s\"\n" "$prefix" "$pending_after_space"
+                                fi
+                                if [ "$tok" = " " ]; then
+                                    current_line=" "
+                                    pending_after_space=""
+                                else
+                                    pending_after_space="$tok"
+                                fi
+                            fi
+                        fi
+                    done
+                    local final="${current_line}${pending_after_space}"
+                    if [ -n "$final" ]; then
+                        printf "%s%s\"\n" "$prefix" "$final"
+                    fi
+                }
+                emit_ebuild_assignment() {
+                    emit_metadata_field "$@"
+                }
+                # Shell helper to wrap provenance fields at exactly 80 chars
+                emit_provenance_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="#   ${label}: "
+                    local continuation
+                    local width
+                    printf -v continuation '%*s' "${#prefix}" ''
+                    continuation="#${continuation:1}"
+                    while :; do
+                        width=$((80 - ${#prefix}))
+                        if ((${#value} <= width)); then
+                            printf '%s%s\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\n' "$prefix" "${value:0:width}"
+                        value=${value:width}
+                        prefix=$continuation
+                    done
+                }
+                echo '# Generated via:'
+                emit_provenance_field "repository" "${{ github.server_url }}/${{ github.repository }}"
+                emit_provenance_field "commit" "${{ github.sha }}"
+                emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
                 echo ""
                 echo "EAPI=8"
                 echo ""
                 echo "inherit cmake xdg"
                 echo ""
-                echo "DESCRIPTION=\"${{ env.description }}\""
-                echo "HOMEPAGE=\"${{ env.homepage }}\""
-                echo "SRC_URI=\"https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz -> \${P}.tar.gz\""
+                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
+                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                src_uri_val="https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz -> \${P}.tar.gz"
+                emit_metadata_field "SRC_URI" "$src_uri_val"
                 echo ""
-                echo "LICENSE=\"MIT\""
+                emit_metadata_field "LICENSE" "MIT"
                 echo "SLOT=\"0\""
-                echo "KEYWORDS=\"~amd64\""
+                emit_metadata_field "KEYWORDS" "~amd64"
                 echo "IUSE=\"debug\""
                 echo ""
-                echo "DEPEND=\""
-                echo -e "$DEPEND"
-                echo "\""
-                echo "RDEPEND=\"\${DEPEND}\""
-                echo "BDEPEND=\""
-                echo -e "$BDEPEND"
-                echo "\""
+                emit_metadata_field "DEPEND" "$DEPEND"
+                rdepend_val="\${DEPEND}"
+                emit_metadata_field "RDEPEND" "$rdepend_val"
+                emit_metadata_field "BDEPEND" "$BDEPEND"
                 echo ""
               } > "$tmp_ebuild_file"
               if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then

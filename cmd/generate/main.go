@@ -17,13 +17,15 @@ var (
 )
 
 type MainArgConfig struct {
-	Version               string
-	Commit                string
-	Date                  string
-	GenerateMd5Cache      bool
-	GenerateOverlay       bool
-	OverlayRepoName       *string
-	UpsertOverlayRepoName bool
+	Version                      string
+	Commit                       string
+	Date                         string
+	GenerateMd5Cache             bool
+	GenerateOverlay              bool
+	OverlayRepoName              *string
+	UpsertOverlayRepoName        bool
+	GeneratedEbuildGentooAuthors *bool
+	GeneratedEbuildSourceLicense *string
 }
 
 func valueOrDefault(v *string) string {
@@ -46,6 +48,8 @@ func main() {
 	var globalOverlayRepoName string
 	var globalOverlayRepoNameSet bool
 	var globalUpsertOverlayRepoName bool
+	var globalGeneratedEbuildGentooAuthors *bool
+	var globalGeneratedEbuildSourceLicense *string
 	var newArgs []string
 	if len(os.Args) > 0 {
 		newArgs = append(newArgs, os.Args[0])
@@ -70,6 +74,21 @@ func main() {
 			} else {
 				log.Fatalf("missing required value for flag %s", arg)
 			}
+		case "--generated-ebuild-gentoo-authors", "-generated-ebuild-gentoo-authors":
+			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
+				b := strings.ToLower(os.Args[i+1]) == "true"
+				globalGeneratedEbuildGentooAuthors = &b
+				i++
+			} else {
+				log.Fatalf("missing required value for flag %s", arg)
+			}
+		case "--generated-ebuild-source-license", "-generated-ebuild-source-license":
+			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
+				globalGeneratedEbuildSourceLicense = &os.Args[i+1]
+				i++
+			} else {
+				log.Fatalf("missing required value for flag %s", arg)
+			}
 		default:
 			newArgs = append(newArgs, arg)
 		}
@@ -81,6 +100,8 @@ func main() {
 	if globalOverlayRepoNameSet {
 		config.OverlayRepoName = &globalOverlayRepoName
 	}
+	config.GeneratedEbuildGentooAuthors = globalGeneratedEbuildGentooAuthors
+	config.GeneratedEbuildSourceLicense = globalGeneratedEbuildSourceLicense
 
 	if err := fs.Parse(os.Args); err != nil {
 		log.Printf("Flag parse error: %s", err)
@@ -167,6 +188,11 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 	config.InputFile = fs.String("input-file", "input.config", "The input with config")
 	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
 	config.ForceDate = fs.String("force-date", "", "Force a specific date (e.g. 2026-08-13 00:00:00 +0000 UTC) for testing")
+	gentooAuthors := fs.Bool("gentoo-authors", false, "Emit Gentoo Authors copyright header instead of generic MIT.")
+	sourceLicense := fs.String("source-license", "", "Source-level license to emit in headers (e.g., MIT).")
+	generatedGentooAuthors := fs.Bool("generated-ebuild-gentoo-authors", false, "Emit Gentoo Authors copyright header instead of generic MIT.")
+	generatedSourceLicense := fs.String("generated-ebuild-source-license", "", "Source-level license to emit in headers (e.g., MIT).")
+
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
 	}
@@ -198,6 +224,19 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
 		}
 
+		if config.GeneratedEbuildGentooAuthors != nil {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGeneratedEbuildGentooAuthors(*config.GeneratedEbuildGentooAuthors))
+		}
+		if config.GeneratedEbuildSourceLicense != nil {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGeneratedEbuildSourceLicense(*config.GeneratedEbuildSourceLicense))
+		}
+		opts = append(opts, arrans_overlay_workflow_builder.OptGentooAuthors(*gentooAuthors || *generatedGentooAuthors))
+		if *sourceLicense != "" {
+			opts = append(opts, arrans_overlay_workflow_builder.OptSourceLicense(*sourceLicense))
+		}
+		if *generatedSourceLicense != "" {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGeneratedEbuildSourceLicense(*generatedSourceLicense))
+		}
 		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version, opts...)
 	default:
 		log.Printf("Unknown command %s", fs.Arg(0))
