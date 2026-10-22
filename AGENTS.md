@@ -6,3 +6,15 @@ Every txtar test must contain the complete generated output in `expected.yaml`. 
 Txtar inputs must be fully qualified enough to generate a functional ebuild for every major generator type. Inject nondeterministic values such as cron schedules and timestamps in txtar tests so unrelated input changes do not rewrite snapshots. Before changing a `uses:` reference, verify the current appropriate major version against the action's official GitHub repository.
 
 Every workaround added (like `Workaround Version Replacement`, `Workaround Gentoo Version Regular Expression`, etc.) must have a txtar test proving that it works for the corresponding outputs (e.g., github-cmake, web-binary, github-binary, github-appimage, etc.).
+
+## Deterministic generation, safe preview and review
+
+- Treat configuration and templates as source; generated workflows and ebuilds are outputs. Where a preview/dry-run mode exists, it must not rewrite repository files, destination overlays or pre-existing user data, even temporarily. Calculate a plan and compare candidate output in isolated storage; apply only in explicit write mode. For generated ebuild/Manifest publication, follow transactional package-state issue #155; separately audit CLI batch workflow generation for partial writes after a late entry fails. Do not assume the current implementation already satisfies either invariant.
+- For error-path regressions, fail after earlier work has succeeded and assert that previously published file contents/state are unchanged; checking the exit code alone is insufficient. Real temporary directories are appropriate when a filesystem path, subprocess or downstream CLI is itself part of the contract (issue #174).
+- Reject incomplete source metadata or incompatible releases rather than silently emitting a plausible but incorrect package. Preserve g2-compatible generated metadata and validate it with the real downstream checker where that is the contract (issue #166).
+- Keep the existing complete-output txtar `expected.yaml` requirements. Use narrowly scoped Go tests for individual helpers, reusable HTTP responses and binary data, and full txtar fixtures for end-to-end generator outputs (issue #174).
+- Avoid generic global environment overrides or network calls in routine test scenarios. Use injected sources or fixture transport where possible; keep real upstream and Gentoo checks as labelled integration coverage.
+
+## Engineering guidance and agent audit
+
+Use https://arran4.github.io/blog/post/2026/055-suggested-coding-standards-for-repositories-and-agents/ selectively, without superseding the more specific rules above. A coding agent must inspect implementation/tests, distinguish verified gaps from hypotheses, and record results and existing issue overlap at https://github.com/arran4/arrans_overlay_workflow_builder/issues/177. Do not equate adding instructions with completing the implementation audit; do not merge automatically.

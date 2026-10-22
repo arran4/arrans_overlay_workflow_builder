@@ -331,15 +331,19 @@ This repository includes a deterministic, hermetic smoke test suite in `smoke_te
 
 ## Global Flags
 
-*   `--gentoo-authors`: Emit Gentoo Authors copyright header instead of generic SPDX MIT (default `false`).
-*   `--source-license`: Source-level license to emit in headers (e.g., `MIT`) (default `""`).
+*   `--gentoo-authors` / `--generated-ebuild-gentoo-authors`: Emit Gentoo Authors copyright header instead of generic SPDX MIT (default `false`).
+*   `--source-license` / `--generated-ebuild-source-license`: Source-level license to emit in headers (e.g., `MIT`) (default `""`).
 
 ## Configuration directives
 
-*   `GentooAuthors <boolean>`: Toggles the generated source header copyright attribution for a single package.
+*   `GentooAuthors <boolean>` / `GeneratedEbuildGentooAuthors <boolean>`: Toggles the generated source header copyright attribution for a single package.
     *   If unset, inherits the global `--gentoo-authors` default.
     *   If explicitly `true`, generates Gentoo copyright + GPL-2 distribution line.
     *   If explicitly `false`, generates an SPDX-License-Identifier string without Gentoo attribution.
-*   `SourceLicense <string>`: Explicit license string for the source header (e.g., `Apache-2.0`).
+*   `SourceLicense <string>` / `GeneratedEbuildSourceLicense <string>`: Explicit license string for the source header (e.g., `Apache-2.0`).
     *   If `GentooAuthors` is off and this is unset, defaults to `MIT`.
     *   Overrides the `GPL-2` distribution line if `GentooAuthors` is on but an explicit source license is set.
+
+## Contributing and engineering guidance
+
+Before changing public behaviour, tests, parsers or generation rules, see [repository-specific agent/contributor guidance](AGENTS.md). The applicable rationale is collected in [Suggested Coding Standards](https://arran4.github.io/blog/post/2026/055-suggested-coding-standards-for-repositories-and-agents/); this is selective guidance, not a blanket rewrite policy. The [standards adoption issue](https://github.com/arran4/arrans_overlay_workflow_builder/issues/177) tracks the required implementation/test audit separately from documentation.
