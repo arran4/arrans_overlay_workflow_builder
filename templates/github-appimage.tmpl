@@ -118,7 +118,9 @@ jobs:
 
               # shellcheck disable=SC2016
               {
-                echo "[[ .GetHeader | ebuildvardoublequoted ]]"
+                [[- range .GetHeaderLines ]]
+                printf '%s\n' [[ . | shell_single_quote ]]
+[[- end ]]
 [[- template "provenance" . ]]
                 echo 'EAPI=8'
                 emit_metadata_field "DESCRIPTION" "${{ env.description }}"

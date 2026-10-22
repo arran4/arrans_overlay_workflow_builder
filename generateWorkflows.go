@@ -315,6 +315,7 @@ func ParseWorkflowTemplates() (*template.Template, error) {
 			"indent":             IndentContent,
 			"shell_echo":         ShellEchoEvalContent,
 			"shell_echo_literal": ShellEchoContent,
+			"shell_single_quote": ShellSingleQuote,
 			"ebuildvardoublequotedSemanticVersionPrereleaseHack1": func(s string) string {
 				return os.Expand(s, func(s string) string {
 					switch s {
@@ -607,6 +608,18 @@ func (b *GenerateGithubWorkflowBase) GetVersionPipelineBase64() string {
 
 func (b *GenerateGithubWorkflowBase) GetDownloadPipelineBase64() string {
 	return base64.StdEncoding.EncodeToString([]byte(b.GetDownloadPipeline()))
+}
+
+// GetHeaderLines provides header data as separate physical lines. Keep GetHeader
+// for callers using the original string-valued policy API.
+func (b *GenerateGithubWorkflowBase) GetHeaderLines() []string {
+	return strings.Split(b.GetHeader(), "\n")
+}
+
+// ShellSingleQuote produces one literal Bash argument, preserving dollar signs,
+// backticks, backslashes and embedded single quotes without expansion.
+func ShellSingleQuote(content string) string {
+	return "'" + strings.ReplaceAll(content, "'", "'\\''") + "'"
 }
 
 func (b *GenerateGithubWorkflowBase) GetHeader() string {

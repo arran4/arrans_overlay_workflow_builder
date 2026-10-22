@@ -117,7 +117,9 @@ jobs:
               done
 
               {
-                echo "[[ .GetHeader | ebuildvardoublequoted ]]"
+                [[- range .GetHeaderLines ]]
+                printf '%s\n' [[ . | shell_single_quote ]]
+[[- end ]]
 [[- template "provenance" . ]]
                 echo ""
                 echo "EAPI=8"
