@@ -310,7 +310,6 @@ SourceLicense Apache-2.0
 	}
 }
 
-
 // runWebAppImageSteps exercises Web AppImage's two run steps as separate
 // GitHub Actions processes; the fixture is offline and needs no curl/Python.
 func runWebAppImageSteps(t *testing.T, tempDir string, workflow map[string]any) {
@@ -350,6 +349,18 @@ func runWebAppImageSteps(t *testing.T, tempDir string, workflow map[string]any) 
 	const packageName = "test-webapp-appimage"
 	findStep = resolveGithubEnvForPackage(findStep, category, packageName)
 	updateStep = resolveGithubEnvForPackage(updateStep, category, packageName)
+	// Package-specific variables are present in the actual generated YAML env.
+	// Resolve them as GitHub Actions would before invoking Bash.
+	rawWorkflowEnv, exists := workflow["env"]
+	require.True(t, exists, "generated workflow has no env")
+	workflowEnv, ok := rawWorkflowEnv.(map[string]any)
+	require.True(t, ok, "workflow env has unexpected type %T", rawWorkflowEnv)
+	for key, rawValue := range workflowEnv {
+		value, ok := rawValue.(string)
+		require.True(t, ok, "workflow env %s has unexpected type %T", key, rawValue)
+		findStep = strings.ReplaceAll(findStep, "${{ env."+key+" }}", value)
+		updateStep = strings.ReplaceAll(updateStep, "${{ env."+key+" }}", value)
+	}
 	require.NotContains(t, findStep, "${{", "unresolved GitHub Actions expression")
 	require.NotContains(t, updateStep, "${{", "unresolved GitHub Actions expression")
 
