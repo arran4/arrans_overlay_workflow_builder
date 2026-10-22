@@ -198,76 +198,7 @@ Binary amd64=>test-webapp-1.0.0.AppImage > testapp.AppImage
 			category:   "app-admin",
 			ebuildName: "test-webapp-appimage",
 			version:    "1.0.0",
-			runScript: func(t *testing.T, tempDir string, workflow map[string]any) {
-				binDir := filepath.Join(tempDir, "bin")
-				mockCommand(t, binDir, "g2", "#!/bin/bash\nif [[ \"$1\" == \"ebuild\" && \"$2\" == \"next-revision\" ]]; then echo \"${@: -1}\"; fi\nexit 0\n")
-				mockCommand(t, binDir, "curl", "#!/bin/bash\nexit 0\n")
-
-				jobs := workflow["jobs"].(map[string]any)
-				var steps []any
-				if job, ok := jobs["fetch-latest"].(map[string]any); ok {
-					steps = job["steps"].([]any)
-				} else if job, ok := jobs["check-and-create-ebuild"].(map[string]any); ok {
-					steps = job["steps"].([]any)
-				}
-				require.NotEmpty(t, steps, "workflow steps missing")
-
-				var findStep, updateStep string
-				for _, stepItem := range steps {
-					step := stepItem.(map[string]any)
-					if step["name"] == "Determine latest AppImage" {
-						findStep = step["run"].(string)
-					}
-					if step["name"] == "Update ebuild" {
-						updateStep = step["run"].(string)
-					}
-				}
-				require.NotEmpty(t, findStep, "Determine latest AppImage step missing")
-				require.NotEmpty(t, updateStep, "Update ebuild step missing")
-
-				githubEnvFile := filepath.Join(tempDir, "github_env")
-				err := os.WriteFile(githubEnvFile, []byte(""), 0644)
-				require.NoError(t, err)
-
-				// Step 1: Run find step
-				findCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+findStep)
-				findCmd.Dir = tempDir
-				findCmd.Env = append(os.Environ(),
-					"RUNNER_TEMP="+tempDir,
-					"GITHUB_ENV="+githubEnvFile,
-				)
-				findOut, err := findCmd.CombinedOutput()
-				require.NoError(t, err, "Find AppImage failed: %s", string(findOut))
-
-				// Parse exported env vars from GITHUB_ENV
-				envBytes, err := os.ReadFile(githubEnvFile)
-				require.NoError(t, err)
-				envVars := make(map[string]string)
-				for _, line := range strings.Split(string(envBytes), "\n") {
-					line = strings.TrimSpace(line)
-					if line == "" {
-						continue
-					}
-					parts := strings.SplitN(line, "=", 2)
-					if len(parts) == 2 {
-						envVars[parts[0]] = parts[1]
-					}
-				}
-
-				// Step 2: Run update step
-				updateStep = resolveGithubEnvForPackage(updateStep, "app-admin", "test-webapp-appimage")
-				updateStep = strings.ReplaceAll(updateStep, "${{ env.workflow_filename }}", "test.yml")
-				updateCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=test-webapp-appimage\nset -euo pipefail\n"+updateStep)
-				updateCmd.Dir = tempDir
-				updateCmd.Env = append(os.Environ(),
-					"RUNNER_TEMP="+tempDir,
-					"appimage_url="+envVars["appimage_url"],
-					"appimage_extension="+envVars["appimage_extension"],
-					"version="+envVars["version"],
-				)
-				updateOut, err := updateCmd.CombinedOutput()
-				require.NoError(t, err, "Update ebuild failed: %s", string(updateOut))
-			},
+			runScript: runWebAppImageSteps,
 		},
 		{
 			name: "Github Cmake Release",
@@ -377,4 +308,103 @@ SourceLicense Apache-2.0
 			}
 		})
 	}
+}
+
+
+// runWebAppImageSteps exercises Web AppImage's two run steps as separate
+// GitHub Actions processes; the fixture is offline and needs no curl/Python.
+func runWebAppImageSteps(t *testing.T, tempDir string, workflow map[string]any) {
+	t.Helper()
+
+	rawJobs, exists := workflow["jobs"]
+	require.True(t, exists, "generated workflow has no jobs")
+	jobs, ok := rawJobs.(map[string]any)
+	require.True(t, ok, "jobs has unexpected type %T", rawJobs)
+	rawJob, exists := jobs["fetch-latest"]
+	require.True(t, exists, "Web AppImage must generate jobs.fetch-latest")
+	job, ok := rawJob.(map[string]any)
+	require.True(t, ok, "fetch-latest has unexpected type %T", rawJob)
+	rawSteps, exists := job["steps"]
+	require.True(t, exists, "fetch-latest has no steps")
+	steps, ok := rawSteps.([]any)
+	require.True(t, ok, "steps have unexpected type %T", rawSteps)
+
+	var findStep, updateStep string
+	for _, rawStep := range steps {
+		step, ok := rawStep.(map[string]any)
+		require.True(t, ok, "unexpected step %T", rawStep)
+		name, _ := step["name"].(string)
+		switch name {
+		case "Determine latest AppImage":
+			findStep, ok = step["run"].(string)
+			require.True(t, ok, "%s has no run block", name)
+		case "Update ebuild":
+			updateStep, ok = step["run"].(string)
+			require.True(t, ok, "%s has no run block", name)
+		}
+	}
+	require.NotEmpty(t, findStep)
+	require.NotEmpty(t, updateStep)
+
+	const category = "app-admin"
+	const packageName = "test-webapp-appimage"
+	findStep = resolveGithubEnvForPackage(findStep, category, packageName)
+	updateStep = resolveGithubEnvForPackage(updateStep, category, packageName)
+	require.NotContains(t, findStep, "${{", "unresolved GitHub Actions expression")
+	require.NotContains(t, updateStep, "${{", "unresolved GitHub Actions expression")
+
+	binDir := filepath.Join(tempDir, "bin")
+	// Fail if these tools are called: CustomDownloadUrl and CustomVersionSource
+	// already supply a fixed version and URL, so no network is necessary.
+	mockCommand(t, binDir, "curl", "#!/bin/sh\necho 'unexpected curl' >&2\nexit 99\n")
+	mockCommand(t, binDir, "python3", "#!/bin/sh\necho 'unexpected python3' >&2\nexit 99\n")
+
+	githubEnv := filepath.Join(tempDir, "github_env")
+	githubOutput := filepath.Join(tempDir, "github_output")
+	require.NoError(t, os.WriteFile(githubEnv, nil, 0600))
+	require.NoError(t, os.WriteFile(githubOutput, nil, 0600))
+	baseEnv := append(os.Environ(),
+		"PATH="+binDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"RUNNER_TEMP="+tempDir,
+		"GITHUB_ENV="+githubEnv,
+		"GITHUB_OUTPUT="+githubOutput,
+		"P="+packageName,
+	)
+	run := func(name, script string, env []string) {
+		t.Helper()
+		cmd := exec.Command("bash", "-c", "set -euo pipefail\n"+script)
+		cmd.Dir = tempDir
+		cmd.Env = env
+		output, err := cmd.CombinedOutput()
+		require.NoError(t, err, "%s failed:\n%s", name, string(output))
+	}
+	run("Determine latest AppImage", findStep, baseEnv)
+
+	// GITHUB_ENV is transferred between processes by Actions. Treat it as
+	// key=value data; never source/eval it as arbitrary shell code.
+	envBytes, err := os.ReadFile(githubEnv)
+	require.NoError(t, err)
+	exported := map[string]string{}
+	for _, line := range strings.Split(string(envBytes), "\n") {
+		if line == "" {
+			continue
+		}
+		key, value, found := strings.Cut(line, "=")
+		require.True(t, found, "malformed GITHUB_ENV entry %q", line)
+		require.NotEmpty(t, key)
+		exported[key] = value
+	}
+	for _, key := range []string{"version", "appimage_url", "appimage_extension"} {
+		require.NotEmpty(t, exported[key], "missing GITHUB_ENV key %s", key)
+	}
+	require.Equal(t, "1.0.0", exported["version"])
+	require.Equal(t, "AppImage", exported["appimage_extension"])
+	require.Equal(t, "https://example.com/downloads/test-webapp-1.0.0.AppImage", exported["appimage_url"])
+
+	updateEnv := append(append([]string{}, baseEnv...),
+		"version="+exported["version"],
+		"appimage_url="+exported["appimage_url"],
+		"appimage_extension="+exported["appimage_extension"],
+	)
+	run("Update ebuild", updateStep, updateEnv)
 }
