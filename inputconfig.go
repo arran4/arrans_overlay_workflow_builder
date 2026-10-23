@@ -212,39 +212,43 @@ func (p *Program) ShellCompletion(shell string) (result []*KeywordedFilenameRefe
 
 // InputConfig represents a single configuration entry.
 type InputConfig struct {
-	EbuildInclude       map[string][]string
-	Symlinks            map[string]string
-	EntryNumber         int
-	Type                string
-	GithubProjectUrl    string
-	DownloadPageUrl     string
-	DownloadRedirect    string
-	DownloadBaseUrl     string
-	DownloadMatch       string
-	VersionPipeline     string
-	DownloadPipeline    string
-	DownloadRegex       string
-	DownloadXPath       string
-	TagsCommand         string
-	CustomDownloadUrl   string
-	CustomVersionSource string
-	CustomBuildSteps    string
-	PreVersionSteps     string
-	CustomJobSteps      string
-	Category            string
-	EbuildName          string
-	Description         string
-	Homepage            string
-	GithubRepo          string
-	GithubOwner         string
-	License             string
-	MaintainerEmail     string
-	MaintainerName      string
-	Features            map[string]string
-	Workarounds         map[string]string
-	Programs            map[string]*Program
-	IUse                []string
-	RequiredUse         []string
+	GeneratedEbuildGentooAuthors *bool
+	GeneratedEbuildSourceLicense *string
+	GentooAuthors                *bool
+	SourceLicense                *string
+	EbuildInclude                map[string][]string
+	Symlinks                     map[string]string
+	EntryNumber                  int
+	Type                         string
+	GithubProjectUrl             string
+	DownloadPageUrl              string
+	DownloadRedirect             string
+	DownloadBaseUrl              string
+	DownloadMatch                string
+	VersionPipeline              string
+	DownloadPipeline             string
+	DownloadRegex                string
+	DownloadXPath                string
+	TagsCommand                  string
+	CustomDownloadUrl            string
+	CustomVersionSource          string
+	CustomBuildSteps             string
+	PreVersionSteps              string
+	CustomJobSteps               string
+	Category                     string
+	EbuildName                   string
+	Description                  string
+	Homepage                     string
+	GithubRepo                   string
+	GithubOwner                  string
+	License                      string
+	MaintainerEmail              string
+	MaintainerName               string
+	Features                     map[string]string
+	Workarounds                  map[string]string
+	Programs                     map[string]*Program
+	IUse                         []string
+	RequiredUse                  []string
 }
 
 func (ic *InputConfig) GetPrograms() map[string]*Program {
@@ -361,6 +365,18 @@ func (ic *InputConfig) String() string {
 		if ic.License != "" {
 			fmt.Fprintf(&sb, "License %s\n", ic.License)
 		}
+		if ic.GentooAuthors != nil {
+			fmt.Fprintf(&sb, "GentooAuthors %v\n", *ic.GentooAuthors)
+		}
+		if ic.GeneratedEbuildGentooAuthors != nil {
+			fmt.Fprintf(&sb, "GeneratedEbuildGentooAuthors %v\n", *ic.GeneratedEbuildGentooAuthors)
+		}
+		if ic.SourceLicense != nil {
+			fmt.Fprintf(&sb, "SourceLicense %s\n", *ic.SourceLicense)
+		}
+		if ic.GeneratedEbuildSourceLicense != nil {
+			fmt.Fprintf(&sb, "GeneratedEbuildSourceLicense %s\n", *ic.GeneratedEbuildSourceLicense)
+		}
 		if ic.MaintainerEmail != "" {
 			fmt.Fprintf(&sb, "MaintainerEmail %s\n", ic.MaintainerEmail)
 		}
@@ -421,6 +437,18 @@ func (ic *InputConfig) String() string {
 		}
 		if ic.License != "" {
 			fmt.Fprintf(&sb, "License %s\n", ic.License)
+		}
+		if ic.GentooAuthors != nil {
+			fmt.Fprintf(&sb, "GentooAuthors %v\n", *ic.GentooAuthors)
+		}
+		if ic.GeneratedEbuildGentooAuthors != nil {
+			fmt.Fprintf(&sb, "GeneratedEbuildGentooAuthors %v\n", *ic.GeneratedEbuildGentooAuthors)
+		}
+		if ic.SourceLicense != nil {
+			fmt.Fprintf(&sb, "SourceLicense %s\n", *ic.SourceLicense)
+		}
+		if ic.GeneratedEbuildSourceLicense != nil {
+			fmt.Fprintf(&sb, "GeneratedEbuildSourceLicense %s\n", *ic.GeneratedEbuildSourceLicense)
 		}
 		if ic.MaintainerEmail != "" {
 			fmt.Fprintf(&sb, "MaintainerEmail %s\n", ic.MaintainerEmail)
@@ -521,43 +549,47 @@ func ParseInputConfigReader(file io.Reader) ([]*InputConfig, error) {
 
 		if parseFields == nil {
 			parseFields = map[string][]string{
-				"Type":                  nil,
-				"GithubProjectUrl":      nil,
-				"DownloadPageUrl":       nil,
-				"DownloadRedirect":      nil,
-				"DownloadBaseUrl":       nil,
-				"DownloadMatch":         nil,
-				"VersionPipeline":       nil,
-				"DownloadPipeline":      nil,
-				"DownloadRegex":         nil,
-				"DownloadXPath":         nil,
-				"CustomDownloadUrl":     nil,
-				"CustomVersionSource":   nil,
-				"CustomBuildSteps":      nil,
-				"PreVersionSteps":       nil,
-				"CustomJobSteps":        nil,
-				"TagsCommand":           nil,
-				"Category":              {DefaultCategory},
-				"EbuildName":            nil,
-				"Description":           nil,
-				"Homepage":              nil,
-				"License":               {DefaultLicense},
-				"MaintainerEmail":       nil,
-				"MaintainerName":        nil,
-				"ProgramName":           nil,
-				"DesktopFile":           nil,
-				"Icons":                 nil,
-				"ManualPage":            nil,
-				"Document":              nil,
-				"ShellCompletionScript": nil,
-				"Dependencies":          nil,
-				"Feature":               nil,
-				"Workaround":            nil,
-				"Binary":                nil,
-				"IUse":                  nil,
-				"RequiredUse":           nil,
-				"EbuildInclude":         nil,
-				"Symlink":               nil,
+				"Type":                         nil,
+				"GithubProjectUrl":             nil,
+				"DownloadPageUrl":              nil,
+				"DownloadRedirect":             nil,
+				"DownloadBaseUrl":              nil,
+				"DownloadMatch":                nil,
+				"VersionPipeline":              nil,
+				"DownloadPipeline":             nil,
+				"DownloadRegex":                nil,
+				"DownloadXPath":                nil,
+				"CustomDownloadUrl":            nil,
+				"CustomVersionSource":          nil,
+				"CustomBuildSteps":             nil,
+				"PreVersionSteps":              nil,
+				"CustomJobSteps":               nil,
+				"TagsCommand":                  nil,
+				"Category":                     {DefaultCategory},
+				"EbuildName":                   nil,
+				"Description":                  nil,
+				"Homepage":                     nil,
+				"License":                      {DefaultLicense},
+				"GentooAuthors":                nil,
+				"SourceLicense":                nil,
+				"GeneratedEbuildGentooAuthors": nil,
+				"GeneratedEbuildSourceLicense": nil,
+				"MaintainerEmail":              nil,
+				"MaintainerName":               nil,
+				"ProgramName":                  nil,
+				"DesktopFile":                  nil,
+				"Icons":                        nil,
+				"ManualPage":                   nil,
+				"Document":                     nil,
+				"ShellCompletionScript":        nil,
+				"Dependencies":                 nil,
+				"Feature":                      nil,
+				"Workaround":                   nil,
+				"Binary":                       nil,
+				"IUse":                         nil,
+				"RequiredUse":                  nil,
+				"EbuildInclude":                nil,
+				"Symlink":                      nil,
 			}
 			parseProgramFields = map[string]map[string][]string{}
 			lastPrefix = ""
@@ -777,6 +809,22 @@ func CreateSanitizeAndAppendInputConfig(parsedFields map[string][]string, parsed
 	if err != nil {
 		return nil, fmt.Errorf("on License: %v: %w", parsedFields["License"], err)
 	}
+	currentConfig.GentooAuthors = emptyOrLastBoolPtr(parsedFields["GentooAuthors"])
+	currentConfig.SourceLicense = emptyOrLastPtr(parsedFields["SourceLicense"])
+	if values, ok := parsedFields["GeneratedEbuildGentooAuthors"]; ok && len(values) > 0 {
+		val := strings.ToLower(strings.TrimSpace(values[len(values)-1]))
+		switch val {
+		case "true", "yes", "1", "on":
+			b := true
+			currentConfig.GeneratedEbuildGentooAuthors = &b
+		case "false", "no", "0", "off":
+			b := false
+			currentConfig.GeneratedEbuildGentooAuthors = &b
+		default:
+			return nil, fmt.Errorf("invalid boolean value for GeneratedEbuildGentooAuthors: %s", val)
+		}
+	}
+	currentConfig.GeneratedEbuildSourceLicense = emptyOrLastPtr(parsedFields["GeneratedEbuildSourceLicense"])
 	currentConfig.MaintainerEmail, err = emptyOrOnlyOrFail(parsedFields["MaintainerEmail"])
 	if err != nil {
 		return nil, fmt.Errorf("on MaintainerEmail: %v: %w", parsedFields["MaintainerEmail"], err)
@@ -1381,4 +1429,21 @@ func (ic *InputConfig) GetDownloadPipeline() string {
 		return fmt.Sprintf("get(%s) | html_links | regex(%s) | last", ic.DownloadPageUrl, ic.DownloadMatch)
 	}
 	return ""
+}
+
+func emptyOrLastBoolPtr(i []string) *bool {
+	if len(i) == 0 {
+		return nil
+	}
+	v := strings.ToLower(strings.TrimSpace(i[len(i)-1]))
+	b := v == "true" || v == "yes" || v == "1" || v == "on"
+	return &b
+}
+
+func emptyOrLastPtr(i []string) *string {
+	if len(i) == 0 {
+		return nil
+	}
+	v := i[len(i)-1]
+	return &v
 }

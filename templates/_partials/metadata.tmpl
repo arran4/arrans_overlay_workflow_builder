@@ -1,0 +1,100 @@
+[[ define "metadata" ]]
+                emit_metadata_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="${label}+=\""
+                    local max_chunk=$((80 - ${#prefix} - 1))
+
+                    echo "${label}=\"\""
+                    [ -z "$value" ] && return 0
+
+                    local clean_value="${value//$'\r'/}"
+                    clean_value="${clean_value//$'\n'/ }"
+
+                    local tokens=()
+                    local len=${#clean_value}
+                    local i=0
+                    while [ $i -lt $len ]; do
+                        if [ "${clean_value:i:4}" = "\${P}" ]; then
+                            tokens+=("\${P}")
+                            i=$((i + 4))
+                        elif [ "${clean_value:i:5}" = "\${PV}" ]; then
+                            tokens+=("\${PV}")
+                            i=$((i + 5))
+                        elif [ "${clean_value:i:5}" = "\${PN}" ]; then
+                            tokens+=("\${PN}")
+                            i=$((i + 5))
+                        elif [ "${clean_value:i:9}" = "\${DEPEND}" ]; then
+                            tokens+=("\${DEPEND}")
+                            i=$((i + 9))
+                        else
+                            local c="${clean_value:i:1}"
+                            case "$c" in
+                                \"|\\|\`|\$)
+                                    tokens+=("\\$c")
+                                    ;;
+                                *)
+                                    tokens+=("$c")
+                                    ;;
+                            esac
+                            i=$((i + 1))
+                        fi
+                    done
+
+                    local current_line=""
+                    local pending_after_space=""
+
+                    for tok in "${tokens[@]}"; do
+                        if [ $((${#current_line} + ${#pending_after_space} + ${#tok})) -le $max_chunk ]; then
+                            if [ "$tok" = " " ]; then
+                                current_line="${current_line}${pending_after_space} "
+                                pending_after_space=""
+                            else
+                                pending_after_space="${pending_after_space}${tok}"
+                            fi
+                        else
+                            if [ -n "$current_line" ]; then
+                                printf "%s%s\"\n" "$prefix" "$current_line"
+                                current_line=""
+                                if [ $((${#pending_after_space} + ${#tok})) -le $max_chunk ]; then
+                                    if [ "$tok" = " " ]; then
+                                        current_line="${pending_after_space} "
+                                        pending_after_space=""
+                                    else
+                                        pending_after_space="${pending_after_space}${tok}"
+                                    fi
+                                else
+                                    if [ -n "$pending_after_space" ]; then
+                                        printf "%s%s\"\n" "$prefix" "$pending_after_space"
+                                    fi
+                                    if [ "$tok" = " " ]; then
+                                        current_line=" "
+                                        pending_after_space=""
+                                    else
+                                        pending_after_space="$tok"
+                                    fi
+                                fi
+                            else
+                                if [ -n "$pending_after_space" ]; then
+                                    printf "%s%s\"\n" "$prefix" "$pending_after_space"
+                                fi
+                                if [ "$tok" = " " ]; then
+                                    current_line=" "
+                                    pending_after_space=""
+                                else
+                                    pending_after_space="$tok"
+                                fi
+                            fi
+                        fi
+                    done
+
+                    local final="${current_line}${pending_after_space}"
+                    if [ -n "$final" ]; then
+                        printf "%s%s\"\n" "$prefix" "$final"
+                    fi
+                }
+
+                emit_ebuild_assignment() {
+                    emit_metadata_field "$@"
+                }
+[[ end ]]

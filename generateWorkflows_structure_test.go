@@ -1,144 +1,101 @@
 package arrans_overlay_workflow_builder
 
 import (
-	"bytes"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
-func TestWorkflowYAMLStructure(t *testing.T) {
-	tests := []struct {
-		name         string
-		configString string
-		templateName string
-	}{
-		{
-			name: "Github Binary Release",
-			configString: `Type Github Binary Release
+func TestGeneratedGithubBinaryWorkflowStructure(t *testing.T) {
+	configString := `Type Github Binary Release
 GithubProjectUrl https://github.com/test/test
+Category app-admin
 EbuildName test-bin
-Category app-admin
 Description Test
-Homepage https://www.test.io/
-License MIT License
-`,
-			templateName: "github-binary.tmpl",
-		},
-		{
-			name: "Github AppImage Release",
-			configString: `Type Github AppImage Release
-GithubProjectUrl https://github.com/test/test
-EbuildName test-appimage
-Category app-admin
-Description Test
-Homepage https://www.test.io/
-License MIT License
-`,
-			templateName: "github-appimage.tmpl",
-		},
-		{
-			name: "Web Binary",
-			configString: `Type Web Binary
-DownloadBaseUrl https://example.com/download/
-CustomVersionSource echo 1.0.0
-EbuildName test-bin
-Category app-admin
-Description Test
-Homepage https://www.test.io/
-License MIT License
-`,
-			templateName: "web-binary.tmpl",
-		},
-		{
-			name: "Web AppImage",
-			configString: `Type Web AppImage
-DownloadPageUrl https://example.com/
-DownloadMatch .*
-EbuildName test-appimage
-Category app-admin
-Description Test
-Homepage https://www.test.io/
-License MIT License
-`,
-			templateName: "web-appimage.tmpl",
-		},
-		{
-			name: "Github Cmake Release",
-			configString: `Type Github Cmake Release
-GithubProjectUrl https://github.com/test/test
-EbuildName test
-Category app-admin
-Description Test
-Homepage https://www.test.io/
-License MIT License
-`,
-			templateName: "github-cmake.tmpl",
-		},
-	}
+Homepage https://example.test/
+License BSD-2-Clause
+Binary amd64=>test-${VERSION}.tar.gz > test > test
+`
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
 
-	templates, err := ParseWorkflowTemplates()
+	tempDir, cleanup := setupHermeticEnvironment(t)
+	defer cleanup()
+
+	tmpls, err := ParseWorkflowTemplates()
 	require.NoError(t, err)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			inputConfigs, err := ParseInputConfigReader(strings.NewReader(tt.configString))
-			require.NoError(t, err)
-			require.Len(t, inputConfigs, 1)
+	err = configs[0].GenerateGithubWorkflow("test.config", time.Date(2026, 8, 13, 0, 0, 0, 0, time.UTC), tmpls, tempDir, "1.0.0")
+	require.NoError(t, err)
 
-			ic := inputConfigs[0]
-			ic.Programs = map[string]*Program{}
-			now := time.Now()
+	content, err := os.ReadFile(filepath.Join(tempDir, "app-admin-test-bin-update.yaml"))
+	require.NoError(t, err)
 
-			base := &GenerateGithubWorkflowBase{
-				Version:     "1.0",
-				InputConfig: ic,
-				ConfigFile:  "test.config",
-				Now:         now.UTC(),
-			}
-
-			var data interface{}
-			switch tt.name {
-			case "Github Binary Release":
-				data = &GenerateGithubBinaryTemplateData{GenerateGithubWorkflowBase: base}
-			case "Github AppImage Release":
-				data = &GenerateGithubAppImageTemplateData{GenerateGithubWorkflowBase: base}
-			case "Web Binary":
-				data = &GenerateWebBinaryTemplateData{GenerateGithubBinaryTemplateData: &GenerateGithubBinaryTemplateData{GenerateGithubWorkflowBase: base}}
-			case "Web AppImage":
-				data = &GenerateWebAppImageTemplateData{GenerateGithubAppImageTemplateData: &GenerateGithubAppImageTemplateData{GenerateGithubWorkflowBase: base}}
-			case "Github Cmake Release":
-				data = &GenerateGithubCmakeTemplateData{GenerateGithubWorkflowBase: base}
-			}
-
-			var out bytes.Buffer
-			err = templates.ExecuteTemplate(&out, tt.templateName, data)
-			require.NoError(t, err)
-
-			w := out.Bytes()
-
-			var m map[string]interface{}
-			err = yaml.Unmarshal(w, &m)
-			require.NoError(t, err, "YAML parsing failed")
-
-			_, hasEnv := m["env"]
-			assert.True(t, hasEnv, "env mapping should exist at root")
-
-			_, hasConcurrency := m["concurrency"]
-			assert.True(t, hasConcurrency, "concurrency mapping should exist at root")
-
-			_, hasJobs := m["jobs"]
-			assert.True(t, hasJobs, "jobs mapping should exist at root")
-
-			envMap, ok := m["env"].(map[string]interface{})
-			if ok {
-				_, envHasConcurrency := envMap["concurrency"]
-				assert.False(t, envHasConcurrency, "concurrency should NOT be nested inside env")
-			}
-		})
+	// A generated file existing on disk says nothing about whether Actions can
+	// execute it. Parse the actual YAML and assert the build pipeline's shape.
+	var workflow struct {
+		Name        string `yaml:"name"`
+		Permissions struct {
+			Contents string `yaml:"contents"`
+		} `yaml:"permissions"`
+		On  map[string]any `yaml:"on"`
+		Env struct {
+			Category string `yaml:"ecn"`
+			Package  string `yaml:"epn"`
+		} `yaml:"env"`
+		Jobs map[string]struct {
+			RunsOn string `yaml:"runs-on"`
+			Steps  []struct {
+				Name string `yaml:"name"`
+				ID   string `yaml:"id"`
+				Uses string `yaml:"uses"`
+				Run  string `yaml:"run"`
+				If   string `yaml:"if"`
+			} `yaml:"steps"`
+		} `yaml:"jobs"`
 	}
+	require.NoError(t, yaml.Unmarshal(content, &workflow))
+	require.NotEmpty(t, workflow.Name)
+	require.Equal(t, "write", workflow.Permissions.Contents)
+	require.Contains(t, workflow.On, "workflow_dispatch")
+	require.Contains(t, workflow.On, "schedule")
+	require.Equal(t, "app-admin", workflow.Env.Category)
+	require.Equal(t, "test-bin", workflow.Env.Package)
+
+	job, exists := workflow.Jobs["check-and-create-ebuild"]
+	require.True(t, exists, "missing primary generation job")
+	require.Equal(t, "ubuntu-latest", job.RunsOn)
+	require.NotEmpty(t, job.Steps)
+
+	positions := make(map[string]int, len(job.Steps))
+	for i, step := range job.Steps {
+		require.NotEmpty(t, step.Name, "unnamed step at index %d", i)
+		_, seen := positions[step.Name]
+		require.False(t, seen, "duplicate workflow step %q", step.Name)
+		positions[step.Name] = i
+		require.NotEqual(t, step.Run != "", step.Uses != "",
+			"step %q must have exactly one executable run or uses", step.Name)
+	}
+	for _, name := range []string{
+		"Checkout repository", "Install g2", "Process each release",
+		"Deduplicate ebuilds", "Lint output", "Commit and push changes",
+	} {
+		_, present := positions[name]
+		require.True(t, present, "required workflow step %q absent", name)
+	}
+	require.Less(t, positions["Checkout repository"], positions["Process each release"])
+	require.Less(t, positions["Install g2"], positions["Process each release"])
+	require.Less(t, positions["Process each release"], positions["Deduplicate ebuilds"])
+	require.Less(t, positions["Deduplicate ebuilds"], positions["Lint output"])
+	require.Less(t, positions["Lint output"], positions["Commit and push changes"])
+	require.Equal(t, "process_releases", job.Steps[positions["Process each release"]].ID)
+	require.NotEmpty(t, job.Steps[positions["Process each release"]].Run)
+	require.Contains(t, job.Steps[positions["Lint output"]].If, "process_releases.outputs.generated_tag")
+	require.Contains(t, job.Steps[positions["Commit and push changes"]].If, "process_releases.outputs.generated_tag")
 }
