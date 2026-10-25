@@ -583,6 +583,78 @@ Binary amd64=>test-${TAG}-linux-amd64 > test > test
 			wantFirstLine: "# SPDX-License-Identifier: GPL-3.0-or-later",
 			wantLicense:   "Proprietary",
 		},
+		{
+			name:          "global_bare_gentoo_authors_preceding_generate",
+			globalArgs:    []string{"--gentoo-authors"},
+			subArgs:       []string{},
+			configContent: baseConfig,
+			wantFirstLine: "# Copyright 2026 Gentoo Authors",
+			wantLicense:   "Proprietary",
+		},
+		{
+			name:          "global_single_dash_bare_gentoo_authors",
+			globalArgs:    []string{"-gentoo-authors"},
+			subArgs:       []string{},
+			configContent: baseConfig,
+			wantFirstLine: "# Copyright 2026 Gentoo Authors",
+			wantLicense:   "Proprietary",
+		},
+		{
+			name:          "global_bare_generated_ebuild_gentoo_authors",
+			globalArgs:    []string{"--generated-ebuild-gentoo-authors"},
+			subArgs:       []string{},
+			configContent: baseConfig,
+			wantFirstLine: "# Copyright 2026 Gentoo Authors",
+			wantLicense:   "Proprietary",
+		},
+		{
+			name:          "global_single_dash_bare_generated_ebuild_gentoo_authors",
+			globalArgs:    []string{"-generated-ebuild-gentoo-authors"},
+			subArgs:       []string{},
+			configContent: baseConfig,
+			wantFirstLine: "# Copyright 2026 Gentoo Authors",
+			wantLicense:   "Proprietary",
+		},
+		{
+			name:          "global_false_equals",
+			globalArgs:    []string{"--gentoo-authors=false"},
+			subArgs:       []string{},
+			configContent: baseConfig,
+			wantFirstLine: "# SPDX-License-Identifier: MIT",
+			wantLicense:   "Proprietary",
+		},
+		{
+			name:          "global_bare_subcommand_override_false_space",
+			globalArgs:    []string{"--gentoo-authors"},
+			subArgs:       []string{"-gentoo-authors", "false"},
+			configContent: baseConfig,
+			wantFirstLine: "# SPDX-License-Identifier: MIT",
+			wantLicense:   "Proprietary",
+		},
+		{
+			name:          "global_bare_subcommand_override_false_equals",
+			globalArgs:    []string{"--gentoo-authors"},
+			subArgs:       []string{"-gentoo-authors=false"},
+			configContent: baseConfig,
+			wantFirstLine: "# SPDX-License-Identifier: MIT",
+			wantLicense:   "Proprietary",
+		},
+		{
+			name:          "global_false_subcommand_bare_true",
+			globalArgs:    []string{"--gentoo-authors=false"},
+			subArgs:       []string{"-gentoo-authors"},
+			configContent: baseConfig,
+			wantFirstLine: "# Copyright 2026 Gentoo Authors",
+			wantLicense:   "Proprietary",
+		},
+		{
+			name:          "global_false_subcommand_bare_generated_ebuild_gentoo_authors",
+			globalArgs:    []string{"--gentoo-authors=false"},
+			subArgs:       []string{"-generated-ebuild-gentoo-authors"},
+			configContent: baseConfig,
+			wantFirstLine: "# Copyright 2026 Gentoo Authors",
+			wantLicense:   "Proprietary",
+		},
 	}
 
 	for _, tc := range tests {
@@ -671,6 +743,170 @@ Binary amd64=>test-${TAG}-linux-amd64 > test > test
 			contentStr := string(ebuildContent)
 			expectedLicenseAssignment := fmt.Sprintf("LICENSE=\"\"\nLICENSE+=\"%s\"", tc.wantLicense)
 			require.Contains(t, contentStr, expectedLicenseAssignment, "package LICENSE must remain independent of header")
+		})
+	}
+}
+
+func TestIssue169CLIErrorsAndConflictsSubprocess(t *testing.T) {
+	tempDir, cleanup := setupHermeticEnvironment(t)
+	defer cleanup()
+
+	configPath := filepath.Join(tempDir, "test.config")
+	baseConfig := `Type Github Binary Release
+GithubProjectUrl https://github.com/test/test
+EbuildName test-bin
+Category app-admin
+Description Test Binary
+Homepage https://www.test.io/
+License Proprietary
+Binary amd64=>test-${TAG}-linux-amd64 > test > test
+`
+	require.NoError(t, os.WriteFile(configPath, []byte(baseConfig), 0644))
+
+	outputDir := filepath.Join(tempDir, "workflows")
+	require.NoError(t, os.MkdirAll(outputDir, 0755))
+
+	type errorTestCase struct {
+		name             string
+		cliArgs          []string
+		wantErrSubstring string
+	}
+
+	tests := []errorTestCase{
+		{
+			name: "invalid_boolean_equals_global",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"--gentoo-authors=flase",
+				"generate", "workflows",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: "invalid boolean value for flag --gentoo-authors: flase",
+		},
+		{
+			name: "invalid_boolean_space_global",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"--gentoo-authors", "flase",
+				"generate", "workflows",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: "Unknown command flase",
+		},
+		{
+			name: "conflicting_global_gentoo_authors_aliases",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"--gentoo-authors=true",
+				"--generated-ebuild-gentoo-authors=false",
+				"generate", "workflows",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: "conflicting flags: --gentoo-authors=true and --generated-ebuild-gentoo-authors=false",
+		},
+		{
+			name: "conflicting_global_same_flag_values",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"--gentoo-authors=true",
+				"--gentoo-authors=false",
+				"generate", "workflows",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: "conflicting flags: multiple --gentoo-authors with conflicting values",
+		},
+		{
+			name: "conflicting_global_source_license_aliases",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"--source-license=Apache-2.0",
+				"--generated-ebuild-source-license=MIT",
+				"generate", "workflows",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: `conflicting flags: --source-license="Apache-2.0" and --generated-ebuild-source-license="MIT"`,
+		},
+		{
+			name: "missing_required_global_source_license_before_command",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"--source-license",
+				"generate", "workflows",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: "missing required value for flag --source-license",
+		},
+		{
+			name: "missing_required_global_source_license_equals",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"--source-license=",
+				"generate", "workflows",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: "missing required value for flag --source-license",
+		},
+		{
+			name: "conflicting_subcommand_gentoo_authors_aliases",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"generate", "workflows",
+				"-gentoo-authors=true",
+				"-generated-ebuild-gentoo-authors=false",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: "conflicting flags: -gentoo-authors=true and -generated-ebuild-gentoo-authors=false",
+		},
+		{
+			name: "conflicting_subcommand_source_license_aliases",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"generate", "workflows",
+				"-source-license=Apache-2.0",
+				"-generated-ebuild-source-license=MIT",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: `conflicting flags: -source-license="Apache-2.0" and -generated-ebuild-source-license="MIT"`,
+		},
+		{
+			name: "invalid_boolean_subcommand_equals",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"generate", "workflows",
+				"-gentoo-authors=flase",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: `invalid boolean value "flase" for -gentoo-authors`,
+		},
+		{
+			name: "invalid_boolean_subcommand_space",
+			cliArgs: []string{
+				"run", "./cmd/generate/main.go",
+				"generate", "workflows",
+				"-gentoo-authors", "flase",
+				"-input-file", configPath,
+				"-output-dir", outputDir,
+			},
+			wantErrSubstring: "Unknown command flase",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command("go", tc.cliArgs...)
+			out, err := cmd.CombinedOutput()
+			require.Error(t, err, "command expected to fail: %s\nOutput:\n%s", strings.Join(tc.cliArgs, " "), string(out))
+			require.Contains(t, string(out), tc.wantErrSubstring, "stderr/stdout must contain expected error explanation")
 		})
 	}
 }

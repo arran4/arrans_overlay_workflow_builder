@@ -35,6 +35,26 @@ func valueOrDefault(v *string) string {
 	return *v
 }
 
+func parseBoolValue(s string) (bool, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "true", "t", "1", "yes", "on":
+		return true, true
+	case "false", "f", "0", "no", "off":
+		return false, true
+	default:
+		return false, false
+	}
+}
+
+func isKnownCommand(s string) bool {
+	switch s {
+	case "generate", "oneshot", "config", "version":
+		return true
+	default:
+		return false
+	}
+}
+
 func main() {
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	config := &MainArgConfig{
@@ -50,21 +70,35 @@ func main() {
 	var globalUpsertOverlayRepoName bool
 	var globalGeneratedEbuildGentooAuthors *bool
 	var globalGeneratedEbuildSourceLicense *string
+
+	var globalGentooAuthorsVal *bool
+	var globalGenEbuildGentooAuthorsVal *bool
+	var globalSourceLicenseVal *string
+	var globalGenEbuildSourceLicenseVal *string
+
 	var newArgs []string
 	if len(os.Args) > 0 {
 		newArgs = append(newArgs, os.Args[0])
 	}
 	for i := 1; i < len(os.Args); i++ {
 		arg := os.Args[i]
-		switch arg {
-		case "--generate-md5-cache", "-generate-md5-cache":
+		if arg == "--" {
+			newArgs = append(newArgs, os.Args[i+1:]...)
+			break
+		}
+		if !strings.HasPrefix(arg, "-") {
+			newArgs = append(newArgs, os.Args[i:]...)
+			break
+		}
+		switch {
+		case arg == "--generate-md5-cache" || arg == "-generate-md5-cache":
 			globalGenerateMd5Cache = true
-		case "--generate-overlay", "-generate-overlay":
+		case arg == "--generate-overlay" || arg == "-generate-overlay":
 			globalGenerateOverlay = true
-		case "--upsert-overlay-repo-name", "-upsert-overlay-repo-name":
+		case arg == "--upsert-overlay-repo-name" || arg == "-upsert-overlay-repo-name":
 			globalUpsertOverlayRepoName = true
-		case "--overlay-repo-name", "-overlay-repo-name":
-			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
+		case arg == "--overlay-repo-name" || arg == "-overlay-repo-name":
+			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") && !isKnownCommand(os.Args[i+1]) {
 				globalOverlayRepoName = os.Args[i+1]
 				globalOverlayRepoNameSet = true
 				if globalOverlayRepoName == "" {
@@ -74,56 +108,127 @@ func main() {
 			} else {
 				log.Fatalf("missing required value for flag %s", arg)
 			}
-		case "--generated-ebuild-gentoo-authors", "-generated-ebuild-gentoo-authors",
-			"--gentoo-authors", "-gentoo-authors":
-			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
-				val := strings.ToLower(os.Args[i+1])
-				if val == "false" || val == "no" || val == "0" || val == "off" {
-					b := false
-					globalGeneratedEbuildGentooAuthors = &b
+		case strings.HasPrefix(arg, "--gentoo-authors=") || strings.HasPrefix(arg, "-gentoo-authors="):
+			parts := strings.SplitN(arg, "=", 2)
+			b, ok := parseBoolValue(parts[1])
+			if !ok {
+				log.Fatalf("invalid boolean value for flag %s: %s", parts[0], parts[1])
+			}
+			if globalGentooAuthorsVal != nil && *globalGentooAuthorsVal != b {
+				log.Fatalf("conflicting flags: multiple %s with conflicting values", parts[0])
+			}
+			globalGentooAuthorsVal = &b
+		case strings.HasPrefix(arg, "--generated-ebuild-gentoo-authors=") || strings.HasPrefix(arg, "-generated-ebuild-gentoo-authors="):
+			parts := strings.SplitN(arg, "=", 2)
+			b, ok := parseBoolValue(parts[1])
+			if !ok {
+				log.Fatalf("invalid boolean value for flag %s: %s", parts[0], parts[1])
+			}
+			if globalGenEbuildGentooAuthorsVal != nil && *globalGenEbuildGentooAuthorsVal != b {
+				log.Fatalf("conflicting flags: multiple %s with conflicting values", parts[0])
+			}
+			globalGenEbuildGentooAuthorsVal = &b
+		case arg == "--gentoo-authors" || arg == "-gentoo-authors":
+			var b bool
+			if i+1 < len(os.Args) {
+				if parsed, ok := parseBoolValue(os.Args[i+1]); ok {
+					b = parsed
+					i++
 				} else {
-					b := true
-					globalGeneratedEbuildGentooAuthors = &b
+					b = true
 				}
+			} else {
+				b = true
+			}
+			if globalGentooAuthorsVal != nil && *globalGentooAuthorsVal != b {
+				log.Fatalf("conflicting flags: multiple %s with conflicting values", arg)
+			}
+			globalGentooAuthorsVal = &b
+		case arg == "--generated-ebuild-gentoo-authors" || arg == "-generated-ebuild-gentoo-authors":
+			var b bool
+			if i+1 < len(os.Args) {
+				if parsed, ok := parseBoolValue(os.Args[i+1]); ok {
+					b = parsed
+					i++
+				} else {
+					b = true
+				}
+			} else {
+				b = true
+			}
+			if globalGenEbuildGentooAuthorsVal != nil && *globalGenEbuildGentooAuthorsVal != b {
+				log.Fatalf("conflicting flags: multiple %s with conflicting values", arg)
+			}
+			globalGenEbuildGentooAuthorsVal = &b
+		case strings.HasPrefix(arg, "--source-license=") || strings.HasPrefix(arg, "-source-license="):
+			parts := strings.SplitN(arg, "=", 2)
+			if parts[1] == "" {
+				log.Fatalf("missing required value for flag %s", parts[0])
+			}
+			val := parts[1]
+			if globalSourceLicenseVal != nil && *globalSourceLicenseVal != val {
+				log.Fatalf("conflicting flags: multiple %s with conflicting values", parts[0])
+			}
+			globalSourceLicenseVal = &val
+		case strings.HasPrefix(arg, "--generated-ebuild-source-license=") || strings.HasPrefix(arg, "-generated-ebuild-source-license="):
+			parts := strings.SplitN(arg, "=", 2)
+			if parts[1] == "" {
+				log.Fatalf("missing required value for flag %s", parts[0])
+			}
+			val := parts[1]
+			if globalGenEbuildSourceLicenseVal != nil && *globalGenEbuildSourceLicenseVal != val {
+				log.Fatalf("conflicting flags: multiple %s with conflicting values", parts[0])
+			}
+			globalGenEbuildSourceLicenseVal = &val
+		case arg == "--source-license" || arg == "-source-license":
+			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") && !isKnownCommand(os.Args[i+1]) {
+				val := os.Args[i+1]
+				if globalSourceLicenseVal != nil && *globalSourceLicenseVal != val {
+					log.Fatalf("conflicting flags: multiple %s with conflicting values", arg)
+				}
+				globalSourceLicenseVal = &val
 				i++
 			} else {
-				b := true
-				globalGeneratedEbuildGentooAuthors = &b
+				log.Fatalf("missing required value for flag %s", arg)
 			}
-		case "--generated-ebuild-source-license", "-generated-ebuild-source-license",
-			"--source-license", "-source-license":
-			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
-				globalGeneratedEbuildSourceLicense = &os.Args[i+1]
+		case arg == "--generated-ebuild-source-license" || arg == "-generated-ebuild-source-license":
+			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") && !isKnownCommand(os.Args[i+1]) {
+				val := os.Args[i+1]
+				if globalGenEbuildSourceLicenseVal != nil && *globalGenEbuildSourceLicenseVal != val {
+					log.Fatalf("conflicting flags: multiple %s with conflicting values", arg)
+				}
+				globalGenEbuildSourceLicenseVal = &val
 				i++
 			} else {
 				log.Fatalf("missing required value for flag %s", arg)
 			}
 		default:
-			if strings.HasPrefix(arg, "--generated-ebuild-gentoo-authors=") ||
-				strings.HasPrefix(arg, "-generated-ebuild-gentoo-authors=") ||
-				strings.HasPrefix(arg, "--gentoo-authors=") ||
-				strings.HasPrefix(arg, "-gentoo-authors=") {
-				parts := strings.SplitN(arg, "=", 2)
-				val := strings.ToLower(parts[1])
-				if val == "false" || val == "no" || val == "0" || val == "off" {
-					b := false
-					globalGeneratedEbuildGentooAuthors = &b
-				} else {
-					b := true
-					globalGeneratedEbuildGentooAuthors = &b
-				}
-			} else if strings.HasPrefix(arg, "--generated-ebuild-source-license=") ||
-				strings.HasPrefix(arg, "-generated-ebuild-source-license=") ||
-				strings.HasPrefix(arg, "--source-license=") ||
-				strings.HasPrefix(arg, "-source-license=") {
-				parts := strings.SplitN(arg, "=", 2)
-				globalGeneratedEbuildSourceLicense = &parts[1]
-			} else {
-				newArgs = append(newArgs, arg)
-			}
+			newArgs = append(newArgs, arg)
 		}
 	}
 	os.Args = newArgs
+
+	if globalGentooAuthorsVal != nil && globalGenEbuildGentooAuthorsVal != nil {
+		if *globalGentooAuthorsVal != *globalGenEbuildGentooAuthorsVal {
+			log.Fatalf("conflicting flags: --gentoo-authors=%t and --generated-ebuild-gentoo-authors=%t", *globalGentooAuthorsVal, *globalGenEbuildGentooAuthorsVal)
+		}
+		globalGeneratedEbuildGentooAuthors = globalGentooAuthorsVal
+	} else if globalGentooAuthorsVal != nil {
+		globalGeneratedEbuildGentooAuthors = globalGentooAuthorsVal
+	} else if globalGenEbuildGentooAuthorsVal != nil {
+		globalGeneratedEbuildGentooAuthors = globalGenEbuildGentooAuthorsVal
+	}
+
+	if globalSourceLicenseVal != nil && globalGenEbuildSourceLicenseVal != nil {
+		if *globalSourceLicenseVal != *globalGenEbuildSourceLicenseVal {
+			log.Fatalf("conflicting flags: --source-license=%q and --generated-ebuild-source-license=%q", *globalSourceLicenseVal, *globalGenEbuildSourceLicenseVal)
+		}
+		globalGeneratedEbuildSourceLicense = globalSourceLicenseVal
+	} else if globalSourceLicenseVal != nil {
+		globalGeneratedEbuildSourceLicense = globalSourceLicenseVal
+	} else if globalGenEbuildSourceLicenseVal != nil {
+		globalGeneratedEbuildSourceLicense = globalGenEbuildSourceLicenseVal
+	}
 	config.GenerateMd5Cache = globalGenerateMd5Cache
 	config.GenerateOverlay = globalGenerateOverlay
 	config.UpsertOverlayRepoName = globalUpsertOverlayRepoName
@@ -214,6 +319,23 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 	config := &CmdGenerateGithubWorkflowsArgConfig{
 		CmdGenerateArgConfig: mac,
 	}
+
+	var normalizedArgs []string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if (arg == "-gentoo-authors" || arg == "--gentoo-authors" ||
+			arg == "-generated-ebuild-gentoo-authors" || arg == "--generated-ebuild-gentoo-authors") &&
+			i+1 < len(args) {
+			if b, ok := parseBoolValue(args[i+1]); ok {
+				normalizedArgs = append(normalizedArgs, fmt.Sprintf("%s=%t", arg, b))
+				i++
+				continue
+			}
+		}
+		normalizedArgs = append(normalizedArgs, arg)
+	}
+	args = normalizedArgs
+
 	fs := flag.NewFlagSet("", flag.ExitOnError)
 	config.InputFile = fs.String("input-file", "input.config", "The input with config")
 	config.OutputDir = fs.String("output-dir", "./output", "Directory to output workflows")
@@ -254,25 +376,51 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
 		}
 
-		var subcommandGentooAuthors *bool
-		var subcommandSourceLicense *string
+		var subGentooAuthorsVal *bool
+		var subGenEbuildGentooAuthorsVal *bool
+		var subSourceLicenseVal *string
+		var subGenEbuildSourceLicenseVal *string
 
 		fs.Visit(func(f *flag.Flag) {
 			switch f.Name {
 			case "gentoo-authors":
 				b := *gentooAuthors
-				subcommandGentooAuthors = &b
+				subGentooAuthorsVal = &b
 			case "generated-ebuild-gentoo-authors":
 				b := *generatedGentooAuthors
-				subcommandGentooAuthors = &b
+				subGenEbuildGentooAuthorsVal = &b
 			case "source-license":
 				s := *sourceLicense
-				subcommandSourceLicense = &s
+				subSourceLicenseVal = &s
 			case "generated-ebuild-source-license":
 				s := *generatedSourceLicense
-				subcommandSourceLicense = &s
+				subGenEbuildSourceLicenseVal = &s
 			}
 		})
+
+		var subcommandGentooAuthors *bool
+		if subGentooAuthorsVal != nil && subGenEbuildGentooAuthorsVal != nil {
+			if *subGentooAuthorsVal != *subGenEbuildGentooAuthorsVal {
+				return fmt.Errorf("conflicting flags: -gentoo-authors=%t and -generated-ebuild-gentoo-authors=%t", *subGentooAuthorsVal, *subGenEbuildGentooAuthorsVal)
+			}
+			subcommandGentooAuthors = subGentooAuthorsVal
+		} else if subGentooAuthorsVal != nil {
+			subcommandGentooAuthors = subGentooAuthorsVal
+		} else if subGenEbuildGentooAuthorsVal != nil {
+			subcommandGentooAuthors = subGenEbuildGentooAuthorsVal
+		}
+
+		var subcommandSourceLicense *string
+		if subSourceLicenseVal != nil && subGenEbuildSourceLicenseVal != nil {
+			if *subSourceLicenseVal != *subGenEbuildSourceLicenseVal {
+				return fmt.Errorf("conflicting flags: -source-license=%q and -generated-ebuild-source-license=%q", *subSourceLicenseVal, *subGenEbuildSourceLicenseVal)
+			}
+			subcommandSourceLicense = subSourceLicenseVal
+		} else if subSourceLicenseVal != nil {
+			subcommandSourceLicense = subSourceLicenseVal
+		} else if subGenEbuildSourceLicenseVal != nil {
+			subcommandSourceLicense = subGenEbuildSourceLicenseVal
+		}
 
 		if config.GeneratedEbuildGentooAuthors != nil {
 			opts = append(opts, arrans_overlay_workflow_builder.OptGeneratedEbuildGentooAuthors(*config.GeneratedEbuildGentooAuthors))
