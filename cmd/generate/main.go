@@ -74,15 +74,24 @@ func main() {
 			} else {
 				log.Fatalf("missing required value for flag %s", arg)
 			}
-		case "--generated-ebuild-gentoo-authors", "-generated-ebuild-gentoo-authors":
+		case "--generated-ebuild-gentoo-authors", "-generated-ebuild-gentoo-authors",
+			"--gentoo-authors", "-gentoo-authors":
 			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
-				b := strings.ToLower(os.Args[i+1]) == "true"
-				globalGeneratedEbuildGentooAuthors = &b
+				val := strings.ToLower(os.Args[i+1])
+				if val == "false" || val == "no" || val == "0" || val == "off" {
+					b := false
+					globalGeneratedEbuildGentooAuthors = &b
+				} else {
+					b := true
+					globalGeneratedEbuildGentooAuthors = &b
+				}
 				i++
 			} else {
-				log.Fatalf("missing required value for flag %s", arg)
+				b := true
+				globalGeneratedEbuildGentooAuthors = &b
 			}
-		case "--generated-ebuild-source-license", "-generated-ebuild-source-license":
+		case "--generated-ebuild-source-license", "-generated-ebuild-source-license",
+			"--source-license", "-source-license":
 			if i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
 				globalGeneratedEbuildSourceLicense = &os.Args[i+1]
 				i++
@@ -90,7 +99,28 @@ func main() {
 				log.Fatalf("missing required value for flag %s", arg)
 			}
 		default:
-			newArgs = append(newArgs, arg)
+			if strings.HasPrefix(arg, "--generated-ebuild-gentoo-authors=") ||
+				strings.HasPrefix(arg, "-generated-ebuild-gentoo-authors=") ||
+				strings.HasPrefix(arg, "--gentoo-authors=") ||
+				strings.HasPrefix(arg, "-gentoo-authors=") {
+				parts := strings.SplitN(arg, "=", 2)
+				val := strings.ToLower(parts[1])
+				if val == "false" || val == "no" || val == "0" || val == "off" {
+					b := false
+					globalGeneratedEbuildGentooAuthors = &b
+				} else {
+					b := true
+					globalGeneratedEbuildGentooAuthors = &b
+				}
+			} else if strings.HasPrefix(arg, "--generated-ebuild-source-license=") ||
+				strings.HasPrefix(arg, "-generated-ebuild-source-license=") ||
+				strings.HasPrefix(arg, "--source-license=") ||
+				strings.HasPrefix(arg, "-source-license=") {
+				parts := strings.SplitN(arg, "=", 2)
+				globalGeneratedEbuildSourceLicense = &parts[1]
+			} else {
+				newArgs = append(newArgs, arg)
+			}
 		}
 	}
 	os.Args = newArgs
@@ -224,18 +254,37 @@ func (mac *CmdGenerateArgConfig) cmdGenerateGithubWorkflows(args []string) error
 			opts = append(opts, arrans_overlay_workflow_builder.OptUpsertOverlayRepoName(true))
 		}
 
+		var subcommandGentooAuthors *bool
+		var subcommandSourceLicense *string
+
+		fs.Visit(func(f *flag.Flag) {
+			switch f.Name {
+			case "gentoo-authors":
+				b := *gentooAuthors
+				subcommandGentooAuthors = &b
+			case "generated-ebuild-gentoo-authors":
+				b := *generatedGentooAuthors
+				subcommandGentooAuthors = &b
+			case "source-license":
+				s := *sourceLicense
+				subcommandSourceLicense = &s
+			case "generated-ebuild-source-license":
+				s := *generatedSourceLicense
+				subcommandSourceLicense = &s
+			}
+		})
+
 		if config.GeneratedEbuildGentooAuthors != nil {
 			opts = append(opts, arrans_overlay_workflow_builder.OptGeneratedEbuildGentooAuthors(*config.GeneratedEbuildGentooAuthors))
 		}
 		if config.GeneratedEbuildSourceLicense != nil {
 			opts = append(opts, arrans_overlay_workflow_builder.OptGeneratedEbuildSourceLicense(*config.GeneratedEbuildSourceLicense))
 		}
-		opts = append(opts, arrans_overlay_workflow_builder.OptGentooAuthors(*gentooAuthors || *generatedGentooAuthors))
-		if *sourceLicense != "" {
-			opts = append(opts, arrans_overlay_workflow_builder.OptSourceLicense(*sourceLicense))
+		if subcommandGentooAuthors != nil {
+			opts = append(opts, arrans_overlay_workflow_builder.OptGentooAuthors(*subcommandGentooAuthors))
 		}
-		if *generatedSourceLicense != "" {
-			opts = append(opts, arrans_overlay_workflow_builder.OptGeneratedEbuildSourceLicense(*generatedSourceLicense))
+		if subcommandSourceLicense != nil {
+			opts = append(opts, arrans_overlay_workflow_builder.OptSourceLicense(*subcommandSourceLicense))
 		}
 		return arrans_overlay_workflow_builder.GenerateGithubWorkflows(*config.InputFile, *config.OutputDir, config.Version, opts...)
 	default:

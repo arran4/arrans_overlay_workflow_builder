@@ -29,7 +29,11 @@ func resolveGithubEnvForPackage(script, category, packageName string) string {
 	script = strings.ReplaceAll(script, "${{ github.repository }}", "test/test")
 	script = strings.ReplaceAll(script, "${{ github.sha }}", "123456")
 	script = strings.ReplaceAll(script, "${{ github.ref }}", "refs/heads/main")
-	return script
+	defaults := "export DESCRIPTION=\"${DESCRIPTION:-Test}\"\n" +
+		"export HOMEPAGE=\"${HOMEPAGE:-https://www.test.io/}\"\n" +
+		"export LICENSE=\"${LICENSE:-MIT}\"\n" +
+		"export KEYWORDS=\"${KEYWORDS:-amd64}\"\n"
+	return defaults + script
 }
 
 func resolveGithubEnv(script string) string {

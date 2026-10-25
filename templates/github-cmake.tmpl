@@ -51,6 +51,11 @@ jobs:
 
       - name: Process each release
         id: process_releases
+        env:
+          DESCRIPTION: [[ .Description | quoteStr ]]
+          HOMEPAGE: [[ .Homepage | quoteStr ]]
+          LICENSE: [[ .License | quoteStr ]]
+          KEYWORDS: "~amd64"
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
@@ -126,14 +131,14 @@ jobs:
                 echo ""
                 echo "inherit cmake xdg"
                 echo ""
-                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
-                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                emit_metadata_field "DESCRIPTION" "$DESCRIPTION"
+                emit_metadata_field "HOMEPAGE" "$HOMEPAGE"
                 src_uri_val="https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/archive/refs/tags/${tag}.tar.gz -> \${P}.tar.gz"
                 emit_metadata_field "SRC_URI" "$src_uri_val"
                 echo ""
-                emit_metadata_field "LICENSE" "[[ .License ]]"
+                emit_metadata_field "LICENSE" "$LICENSE"
                 echo "SLOT=\"0\""
-                emit_metadata_field "KEYWORDS" "~amd64"
+                emit_metadata_field "KEYWORDS" "$KEYWORDS"
                 echo "IUSE=\"debug\""
                 echo ""
                 emit_metadata_field "DEPEND" "$DEPEND"

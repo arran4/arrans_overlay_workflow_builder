@@ -56,6 +56,11 @@ jobs:
 
       - name: Process each release
         id: process_releases
+        env:
+          DESCRIPTION: [[ .Description | quoteStr ]]
+          HOMEPAGE: [[ .Homepage | quoteStr ]]
+          LICENSE: [[ .License | quoteStr ]]
+          KEYWORDS: [[ if .MaskedKeywords ]][[ .MaskedKeywords | quoteStr ]][[ else ]]"~amd64"[[ end ]]
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
@@ -123,11 +128,11 @@ jobs:
 [[- end ]]
 [[- template "provenance" . ]]
                 echo 'EAPI=8'
-                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
-                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
-                emit_metadata_field "LICENSE" "[[ .License ]]"
+                emit_metadata_field "DESCRIPTION" "$DESCRIPTION"
+                emit_metadata_field "HOMEPAGE" "$HOMEPAGE"
+                emit_metadata_field "LICENSE" "$LICENSE"
                 echo 'SLOT="0"'
-                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+                emit_metadata_field "KEYWORDS" "$KEYWORDS"
                 echo 'IUSE=""'
                 echo 'DEPEND=""'
                 rdepend_val="sys-fs/fuse:0[[range $i, $dep := .Dependencies]][[if eq $dep "sys-fs/fuse:0"]][[else]] [[$dep]][[end]][[end]]"

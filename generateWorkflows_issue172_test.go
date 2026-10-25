@@ -63,11 +63,11 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 	binDir := filepath.Join(tempDir, "bin")
 	mockCommand(t, binDir, "g2", "#!/bin/bash\nif [[ \"$1\" == \"ebuild\" && \"$2\" == \"next-revision\" ]]; then echo \"${@: -1}\"; fi\n")
 	mockCommand(t, binDir, "gh", "#!/bin/bash\necho v1.0.0\n")
-	script = strings.ReplaceAll(script, "emit_metadata_field \"DESCRIPTION\" \"Test\"", "emit_metadata_field \"DESCRIPTION\" \"123456789012345678901234567890123456789012345678901234567890123\\${P}\"")
-	script = strings.ReplaceAll(script, "DESCRIPTION+=\"Test\"", "DESCRIPTION+=\"123456789012345678901234567890123456789012345678901234567890123${P}\"")
-
 	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=test-bin\nPV=1.0.0\nset -euo pipefail\n"+script)
 	cmd.Dir = tempDir
+	cmd.Env = append(os.Environ(),
+		"DESCRIPTION=123456789012345678901234567890123456789012345678901234567890123${P}",
+	)
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "generated workflow failed:\n%s", string(output))
 
@@ -352,25 +352,25 @@ Binary amd64=>test-${TAG}-linux-amd64 > test > test
 
 	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
 	var script string
+	var stepEnvMap map[string]any
 	for _, item := range steps {
 		step := item.(map[string]any)
 		if step["name"] == "Process each release" {
 			script = step["run"].(string)
+			if envVal, ok := step["env"].(map[string]any); ok {
+				stepEnvMap = envVal
+			}
 			break
 		}
 	}
 	require.NotEmpty(t, script)
+	require.NotEmpty(t, stepEnvMap, "step env must be defined")
+	require.Equal(t, adversarialInput, stepEnvMap["DESCRIPTION"], "step env DESCRIPTION must contain exact unmodified adversarial input")
 
 	binDir := filepath.Join(tempDir, "bin")
 	mockCommand(t, binDir, "g2", "#!/bin/bash\nif [[ \"$1\" == \"ebuild\" && \"$2\" == \"next-revision\" ]]; then echo \"${@: -1}\"; fi\nexit 0\n")
 	mockCommand(t, binDir, "gh", "#!/bin/bash\necho v1.0.0\nexit 0\n")
 
-	escapedScriptInput := strings.ReplaceAll(adversarialInput, `\`, `\\`)
-	escapedScriptInput = strings.ReplaceAll(escapedScriptInput, `"`, `\"`)
-	escapedScriptInput = strings.ReplaceAll(escapedScriptInput, `$`, `\$`)
-	escapedScriptInput = strings.ReplaceAll(escapedScriptInput, "`", "\\`")
-
-	script = strings.ReplaceAll(script, "${{ env.description }}", escapedScriptInput)
 	script = resolveGithubEnvForPackage(script, "app-admin", "test-bin")
 	script = strings.ReplaceAll(script, "${{ env.workflow_filename }}", "test.yml")
 
@@ -386,6 +386,11 @@ Binary amd64=>test-${TAG}-linux-amd64 > test > test
 		"GITHUB_OUTPUT="+githubOutput,
 		"GITHUB_ENV="+githubEnv,
 	)
+	for k, v := range stepEnvMap {
+		if s, ok := v.(string); ok {
+			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, s))
+		}
+	}
 	out, err := cmd.CombinedOutput()
 	require.NoError(t, err, "execution failed: %s", string(out))
 

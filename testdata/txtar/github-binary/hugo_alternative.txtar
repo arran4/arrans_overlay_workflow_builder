@@ -74,6 +74,11 @@ jobs:
 
       - name: Process each release
         id: process_releases
+        env:
+          DESCRIPTION: "Fast and Flexible Static Site Generator"
+          HOMEPAGE: "https://gohugo.io/"
+          LICENSE: "Apache-2.0"
+          KEYWORDS: "~amd64 ~arm ~arm64"
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
@@ -227,8 +232,8 @@ jobs:
                 emit_provenance_field "commit" "${{ github.sha }}"
                 emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
                 echo 'EAPI=8'
-                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
-                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                emit_metadata_field "DESCRIPTION" "$DESCRIPTION"
+                emit_metadata_field "HOMEPAGE" "$HOMEPAGE"
                 src_uri_val=""
                 src_uri_val+=" amd64? ( !extended? (  "
                 src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/hugo_${version}_linux-amd64.tar.gz "
@@ -246,9 +251,9 @@ jobs:
                 src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/hugo_extended_${version}_linux-arm64.tar.gz "
                 src_uri_val+=" -> \${P}-hugo_extended_\${PV}_linux-arm64.tar.gz  )  )  "
                 emit_metadata_field "SRC_URI" "$src_uri_val"
-                emit_metadata_field "LICENSE" "Apache-2.0"
+                emit_metadata_field "LICENSE" "$LICENSE"
                 echo 'SLOT="0"'
-                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+                emit_metadata_field "KEYWORDS" "$KEYWORDS"
                                 iuse_val=""
                 iuse_val=" extended"
                 emit_metadata_field "IUSE" "$iuse_val"

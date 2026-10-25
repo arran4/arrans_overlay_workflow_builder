@@ -62,6 +62,11 @@ jobs:
 
       - name: Process each release
         id: process_releases
+        env:
+          DESCRIPTION: "Example Multi Binary"
+          HOMEPAGE: "https://example.com/"
+          LICENSE: "unknown"
+          KEYWORDS: "~amd64 ~arm64"
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           mkdir -p "$ebuild_dir"
@@ -247,8 +252,8 @@ jobs:
                 emit_provenance_field "commit" "${{ github.sha }}"
                 emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
                 echo 'EAPI=8'
-                emit_metadata_field "DESCRIPTION" "${{ env.description }}"
-                emit_metadata_field "HOMEPAGE" "${{ env.homepage }}"
+                emit_metadata_field "DESCRIPTION" "$DESCRIPTION"
+                emit_metadata_field "HOMEPAGE" "$HOMEPAGE"
                 src_uri_val=""
                 src_uri_val+=" amd64? (  "
                 src_uri_val+=" ${resolved_download_urls["0"]} "
@@ -257,9 +262,9 @@ jobs:
                 src_uri_val+=" ${resolved_download_urls["1"]} "
                 src_uri_val+=" -> \${P}-example-arm64-\${PV}.tar.gz  )  "
                 emit_metadata_field "SRC_URI" "$src_uri_val"
-                emit_metadata_field "LICENSE" "unknown"
+                emit_metadata_field "LICENSE" "$LICENSE"
                 echo 'SLOT="0"'
-                emit_metadata_field "KEYWORDS" "${{ env.keywords }}"
+                emit_metadata_field "KEYWORDS" "$KEYWORDS"
                                 iuse_val=""
                 emit_metadata_field "IUSE" "$iuse_val"
                 echo ''
