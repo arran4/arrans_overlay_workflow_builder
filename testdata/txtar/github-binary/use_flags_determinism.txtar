@@ -57,7 +57,7 @@ env:
   tool_release_name_arm64: 'tool_${version}_linux_arm64.tar.gz'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

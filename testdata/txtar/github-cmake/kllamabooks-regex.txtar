@@ -36,7 +36,7 @@ env:
   workflow_filename: app-misc-kjules-update.yaml
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

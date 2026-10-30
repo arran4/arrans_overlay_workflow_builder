@@ -47,7 +47,7 @@ env:
   example_release_name_amd64: 'example-${version}-x86_64.tar.gz'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

@@ -41,7 +41,7 @@ env:
   example_release_name_amd64: 'example-${tag}.AppImage'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

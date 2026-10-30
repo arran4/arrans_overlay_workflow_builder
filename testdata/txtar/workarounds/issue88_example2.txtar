@@ -40,7 +40,7 @@ env:
   release_name_amd64: 'rust-1.0.0-amd64'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

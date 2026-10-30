@@ -42,7 +42,7 @@ env:
   foo_release_name_arm64: 'foo-very-long-asset-name-to-test-wrapping-${version}-aarch64-linux-gnu.tar.gz'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

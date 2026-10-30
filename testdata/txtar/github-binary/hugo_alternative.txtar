@@ -54,7 +54,7 @@ env:
   hugo_release_name_arm64: 'hugo_${version}_linux-arm64.tar.gz'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
