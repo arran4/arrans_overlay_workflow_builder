@@ -40,8 +40,9 @@ env:
   release_name_amd64: 'rust-1.0.0-amd64'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   check-and-create-ebuild:
