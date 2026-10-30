@@ -399,7 +399,7 @@ jobs:
             fi
           fi
       - name: Run actionlint on generated examples
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@latest examples/.github/workflows/*
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@latest -ignore "unexpected key \"queue\" for \"concurrency\" section" examples/.github/workflows/**
   go-vet:
     name: Go vet
     needs:

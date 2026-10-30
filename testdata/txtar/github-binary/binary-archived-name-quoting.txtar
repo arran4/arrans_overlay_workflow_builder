@@ -42,6 +42,7 @@ env:
 concurrency:
   group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   check-and-create-ebuild:
