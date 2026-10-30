@@ -41,7 +41,7 @@ env:
   example_appimage_installed_name: 'example.AppImage'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
 
 jobs:

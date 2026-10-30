@@ -24,7 +24,7 @@ env:
   workflow_filename: [[ .WorkflowFileName ]]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
 
 jobs:

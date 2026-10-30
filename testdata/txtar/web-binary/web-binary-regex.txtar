@@ -46,7 +46,7 @@ env:
   google-cloud-cli_release_name_x86: 'google-cloud-cli-${version}-linux-x86.tar.gz'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
 
 jobs:

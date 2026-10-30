@@ -41,7 +41,7 @@ env:
   release_name_amd64: 'k9s_Linux_amd64.tar.gz'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
 
 jobs:

@@ -43,7 +43,7 @@ env:
   tool_release_name_amd64: 'tool-${tag}-amd64'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
 
 jobs:

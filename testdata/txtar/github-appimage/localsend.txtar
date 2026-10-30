@@ -46,7 +46,7 @@ env:
   localsend_release_name_amd64: 'LocalSend-${tag}-linux-x86-64.AppImage'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
 
 jobs:
