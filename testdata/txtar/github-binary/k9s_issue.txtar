@@ -38,8 +38,9 @@ env:
   k9s_release_name_amd64: 'k9s_Linux_amd64.tar.gz'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   check-and-create-ebuild:

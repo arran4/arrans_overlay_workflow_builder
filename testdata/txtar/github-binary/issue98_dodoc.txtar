@@ -41,8 +41,9 @@ env:
   foo_release_name_amd64: 'foo-${version}.tar.gz'
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow_ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   check-and-create-ebuild:
