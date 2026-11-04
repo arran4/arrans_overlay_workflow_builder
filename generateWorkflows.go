@@ -80,6 +80,19 @@ func GenerateGithubWorkflows(file, outputDir, version string, ops ...any) error 
 	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, outputDir, version, ops...)
 }
 
+// GenerateGithubWorkflowsFromInputConfigs renders and publishes GitHub Actions workflows
+// for multiple input configurations.
+//
+// Publication safety contract (#180):
+//  1. Validation & Pre-render Phase: All workflow templates are rendered, normalized,
+//     and validated in-memory before any files are created or modified on disk.
+//     If any input configuration or template execution fails, no files are written
+//     and existing output files remain completely untouched.
+//  2. Publication Phase: Outputs are written to outputDir. If an I/O error occurs
+//     during publication, best-effort rollback restores previously modified files
+//     to their original contents and removes newly created partial files.
+//     Full multi-file atomicity against hard process termination (e.g. SIGKILL,
+//     abrupt power loss) is bounded by underlying OS/filesystem guarantees.
 func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, outputDir, version string, ops ...any) error {
 	missing := false
 	for _, inputConfig := range inputConfigs {
@@ -107,12 +120,49 @@ func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputC
 		}
 	}
 
-	_ = fsys.MkdirAll(outputDir, 0755)
+	if err := fsys.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("creating output directory %s: %w", outputDir, err)
+	}
+
+	// Phase 1: Render and validate all candidate workflows in-memory before writing.
+	type renderedOutput struct {
+		path    string
+		content []byte
+	}
+	outputs := make([]renderedOutput, 0, len(inputConfigs))
 	for _, inputConfig := range inputConfigs {
-		if err := inputConfig.GenerateGithubWorkflow(file, now, templates, outputDir, version, ops...); err != nil {
+		targetPath, content, err := inputConfig.RenderGithubWorkflow(file, now, templates, outputDir, version, ops...)
+		if err != nil {
 			return err
 		}
+		outputs = append(outputs, renderedOutput{path: targetPath, content: content})
 	}
+
+	// Phase 2: Transactional publication with rollback on write failure.
+	existingFiles := make(map[string][]byte)
+	for _, out := range outputs {
+		if data, err := fsys.ReadFile(out.path); err == nil {
+			existingFiles[out.path] = data
+		}
+	}
+
+	var writtenPaths []string
+	for _, out := range outputs {
+		if err := fsys.WriteFile(out.path, out.content, 0644); err != nil {
+			// Rollback previously written files in this batch
+			for _, written := range writtenPaths {
+				if orig, existed := existingFiles[written]; existed {
+					_ = fsys.WriteFile(written, orig, 0644)
+				} else {
+					_ = fsys.Remove(written)
+				}
+			}
+			return fmt.Errorf("writing %s: %w", out.path, err)
+		}
+		writtenPaths = append(writtenPaths, out.path)
+		fmt.Printf("Written: %s\n", out.path)
+	}
+
 	return nil
 }
 
@@ -477,12 +527,14 @@ func (ic *InputConfig) ResolveHeaderPolicy(ops ...any) (gentooAuthors bool, sour
 	return gentooAuthors, sourceLicense, hasExplicitSourceLicense
 }
 
-func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) error {
+// RenderGithubWorkflow renders and normalizes the GitHub Actions workflow YAML for the InputConfig
+// without writing it to disk. It returns the calculated target file path within outputDir,
+// the rendered bytes, and any validation or template execution error.
+func (ic *InputConfig) RenderGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) (string, []byte, error) {
 	if err := ic.Validate(); err != nil {
-		return fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
+		return "", nil, fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
 	}
 	out := bytes.NewBuffer(nil)
-	var workflowName string
 	var data interface {
 		WorkflowFileName() string
 		TemplateFileName() string
@@ -513,18 +565,18 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 	}
 	if base.GlobalOverlayRepoName != nil {
 		if *base.GlobalOverlayRepoName == "" {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot be empty")
+			return "", nil, fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot be empty")
 		}
 		matched, _ := regexp.MatchString(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`, *base.GlobalOverlayRepoName)
 		if !matched {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid characters in name '%s'", *base.GlobalOverlayRepoName)
+			return "", nil, fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid characters in name '%s'", *base.GlobalOverlayRepoName)
 		}
 		// Also must not look like a package name ending with a version.
 		// A simple heuristic for "ends in a version" which Gentoo prohibits for repo names
 		// matches -<number>(.<number>)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$
 		versionMatched, _ := regexp.MatchString(`-[0-9]+(\.[0-9]+)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$`, *base.GlobalOverlayRepoName)
 		if versionMatched {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot end in a valid version string '%s'", *base.GlobalOverlayRepoName)
+			return "", nil, fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot end in a valid version string '%s'", *base.GlobalOverlayRepoName)
 		}
 	}
 	switch ic.Type {
@@ -553,15 +605,21 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 			},
 		}
 	default:
-		return fmt.Errorf("unknown type %s", ic.Type)
+		return "", nil, fmt.Errorf("unknown type %s", ic.Type)
 	}
 	if err := templates.ExecuteTemplate(out, data.TemplateFileName(), data); err != nil {
-		return fmt.Errorf("for %s excuting template: %w", ic.EbuildName, err)
+		return "", nil, fmt.Errorf("for %s excuting template: %w", ic.EbuildName, err)
 	}
 	rendered := normalizeGeneratedWorkflow(out.Bytes())
-	workflowName = data.WorkflowFileName()
-	n := filepath.Join(outputDir, workflowName)
+	n := filepath.Join(outputDir, data.WorkflowFileName())
+	return n, rendered, nil
+}
 
+func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) error {
+	filePath, rendered, err := ic.RenderGithubWorkflow(file, now, templates, outputDir, version, ops...)
+	if err != nil {
+		return err
+	}
 	var fsys util.FileSystem = util.OSFS{}
 	for _, opt := range ops {
 		switch o := opt.(type) {
@@ -570,10 +628,10 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		}
 	}
 
-	if err := fsys.WriteFile(n, rendered, 0644); err != nil {
-		return fmt.Errorf("writing %s: %w", n, err)
+	if err := fsys.WriteFile(filePath, rendered, 0644); err != nil {
+		return fmt.Errorf("writing %s: %w", filePath, err)
 	}
-	fmt.Printf("Written: %s\n", n)
+	fmt.Printf("Written: %s\n", filePath)
 	return nil
 }
 

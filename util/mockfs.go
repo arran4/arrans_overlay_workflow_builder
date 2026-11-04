@@ -30,3 +30,11 @@ func (m *MockFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
 func (m *MockFS) MkdirAll(path string, perm fs.FileMode) error {
 	return nil
 }
+
+func (m *MockFS) Remove(name string) error {
+	if _, ok := m.Files[name]; ok {
+		delete(m.Files, name)
+		return nil
+	}
+	return os.ErrNotExist
+}
