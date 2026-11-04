@@ -28,6 +28,7 @@ func verifyG2Available(t *testing.T) string {
 	if err != nil {
 		t.Skipf("g2 executable not found in PATH; skipping real g2 integration tests")
 	}
+	t.Logf("Running real g2 tests against pinned version %s (path: %s)", pinnedG2Version, g2Path)
 	return g2Path
 }
 
