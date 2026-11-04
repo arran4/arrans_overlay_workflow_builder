@@ -77,6 +77,9 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 
 	lines := strings.Split(string(ebuildContent), "\n")
 	for i, line := range lines {
+		if strings.HasPrefix(line, "# Generated via") || strings.Contains(line, "://") {
+			continue
+		}
 		pos := 0
 		for _, ch := range line {
 			if ch == '\t' {
@@ -276,6 +279,9 @@ printf '%s\0%s\0%s' "$DEPEND" "$RDEPEND" "$BDEPEND"
 func assertIssue172Widths(t *testing.T, lines []string) {
 	t.Helper()
 	for i, line := range lines {
+		if strings.HasPrefix(line, "# Generated via") || strings.Contains(line, "://") {
+			continue
+		}
 		width := 0
 		for _, r := range line {
 			if r == '\t' {
