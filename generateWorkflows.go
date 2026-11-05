@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/base64"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/arran4/g2"
@@ -91,8 +92,12 @@ func GenerateGithubWorkflows(file, outputDir, version string, ops ...any) error 
 //  2. Publication Phase: Outputs are written to outputDir. If an I/O error occurs
 //     during publication, best-effort rollback restores previously modified files
 //     to their original contents and removes newly created partial files.
-//     Full multi-file atomicity against hard process termination (e.g. SIGKILL,
-//     abrupt power loss) is bounded by underlying OS/filesystem guarantees.
+//     Recovery includes the failing destination, restores contents and modes,
+//     removes new files/directories, and reports every failed recovery operation.
+//     This is best-effort rollback, not atomic publication: concurrent readers can
+//     see intermediate files. Concurrent writers are unsupported; crashes, SIGKILL,
+//     power loss and rollback I/O failures can leave partial state. No fsync or
+//     crash-recovery journal is provided. This is unrelated to package-state #155.
 func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, outputDir, version string, ops ...any) error {
 	missing := false
 	for _, inputConfig := range inputConfigs {
@@ -120,46 +125,114 @@ func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputC
 		}
 	}
 
-	if err := fsys.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("creating output directory %s: %w", outputDir, err)
-	}
-
 	// Phase 1: Render and validate all candidate workflows in-memory before writing.
 	type renderedOutput struct {
 		path    string
 		content []byte
 	}
 	outputs := make([]renderedOutput, 0, len(inputConfigs))
+	targets := make(map[string]bool)
 	for _, inputConfig := range inputConfigs {
 		targetPath, content, err := inputConfig.RenderGithubWorkflow(file, now, templates, outputDir, version, ops...)
 		if err != nil {
 			return err
 		}
+		targetPath = filepath.Clean(targetPath)
+		if targets[targetPath] {
+			return fmt.Errorf("duplicate workflow output path %s", targetPath)
+		}
+		targets[targetPath] = true
 		outputs = append(outputs, renderedOutput{path: targetPath, content: content})
 	}
 
-	// Phase 2: Transactional publication with rollback on write failure.
-	existingFiles := make(map[string][]byte)
+	if len(outputs) == 0 {
+		return nil
+	}
+
+	// Inspect the complete previous state before any filesystem mutation. A
+	// failed read/stat is not evidence of absence; symlinks are not output files.
+	type previousFile struct {
+		content []byte
+		mode    fs.FileMode
+	}
+	originals := make(map[string]previousFile)
 	for _, out := range outputs {
-		if data, err := fsys.ReadFile(out.path); err == nil {
-			existingFiles[out.path] = data
+		info, err := fsys.Lstat(out.path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("inspecting existing workflow %s: %w", out.path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("existing workflow %s is not a regular file", out.path)
+		}
+		data, err := fsys.ReadFile(out.path)
+		if err != nil {
+			return fmt.Errorf("backing up existing workflow %s: %w", out.path, err)
+		}
+		originals[out.path] = previousFile{content: bytes.Clone(data), mode: info.Mode()}
+	}
+
+	// Remember only directories that did not exist before publication, deepest
+	// first. Never remove a pre-existing directory during recovery.
+	var newDirs []string
+	for dir := filepath.Clean(outputDir); ; dir = filepath.Dir(dir) {
+		info, err := fsys.Lstat(dir)
+		if err == nil {
+			if !info.IsDir() {
+				return fmt.Errorf("output ancestor %s is not a directory", dir)
+			}
+			break
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("inspecting output directory %s: %w", dir, err)
+		}
+		newDirs = append(newDirs, dir)
+		if filepath.Dir(dir) == dir {
+			return fmt.Errorf("no existing ancestor for output directory %s", outputDir)
 		}
 	}
 
-	var writtenPaths []string
-	for _, out := range outputs {
-		if err := fsys.WriteFile(out.path, out.content, 0644); err != nil {
-			// Rollback previously written files in this batch
-			for _, written := range writtenPaths {
-				if orig, existed := existingFiles[written]; existed {
-					_ = fsys.WriteFile(written, orig, 0644)
-				} else {
-					_ = fsys.Remove(written)
+	// Recovery includes the attempted write: WriteFile may truncate/modify its
+	// destination before returning an error. Continue after each recovery error
+	// and preserve all causes so callers can identify unrecovered paths.
+	rollback := func(cause error, attempted int) error {
+		failures := []error{cause}
+		for i := attempted - 1; i >= 0; i-- {
+			path := outputs[i].path
+			if original, exists := originals[path]; exists {
+				if err := fsys.WriteFile(path, original.content, original.mode); err != nil {
+					failures = append(failures, fmt.Errorf("restoring workflow %s: %w", path, err))
 				}
+				if err := fsys.Chmod(path, original.mode); err != nil {
+					failures = append(failures, fmt.Errorf("restoring permissions for %s: %w", path, err))
+				}
+			} else if err := fsys.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				failures = append(failures, fmt.Errorf("removing new workflow %s: %w", path, err))
 			}
-			return fmt.Errorf("writing %s: %w", out.path, err)
 		}
-		writtenPaths = append(writtenPaths, out.path)
+		for _, dir := range newDirs {
+			if err := fsys.Remove(dir); err != nil && !errors.Is(err, os.ErrNotExist) {
+				failures = append(failures, fmt.Errorf("removing new output directory %s: %w", dir, err))
+			}
+		}
+		return errors.Join(failures...)
+	}
+
+	if err := fsys.MkdirAll(outputDir, 0755); err != nil {
+		return rollback(fmt.Errorf("creating output directory %s: %w", outputDir, err), 0)
+	}
+	for i, out := range outputs {
+		mode := fs.FileMode(0644)
+		if original, exists := originals[out.path]; exists {
+			mode = original.mode
+		}
+		if err := fsys.WriteFile(out.path, out.content, mode); err != nil {
+			return rollback(fmt.Errorf("writing %s: %w", out.path, err), i+1)
+		}
+	}
+	for _, out := range outputs {
 		fmt.Printf("Written: %s\n", out.path)
 	}
 

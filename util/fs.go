@@ -7,6 +7,8 @@ type FileSystem interface {
 	MkdirAll(path string, perm os.FileMode) error
 	WriteFile(name string, data []byte, perm os.FileMode) error
 	Remove(name string) error
+	Lstat(name string) (os.FileInfo, error)
+	Chmod(name string, mode os.FileMode) error
 }
 
 type OSFS struct{}
@@ -17,3 +19,6 @@ func (OSFS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }
 func (OSFS) Remove(name string) error { return os.Remove(name) }
+
+func (OSFS) Lstat(name string) (os.FileInfo, error)    { return os.Lstat(name) }
+func (OSFS) Chmod(name string, mode os.FileMode) error { return os.Chmod(name, mode) }
