@@ -329,6 +329,9 @@ Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
 
 This repository includes a deterministic, hermetic smoke test suite in `smoke_test.go`. The test harness renders the actual workflow templates, parses the yaml, substitutes github environment bindings, and executes the generated bash scripts natively within a stubbed shell context (`$PATH` is overridden). This proves that the templated paths function accurately from ebuild synthesis up through metadata and commit generation. When adding new template workflows or complicated edge conditions, consider adding a new scenario block to the smoke harness.
 
+Batch workflow output safety and failure recovery are documented in
+[Batch workflow publication](doc/batch-publication.md).
+
 ## Global Flags
 
 *   `--gentoo-authors` / `--generated-ebuild-gentoo-authors`: Emit Gentoo Authors copyright header instead of generic SPDX MIT (default `false`).
@@ -347,25 +350,3 @@ This repository includes a deterministic, hermetic smoke test suite in `smoke_te
 ## Contributing and engineering guidance
 
 Before changing public behaviour, tests, parsers or generation rules, see [repository-specific agent/contributor guidance](AGENTS.md). The applicable rationale is collected in [Suggested Coding Standards](https://arran4.github.io/blog/post/2026/055-suggested-coding-standards-for-repositories-and-agents/); this is selective guidance, not a blanket rewrite policy. The [standards adoption issue](https://github.com/arran4/arrans_overlay_workflow_builder/issues/177) tracks the required implementation/test audit separately from documentation.
-
-### Batch workflow publication safety (#180)
-
-The batch workflow generator renders and validates every YAML output in memory
-and rejects duplicate destinations before touching the filesystem. It inspects
-and backs up all existing regular output files before creating directories or
-writing any output; read/stat errors abort publication. Existing symlink or
-non-regular destinations are rejected. Success preserves existing file modes
-and uses 0644 (subject to umask) for new workflows.
-
-If publication fails, recovery includes the currently failing file (which may
-have been truncated), restores previous bytes and permissions, and removes new
-files and directory ancestors created by this batch. Recovery continues after
-individual failures and returns the original error plus all restoration/removal
-errors, with affected paths. Callers must handle reported recovery failures.
-
-This is **best-effort rollback**, not multi-file atomic publication. Readers may
-observe intermediate writes; concurrent writers are unsupported. SIGKILL,
-crashes, power loss or recovery I/O failures may leave partial state; there is no
-fsync/crash journal. The API has no preview flag. Per-entry rendering can be used
-without publication. This contract covers generated workflow YAML only;
-generated ebuild/Manifest transactions remain issue #155.
