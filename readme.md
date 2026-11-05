@@ -347,3 +347,23 @@ This repository includes a deterministic, hermetic smoke test suite in `smoke_te
 ## Contributing and engineering guidance
 
 Before changing public behaviour, tests, parsers or generation rules, see [repository-specific agent/contributor guidance](AGENTS.md). The applicable rationale is collected in [Suggested Coding Standards](https://arran4.github.io/blog/post/2026/055-suggested-coding-standards-for-repositories-and-agents/); this is selective guidance, not a blanket rewrite policy. The [standards adoption issue](https://github.com/arran4/arrans_overlay_workflow_builder/issues/177) tracks the required implementation/test audit separately from documentation.
+
+### Real-g2 integration boundary
+
+CI installs released `g2 v0.0.107` and verifies the executable's embedded Go
+module version and release version stamp before running `TestRealG2_*`. A missing dependency fails CI;
+a missing local executable explicitly skips these integration tests. An installed
+executable with a different version (including a development build) fails.
+The official release includes `+dirty` in its module version; that release suffix
+is accepted. Install the released executable rather than substituting a mock.
+
+These tests execute generated updater scripts against controlled HTTP assets,
+then run real g2 cache generation and lint. Their disposable overlay contains
+synthetic license files and minimal eclass stubs. They establish generated
+metadata/parser compatibility, **not** real Gentoo license compliance, full eclass
+compatibility, Portage metadata evaluation, or fetch/build/install validation.
+Package-license normalization remains #173; ebuild/Manifest publication remains
+#155. The MIT/SPDX source-header policy is preserved. PG0802 (the generated
+provenance comment's width) is explicitly disabled in these fixture lint runs;
+other source width assertions permit only a single indivisible SRC_URI URL
+that exceeds the available width, without exempting other text on the line.

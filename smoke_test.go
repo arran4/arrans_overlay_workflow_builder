@@ -200,7 +200,7 @@ Symlink test=>/usr/bin/test
 					// g2's IndentingWhitespaceLintRule: tabs=4 positions, limit=80
 					lines := strings.Split(string(ebuildContent), "\n")
 					for _, line := range lines {
-						if strings.HasPrefix(line, "# Generated via") || strings.Contains(line, "://") {
+						if strings.HasPrefix(line, "# Generated via") || unavoidableSRCURIWidth(line) {
 							continue
 						}
 						pos := 0

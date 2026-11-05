@@ -3,12 +3,16 @@ package arrans_overlay_workflow_builder
 import (
 	"archive/tar"
 	"compress/gzip"
+	"debug/buildinfo"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -26,10 +30,53 @@ func verifyG2Available(t *testing.T) string {
 	t.Helper()
 	g2Path, err := exec.LookPath("g2")
 	if err != nil {
-		t.Skipf("g2 executable not found in PATH; skipping real g2 integration tests")
+		if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") == "true" {
+			t.Fatalf("required real g2 %s executable missing: %v", pinnedG2Version, err)
+		}
+		t.Skipf("optional local real-g2 integration skipped: install released g2 %s (CI requires it)", pinnedG2Version)
 	}
+	info, err := buildinfo.ReadFile(g2Path)
+	require.NoError(t, err, "read g2 executable build metadata")
+	require.NoError(t, validateG2BuildInfo(info), "real-g2 dependency must match the pinned release")
 	t.Logf("Running real g2 tests against pinned version %s (path: %s)", pinnedG2Version, g2Path)
 	return g2Path
+}
+
+// g2 v0.0.107 has no version subcommand. The released Go executable carries
+// module build metadata (including a +dirty suffix in the official release).
+func validateG2BuildInfo(info *debug.BuildInfo) error {
+	if info.Path != "github.com/arran4/g2/cmd/g2" || info.Main.Path != "github.com/arran4/g2" ||
+		strings.TrimSuffix(info.Main.Version, "+dirty") != pinnedG2Version || info.Main.Replace != nil {
+		return fmt.Errorf("expected released g2 %s; executable is %s (%s %s)", pinnedG2Version, info.Path, info.Main.Path, info.Main.Version)
+	}
+	for _, setting := range info.Settings {
+		if setting.Key != "-ldflags" {
+			continue
+		}
+		fields := strings.Fields(setting.Value)
+		for i := 0; i+1 < len(fields); i++ {
+			if fields[i] == "-X" && fields[i+1] == "main.version="+strings.TrimPrefix(pinnedG2Version, "v") {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("g2 %s is not a version-stamped release executable", pinnedG2Version)
+}
+
+func TestPinnedG2BuildInfo(t *testing.T) {
+	for _, version := range []string{pinnedG2Version, pinnedG2Version + "+dirty", "(devel)", "v0.0.106", "v0.0.1070"} {
+		t.Run(version, func(t *testing.T) {
+			info := &debug.BuildInfo{Settings: []debug.BuildSetting{{Key: "-ldflags", Value: "-s -w -X main.version=0.0.107"}}, Path: "github.com/arran4/g2/cmd/g2", Main: debug.Module{Path: "github.com/arran4/g2", Version: version}}
+			err := validateG2BuildInfo(info)
+			if version == pinnedG2Version || version == pinnedG2Version+"+dirty" {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+			}
+		})
+	}
+	require.Error(t, validateG2BuildInfo(&debug.BuildInfo{Path: "github.com/arran4/g2/cmd/g2", Main: debug.Module{Path: "github.com/arran4/g2", Version: pinnedG2Version}}))
+	require.Error(t, validateG2BuildInfo(&debug.BuildInfo{Main: debug.Module{Version: pinnedG2Version}}))
 }
 
 func setupHermeticG2Overlay(t *testing.T) (string, func()) {
@@ -262,6 +309,8 @@ Symlink mytool => mytool-alias
 		}
 	}
 
+	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
+
 	// 4. Verify Manifest DIST entries match
 	manifestPath := filepath.Join(pkgDir, "Manifest")
 	manifestBytes, err := os.ReadFile(manifestPath)
@@ -373,6 +422,8 @@ Binary amd64=>webtool-${VERSION}-linux-x86_64.tar.gz > webtool > webtool
 	cacheOut, err := cacheCmd.CombinedOutput()
 	require.NoError(t, err, "real g2 cache generate failed: %s", string(cacheOut))
 
+	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
+
 	// Real g2 lint
 	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/webtool-bin")
 	lintOut, err := lintCmd.CombinedOutput()
@@ -483,6 +534,8 @@ DesktopFile myapp.desktop
 	cacheCmd := exec.Command("g2", "cache", "generate", "-repo", overlayDir, "app-misc/myapp-appimage")
 	cacheOut, err := cacheCmd.CombinedOutput()
 	require.NoError(t, err, "real g2 cache generate failed: %s", string(cacheOut))
+
+	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
 
 	// Real g2 lint
 	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-misc/myapp-appimage")
@@ -597,10 +650,72 @@ License Apache-2.0
 	cacheOut, err := cacheCmd.CombinedOutput()
 	require.NoError(t, err, "real g2 cache generate failed: %s", string(cacheOut))
 
+	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
+
 	// Real g2 lint
 	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/cmaketool")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass: %s", lintStr)
 	require.NotContains(t, lintStr, "[Error]")
+}
+
+// Compare the real parser/cache output with shell-evaluated metadata, then check
+// every DIST name, including architecture conditions and rename expressions.
+func verifyGeneratedG2Metadata(t *testing.T, overlayDir, ebuildPath string) {
+	t.Helper()
+	out, err := exec.Command("bash", "-n", ebuildPath).CombinedOutput()
+	require.NoError(t, err, "generated ebuild shell syntax: %s", out)
+	ebuild, err := os.ReadFile(ebuildPath)
+	require.NoError(t, err)
+	lines := strings.Split(string(ebuild), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "SRC_URI=") || strings.HasPrefix(line, "SRC_URI+=") || strings.HasPrefix(line, "KEYWORDS=") {
+			assertIssue172Widths(t, []string{line})
+		}
+	}
+	packageName := filepath.Base(filepath.Dir(ebuildPath))
+	category := filepath.Base(filepath.Dir(filepath.Dir(ebuildPath)))
+	p := strings.TrimSuffix(filepath.Base(ebuildPath), ".ebuild")
+	pv := strings.TrimPrefix(p, packageName+"-")
+	expected := evalIssue172Field(t, lines, "SRC_URI", fmt.Sprintf("P=%s\nPN=%s\nPV=%s", p, packageName, pv))
+	cache, err := os.ReadFile(filepath.Join(overlayDir, "metadata", "md5-cache", category, p))
+	require.NoError(t, err)
+	var records []string
+	for _, line := range strings.Split(string(cache), "\n") {
+		if strings.HasPrefix(line, "SRC_URI=") {
+			records = append(records, strings.TrimPrefix(line, "SRC_URI="))
+		}
+	}
+	require.Len(t, records, 1, "exactly one physical SRC_URI cache record")
+	require.NotContains(t, records[0], "\t")
+	require.NotContains(t, records[0], "\r")
+	require.Equal(t, strings.Fields(expected), strings.Fields(records[0]))
+	tokens := strings.Fields(records[0])
+	var expectedDist []string
+	for i, token := range tokens {
+		if !strings.HasPrefix(token, "http://") && !strings.HasPrefix(token, "https://") {
+			continue
+		}
+		u, err := url.Parse(token)
+		require.NoError(t, err)
+		name := filepath.Base(u.Path)
+		if i+2 < len(tokens) && tokens[i+1] == "->" {
+			name = tokens[i+2]
+		}
+		if !slices.Contains(expectedDist, name) {
+			expectedDist = append(expectedDist, name)
+		}
+	}
+	require.NotEmpty(t, expectedDist)
+	manifest, err := os.ReadFile(filepath.Join(filepath.Dir(ebuildPath), "Manifest"))
+	require.NoError(t, err)
+	var actualDist []string
+	for _, line := range strings.Split(string(manifest), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) > 1 && fields[0] == "DIST" {
+			actualDist = append(actualDist, fields[1])
+		}
+	}
+	require.ElementsMatch(t, expectedDist, actualDist)
 }

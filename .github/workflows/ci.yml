@@ -388,6 +388,8 @@ jobs:
           cache: true
       - name: Install g2
         uses: arran4/g2-action@v1.2
+        with:
+          version: v0.0.107
       - name: Test
         run: go test ./... -v
       - name: Check examples are up-to-date
