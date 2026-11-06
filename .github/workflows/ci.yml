@@ -392,6 +392,10 @@ jobs:
           version: v0.0.107
       - name: Unit and real-g2 generator integration tests
         run: go test ./... -v
+      - name: Validate downstream workflow generation
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          bash scripts/ci-downstream-workflows.sh
       - name: Check examples are up-to-date
         run: |
           if [[ -f examples/example.config ]]; then
