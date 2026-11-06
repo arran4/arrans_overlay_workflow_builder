@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/base64"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/arran4/arrans_overlay_workflow_builder/util"
 	"github.com/arran4/g2"
@@ -80,6 +81,23 @@ func GenerateGithubWorkflows(file, outputDir, version string, ops ...any) error 
 	return GenerateGithubWorkflowsFromInputConfigs(file, inputConfigs, outputDir, version, ops...)
 }
 
+// GenerateGithubWorkflowsFromInputConfigs renders and publishes GitHub Actions workflows
+// for multiple input configurations.
+//
+// Publication safety contract (#180):
+//  1. Validation & Pre-render Phase: All workflow templates are rendered, normalized,
+//     and validated in-memory before any files are created or modified on disk.
+//     If any input configuration or template execution fails, no files are written
+//     and existing output files remain completely untouched.
+//  2. Publication Phase: Outputs are written to outputDir. If an I/O error occurs
+//     during publication, best-effort rollback restores previously modified files
+//     to their original contents and removes newly created partial files.
+//     Recovery includes the failing destination, restores contents and modes,
+//     removes new files/directories, and reports every failed recovery operation.
+//     This is best-effort rollback, not atomic publication: concurrent readers can
+//     see intermediate files. Concurrent writers are unsupported; crashes, SIGKILL,
+//     power loss and rollback I/O failures can leave partial state. No fsync or
+//     crash-recovery journal is provided. This is unrelated to package-state #155.
 func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputConfig, outputDir, version string, ops ...any) error {
 	missing := false
 	for _, inputConfig := range inputConfigs {
@@ -107,12 +125,117 @@ func GenerateGithubWorkflowsFromInputConfigs(file string, inputConfigs []*InputC
 		}
 	}
 
-	_ = fsys.MkdirAll(outputDir, 0755)
+	// Phase 1: Render and validate all candidate workflows in-memory before writing.
+	type renderedOutput struct {
+		path    string
+		content []byte
+	}
+	outputs := make([]renderedOutput, 0, len(inputConfigs))
+	targets := make(map[string]bool)
 	for _, inputConfig := range inputConfigs {
-		if err := inputConfig.GenerateGithubWorkflow(file, now, templates, outputDir, version, ops...); err != nil {
+		targetPath, content, err := inputConfig.RenderGithubWorkflow(file, now, templates, outputDir, version, ops...)
+		if err != nil {
 			return err
 		}
+		targetPath = filepath.Clean(targetPath)
+		if targets[targetPath] {
+			return fmt.Errorf("duplicate workflow output path %s", targetPath)
+		}
+		targets[targetPath] = true
+		outputs = append(outputs, renderedOutput{path: targetPath, content: content})
 	}
+
+	if len(outputs) == 0 {
+		return nil
+	}
+
+	// Inspect the complete previous state before any filesystem mutation. A
+	// failed read/stat is not evidence of absence; symlinks are not output files.
+	type previousFile struct {
+		content []byte
+		mode    fs.FileMode
+	}
+	originals := make(map[string]previousFile)
+	for _, out := range outputs {
+		info, err := fsys.Lstat(out.path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("inspecting existing workflow %s: %w", out.path, err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("existing workflow %s is not a regular file", out.path)
+		}
+		data, err := fsys.ReadFile(out.path)
+		if err != nil {
+			return fmt.Errorf("backing up existing workflow %s: %w", out.path, err)
+		}
+		originals[out.path] = previousFile{content: bytes.Clone(data), mode: info.Mode()}
+	}
+
+	// Remember only directories that did not exist before publication, deepest
+	// first. Never remove a pre-existing directory during recovery.
+	var newDirs []string
+	for dir := filepath.Clean(outputDir); ; dir = filepath.Dir(dir) {
+		info, err := fsys.Lstat(dir)
+		if err == nil {
+			if !info.IsDir() {
+				return fmt.Errorf("output ancestor %s is not a directory", dir)
+			}
+			break
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("inspecting output directory %s: %w", dir, err)
+		}
+		newDirs = append(newDirs, dir)
+		if filepath.Dir(dir) == dir {
+			return fmt.Errorf("no existing ancestor for output directory %s", outputDir)
+		}
+	}
+
+	// Recovery includes the attempted write: WriteFile may truncate/modify its
+	// destination before returning an error. Continue after each recovery error
+	// and preserve all causes so callers can identify unrecovered paths.
+	rollback := func(cause error, attempted int) error {
+		failures := []error{cause}
+		for i := attempted - 1; i >= 0; i-- {
+			path := outputs[i].path
+			if original, exists := originals[path]; exists {
+				if err := fsys.WriteFile(path, original.content, original.mode); err != nil {
+					failures = append(failures, fmt.Errorf("restoring workflow %s: %w", path, err))
+				}
+				if err := fsys.Chmod(path, original.mode); err != nil {
+					failures = append(failures, fmt.Errorf("restoring permissions for %s: %w", path, err))
+				}
+			} else if err := fsys.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+				failures = append(failures, fmt.Errorf("removing new workflow %s: %w", path, err))
+			}
+		}
+		for _, dir := range newDirs {
+			if err := fsys.Remove(dir); err != nil && !errors.Is(err, os.ErrNotExist) {
+				failures = append(failures, fmt.Errorf("removing new output directory %s: %w", dir, err))
+			}
+		}
+		return errors.Join(failures...)
+	}
+
+	if err := fsys.MkdirAll(outputDir, 0755); err != nil {
+		return rollback(fmt.Errorf("creating output directory %s: %w", outputDir, err), 0)
+	}
+	for i, out := range outputs {
+		mode := fs.FileMode(0644)
+		if original, exists := originals[out.path]; exists {
+			mode = original.mode
+		}
+		if err := fsys.WriteFile(out.path, out.content, mode); err != nil {
+			return rollback(fmt.Errorf("writing %s: %w", out.path, err), i+1)
+		}
+	}
+	for _, out := range outputs {
+		fmt.Printf("Written: %s\n", out.path)
+	}
+
 	return nil
 }
 
@@ -477,12 +600,14 @@ func (ic *InputConfig) ResolveHeaderPolicy(ops ...any) (gentooAuthors bool, sour
 	return gentooAuthors, sourceLicense, hasExplicitSourceLicense
 }
 
-func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) error {
+// RenderGithubWorkflow renders and normalizes the GitHub Actions workflow YAML for the InputConfig
+// without writing it to disk. It returns the calculated target file path within outputDir,
+// the rendered bytes, and any validation or template execution error.
+func (ic *InputConfig) RenderGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) (string, []byte, error) {
 	if err := ic.Validate(); err != nil {
-		return fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
+		return "", nil, fmt.Errorf("for %s validating config: %w", ic.EbuildName, err)
 	}
 	out := bytes.NewBuffer(nil)
-	var workflowName string
 	var data interface {
 		WorkflowFileName() string
 		TemplateFileName() string
@@ -513,18 +638,18 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 	}
 	if base.GlobalOverlayRepoName != nil {
 		if *base.GlobalOverlayRepoName == "" {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot be empty")
+			return "", nil, fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot be empty")
 		}
 		matched, _ := regexp.MatchString(`^[A-Za-z0-9_][A-Za-z0-9_-]*$`, *base.GlobalOverlayRepoName)
 		if !matched {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid characters in name '%s'", *base.GlobalOverlayRepoName)
+			return "", nil, fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: invalid characters in name '%s'", *base.GlobalOverlayRepoName)
 		}
 		// Also must not look like a package name ending with a version.
 		// A simple heuristic for "ends in a version" which Gentoo prohibits for repo names
 		// matches -<number>(.<number>)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$
 		versionMatched, _ := regexp.MatchString(`-[0-9]+(\.[0-9]+)*[a-z]?(_(alpha|beta|pre|rc|p)[0-9]*)*(-r[0-9]+)?$`, *base.GlobalOverlayRepoName)
 		if versionMatched {
-			return fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot end in a valid version string '%s'", *base.GlobalOverlayRepoName)
+			return "", nil, fmt.Errorf("explicitly configured names must be validated as Gentoo repository names: cannot end in a valid version string '%s'", *base.GlobalOverlayRepoName)
 		}
 	}
 	switch ic.Type {
@@ -553,15 +678,21 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 			},
 		}
 	default:
-		return fmt.Errorf("unknown type %s", ic.Type)
+		return "", nil, fmt.Errorf("unknown type %s", ic.Type)
 	}
 	if err := templates.ExecuteTemplate(out, data.TemplateFileName(), data); err != nil {
-		return fmt.Errorf("for %s excuting template: %w", ic.EbuildName, err)
+		return "", nil, fmt.Errorf("for %s excuting template: %w", ic.EbuildName, err)
 	}
 	rendered := normalizeGeneratedWorkflow(out.Bytes())
-	workflowName = data.WorkflowFileName()
-	n := filepath.Join(outputDir, workflowName)
+	n := filepath.Join(outputDir, data.WorkflowFileName())
+	return n, rendered, nil
+}
 
+func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templates *template.Template, outputDir, version string, ops ...any) error {
+	filePath, rendered, err := ic.RenderGithubWorkflow(file, now, templates, outputDir, version, ops...)
+	if err != nil {
+		return err
+	}
 	var fsys util.FileSystem = util.OSFS{}
 	for _, opt := range ops {
 		switch o := opt.(type) {
@@ -570,10 +701,10 @@ func (ic *InputConfig) GenerateGithubWorkflow(file string, now time.Time, templa
 		}
 	}
 
-	if err := fsys.WriteFile(n, rendered, 0644); err != nil {
-		return fmt.Errorf("writing %s: %w", n, err)
+	if err := fsys.WriteFile(filePath, rendered, 0644); err != nil {
+		return fmt.Errorf("writing %s: %w", filePath, err)
 	}
-	fmt.Printf("Written: %s\n", n)
+	fmt.Printf("Written: %s\n", filePath)
 	return nil
 }
 

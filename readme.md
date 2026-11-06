@@ -329,6 +329,9 @@ Binary amd64=>which_browser-${TAG}-linux.deb > which_browser > which-browser
 
 This repository includes a deterministic, hermetic smoke test suite in `smoke_test.go`. The test harness renders the actual workflow templates, parses the yaml, substitutes github environment bindings, and executes the generated bash scripts natively within a stubbed shell context (`$PATH` is overridden). This proves that the templated paths function accurately from ebuild synthesis up through metadata and commit generation. When adding new template workflows or complicated edge conditions, consider adding a new scenario block to the smoke harness.
 
+Batch workflow output safety and failure recovery are documented in
+[Batch workflow publication](doc/batch-publication.md).
+
 ## Global Flags
 
 *   `--gentoo-authors` / `--generated-ebuild-gentoo-authors`: Emit Gentoo Authors copyright header instead of generic SPDX MIT (default `false`).
