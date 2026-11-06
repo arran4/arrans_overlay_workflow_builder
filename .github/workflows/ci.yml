@@ -390,7 +390,7 @@ jobs:
         uses: arran4/g2-action@v1.2
         with:
           version: v0.0.107
-      - name: Test
+      - name: Unit and real-g2 generator integration tests
         run: go test ./... -v
       - name: Check examples are up-to-date
         run: |

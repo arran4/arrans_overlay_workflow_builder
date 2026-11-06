@@ -175,13 +175,17 @@ func TestRealG2_GithubBinary(t *testing.T) {
 	// Start fixture server serving controlled release tarballs
 	tarDataAmd64 := createTarGzFixture(t, []string{"mytool", "README.md", "LICENSE"})
 	tarDataArm64 := createTarGzFixture(t, []string{"mytool", "README.md", "LICENSE"})
+	tarData386 := createTarGzFixture(t, []string{"mytool", "README.md", "LICENSE"})
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/gzip")
-		if strings.Contains(r.URL.Path, "amd64") {
+		switch {
+		case strings.Contains(r.URL.Path, "amd64"):
 			_, _ = w.Write(tarDataAmd64)
-		} else {
+		case strings.Contains(r.URL.Path, "arm64"):
 			_, _ = w.Write(tarDataArm64)
+		default:
+			_, _ = w.Write(tarData386)
 		}
 	}))
 	defer server.Close()
@@ -194,9 +198,11 @@ Description Fast developer utility tool
 Homepage https://myorg.github.io/mytool
 License MIT
 Binary amd64=>mytool-${TAG}-linux-amd64.tar.gz > mytool > mytool
-Binary arm64=>mytool-${TAG}-linux-arm64.tar.gz > mytool > mytool
+Binary arm64=>mytool_${VERSION}_linux_arm64.tar.gz > mytool > mytool
+Binary x86=>mytool_${VERSION}_linux_386.tar.gz > mytool > mytool
 Document amd64=>mytool-${TAG}-linux-amd64.tar.gz > README.md > README.md
 Document amd64=>mytool-${TAG}-linux-amd64.tar.gz > LICENSE > LICENSE
+Document x86=>mytool_${VERSION}_linux_386.tar.gz > README.md > README.md
 Symlink mytool => mytool-alias
 `
 
@@ -271,7 +277,9 @@ Symlink mytool => mytool-alias
 	ebuildContent := string(ebuildBytes)
 
 	// 1. Check Bash syntax and literal variables
-	require.Contains(t, ebuildContent, `KEYWORDS="~amd64 ~arm64"`)
+	require.Contains(t, ebuildContent, `KEYWORDS="~amd64 ~arm64 ~x86"`)
+	require.Equal(t, 1, strings.Count(ebuildContent, "KEYWORDS="), "KEYWORDS must be assigned once")
+	require.True(t, strings.HasPrefix(ebuildContent, "# SPDX-License-Identifier: MIT\n"), "default source-header policy")
 	require.NotContains(t, ebuildContent, `KEYWORDS=""`)
 	require.NotContains(t, ebuildContent, `KEYWORDS+=`)
 	require.Contains(t, ebuildContent, `LICENSE+="MIT"`)
@@ -293,7 +301,7 @@ Symlink mytool => mytool-alias
 	cacheContent := string(cacheBytes)
 
 	require.Contains(t, cacheContent, "EAPI=8")
-	require.Contains(t, cacheContent, "KEYWORDS=~amd64 ~arm64")
+	require.Contains(t, cacheContent, "KEYWORDS=~amd64 ~arm64 ~x86")
 	require.Contains(t, cacheContent, "LICENSE=MIT")
 	require.Contains(t, cacheContent, "SLOT=0")
 	require.Contains(t, cacheContent, "_md5_=")
@@ -304,8 +312,10 @@ Symlink mytool => mytool-alias
 			require.NotContains(t, line, "\r")
 			require.Contains(t, line, "amd64?")
 			require.Contains(t, line, "arm64?")
+			require.Contains(t, line, "x86?")
 			require.Contains(t, line, "-> mytool-bin-1.0.0-mytool-v1.0.0-linux-amd64.tar.gz")
-			require.Contains(t, line, "-> mytool-bin-1.0.0-mytool-v1.0.0-linux-arm64.tar.gz")
+			require.Contains(t, line, "-> mytool-bin-1.0.0-mytool_1.0.0_linux_arm64.tar.gz")
+			require.Contains(t, line, "-> mytool-bin-1.0.0-mytool_1.0.0_linux_386.tar.gz")
 		}
 	}
 
@@ -317,7 +327,8 @@ Symlink mytool => mytool-alias
 	require.NoError(t, err, "Manifest must exist")
 	manifestContent := string(manifestBytes)
 	require.Contains(t, manifestContent, "DIST mytool-bin-1.0.0-mytool-v1.0.0-linux-amd64.tar.gz")
-	require.Contains(t, manifestContent, "DIST mytool-bin-1.0.0-mytool-v1.0.0-linux-arm64.tar.gz")
+	require.Contains(t, manifestContent, "DIST mytool-bin-1.0.0-mytool_1.0.0_linux_arm64.tar.gz")
+	require.Contains(t, manifestContent, "DIST mytool-bin-1.0.0-mytool_1.0.0_linux_386.tar.gz")
 
 	// 5. Run real g2 lint with overlay policy
 	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/mytool-bin")
@@ -669,11 +680,17 @@ func verifyGeneratedG2Metadata(t *testing.T, overlayDir, ebuildPath string) {
 	ebuild, err := os.ReadFile(ebuildPath)
 	require.NoError(t, err)
 	lines := strings.Split(string(ebuild), "\n")
+	var keywordsAssignments int
 	for _, line := range lines {
+		if strings.HasPrefix(line, "KEYWORDS=") {
+			keywordsAssignments++
+		}
+		require.False(t, strings.HasPrefix(line, "KEYWORDS+="), "KEYWORDS must not be appended to")
 		if strings.HasPrefix(line, "SRC_URI=") || strings.HasPrefix(line, "SRC_URI+=") || strings.HasPrefix(line, "KEYWORDS=") {
 			assertIssue172Widths(t, []string{line})
 		}
 	}
+	require.Equal(t, 1, keywordsAssignments, "KEYWORDS must be defined exactly once")
 	packageName := filepath.Base(filepath.Dir(ebuildPath))
 	category := filepath.Base(filepath.Dir(filepath.Dir(ebuildPath)))
 	p := strings.TrimSuffix(filepath.Base(ebuildPath), ".ebuild")
