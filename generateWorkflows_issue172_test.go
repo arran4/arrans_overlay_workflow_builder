@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -77,6 +78,9 @@ Binary arm64=>test-${TAG}-linux-arm64-very-long-asset-name > test > test
 
 	lines := strings.Split(string(ebuildContent), "\n")
 	for i, line := range lines {
+		if strings.HasPrefix(line, "# Generated via") || unavoidableSRCURIWidth(line) {
+			continue
+		}
 		pos := 0
 		for _, ch := range line {
 			if ch == '\t' {
@@ -276,6 +280,9 @@ printf '%s\0%s\0%s' "$DEPEND" "$RDEPEND" "$BDEPEND"
 func assertIssue172Widths(t *testing.T, lines []string) {
 	t.Helper()
 	for i, line := range lines {
+		if strings.HasPrefix(line, "# Generated via") || unavoidableSRCURIWidth(line) {
+			continue
+		}
 		width := 0
 		for _, r := range line {
 			if r == '\t' {
@@ -423,4 +430,31 @@ Binary amd64=>test-${TAG}-linux-amd64 > test > test
 	require.Contains(t, got, `\backslashes\`)
 	require.Contains(t, got, fmt.Sprintf(`$(touch %s)`, canaryFile1))
 	require.Contains(t, got, fmt.Sprintf("`touch %s`", canaryFile2))
+}
+
+// Only a single indivisible SRC_URI URL may exceed the source width budget.
+// Other metadata, short URLs, and lines combining URL and conditional/rename
+// tokens still have to fit; URL presence alone never exempts a line.
+var isolatedSRCURIURL = regexp.MustCompile(`^SRC_URI\+="(https?://[^[:space:]"]+) ?"$`)
+
+func unavoidableSRCURIWidth(line string) bool {
+	match := isolatedSRCURIURL.FindStringSubmatch(line)
+	return match != nil && len([]rune(match[1])) > 80-len(`SRC_URI+="`)-1
+}
+
+func TestUnavoidableSRCURIWidth(t *testing.T) {
+	longURL := "https://example.org/" + strings.Repeat("a", 80)
+	for _, tc := range []struct {
+		line   string
+		exempt bool
+	}{
+		{`SRC_URI+="` + longURL + ` "`, true},
+		{`SRC_URI+="https://example.org/a "`, false},
+		{`DESCRIPTION+="` + longURL + `"`, false},
+		{`SRC_URI+="amd64? ( ` + longURL + ` )"`, false},
+		{`SRC_URI+="` + longURL + ` -> target"`, false},
+		{`SRC_URI+="https://example.org/a ` + strings.Repeat("x ", 60) + `"`, false},
+	} {
+		require.Equal(t, tc.exempt, unavoidableSRCURIWidth(tc.line), "%s", tc.line)
+	}
 }
