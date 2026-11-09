@@ -331,7 +331,7 @@ Symlink mytool => mytool-alias
 	require.Contains(t, manifestContent, "DIST mytool-bin-1.0.0-mytool_1.0.0_linux_386.tar.gz")
 
 	// 5. Run real g2 lint with overlay policy
-	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/mytool-bin")
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-admin/mytool-bin")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass cleanly without errors: %s", lintStr)
@@ -436,7 +436,7 @@ Binary amd64=>webtool-${VERSION}-linux-x86_64.tar.gz > webtool > webtool
 	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
 
 	// Real g2 lint
-	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/webtool-bin")
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-admin/webtool-bin")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass cleanly: %s", lintStr)
@@ -549,7 +549,7 @@ DesktopFile myapp.desktop
 	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
 
 	// Real g2 lint
-	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-misc/myapp-appimage")
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-misc/myapp-appimage")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass: %s", lintStr)
@@ -664,7 +664,7 @@ License Apache-2.0
 	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
 
 	// Real g2 lint
-	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/cmaketool")
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-admin/cmaketool")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass: %s", lintStr)
@@ -821,8 +821,8 @@ Binary x86=>header_${VERSION}_linux_386.tar.gz > header > header
 	lintStep := stepMap["Lint output"]
 	withMap := lintStep["with"].(map[string]any)
 	actionStr := withMap["action"].(string)
-	require.Contains(t, actionStr, "-fail-severity error")
-	require.Contains(t, actionStr, ". ${{ env.ecn }}/${{ env.epn }}")
+	require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", actionStr)
+	require.NotContains(t, actionStr, "PG0802")
 
 	// Mock gh to return tag v0.0.5
 	binDir := filepath.Join(overlayDir, "bin")
@@ -969,8 +969,8 @@ KEYWORDS="~amd64"
 			// Generate cache
 			_ = exec.Command("g2", "cache", "generate", "-repo", overlayDir, "app-text/testpkg").Run()
 
-			// Run lint with the updater policy: -disable-rule PG0802 -fail-severity error
-			lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-text/testpkg")
+			// Run lint with the updater policy: -fail-severity error (without obsolete -disable-rule PG0802)
+			lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-text/testpkg")
 			out, err := lintCmd.CombinedOutput()
 			require.Error(t, err, "lint must fail for %s: %s", tc.name, string(out))
 			require.Contains(t, string(out), tc.expectError)
@@ -1064,7 +1064,8 @@ DesktopFile myapp.desktop
 	require.Contains(t, stepMap, "Commit and push changes")
 
 	actionStr := stepMap["Lint output"]["with"].(map[string]any)["action"].(string)
-	require.Contains(t, actionStr, "-fail-severity error")
+	require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", actionStr)
+	require.NotContains(t, actionStr, "PG0802")
 
 	binDir := filepath.Join(overlayDir, "bin")
 	require.NoError(t, os.MkdirAll(binDir, 0755))
