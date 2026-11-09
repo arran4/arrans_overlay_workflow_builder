@@ -84,7 +84,7 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 	}
 	for _, name := range []string{
 		"Checkout repository", "Install g2", "Process each release",
-		"Deduplicate ebuilds", "Lint output", "Commit and push changes",
+		"Deduplicate ebuilds", "Generate md5-cache", "Lint output", "Commit and push changes",
 	} {
 		_, present := positions[name]
 		require.True(t, present, "required workflow step %q absent", name)
@@ -92,10 +92,12 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 	require.Less(t, positions["Checkout repository"], positions["Process each release"])
 	require.Less(t, positions["Install g2"], positions["Process each release"])
 	require.Less(t, positions["Process each release"], positions["Deduplicate ebuilds"])
-	require.Less(t, positions["Deduplicate ebuilds"], positions["Lint output"])
+	require.Less(t, positions["Deduplicate ebuilds"], positions["Generate md5-cache"])
+	require.Less(t, positions["Generate md5-cache"], positions["Lint output"])
 	require.Less(t, positions["Lint output"], positions["Commit and push changes"])
 	require.Equal(t, "process_releases", job.Steps[positions["Process each release"]].ID)
 	require.NotEmpty(t, job.Steps[positions["Process each release"]].Run)
+	require.Contains(t, job.Steps[positions["Generate md5-cache"]].If, "process_releases.outputs.generated_tag")
 	require.Contains(t, job.Steps[positions["Lint output"]].If, "process_releases.outputs.generated_tag")
 	require.Contains(t, job.Steps[positions["Commit and push changes"]].If, "process_releases.outputs.generated_tag")
 }
