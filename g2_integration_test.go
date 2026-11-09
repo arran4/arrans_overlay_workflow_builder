@@ -331,7 +331,7 @@ Symlink mytool => mytool-alias
 	require.Contains(t, manifestContent, "DIST mytool-bin-1.0.0-mytool_1.0.0_linux_386.tar.gz")
 
 	// 5. Run real g2 lint with overlay policy
-	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/mytool-bin")
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-admin/mytool-bin")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass cleanly without errors: %s", lintStr)
@@ -436,7 +436,7 @@ Binary amd64=>webtool-${VERSION}-linux-x86_64.tar.gz > webtool > webtool
 	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
 
 	// Real g2 lint
-	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/webtool-bin")
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-admin/webtool-bin")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass cleanly: %s", lintStr)
@@ -549,7 +549,7 @@ DesktopFile myapp.desktop
 	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
 
 	// Real g2 lint
-	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-misc/myapp-appimage")
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-misc/myapp-appimage")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass: %s", lintStr)
@@ -664,7 +664,7 @@ License Apache-2.0
 	verifyGeneratedG2Metadata(t, overlayDir, ebuildPath)
 
 	// Real g2 lint
-	lintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", "-fail-severity", "error", overlayDir, "app-admin/cmaketool")
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-admin/cmaketool")
 	lintOut, err := lintCmd.CombinedOutput()
 	lintStr := string(lintOut)
 	require.NoError(t, err, "real g2 lint must pass: %s", lintStr)
@@ -735,4 +735,387 @@ func verifyGeneratedG2Metadata(t *testing.T, overlayDir, ebuildPath string) {
 		}
 	}
 	require.ElementsMatch(t, expectedDist, actualDist)
+}
+
+// TestIssue194_ReproduceAndVerifySharedUpdaterLintGating reproduces the operational
+// failure reported in issue #194 / arrans_overlay PR #991 (run 42464010784)
+// and asserts that the updated template ordering and severity threshold unblock publication.
+func TestIssue194_ReproduceAndVerifySharedUpdaterLintGating(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupHermeticG2Overlay(t)
+	defer cleanup()
+
+	// Ensure md5-cache directory exists so g2 lint evaluates cache presence
+	require.NoError(t, os.MkdirAll(filepath.Join(overlayDir, "metadata", "md5-cache", "app-text"), 0755))
+
+	tarAmd64 := createTarGzFixture(t, []string{"header", "README.md", "LICENSE"})
+	tarArm64 := createTarGzFixture(t, []string{"header", "README.md", "LICENSE"})
+	tar386 := createTarGzFixture(t, []string{"header", "README.md", "LICENSE"})
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		path := r.URL.Path
+		switch {
+		case strings.Contains(path, "386"):
+			_, _ = w.Write(tar386)
+		case strings.Contains(path, "arm64"):
+			_, _ = w.Write(tarArm64)
+		default:
+			_, _ = w.Write(tarAmd64)
+		}
+	}))
+	defer server.Close()
+
+	// Downstream app-text/header-bin configuration from current.config
+	configString := `Type Github Binary Release
+GithubProjectUrl https://github.com/arran4/header
+Category app-text
+EbuildName header-bin.ebuild
+Description Go CLI and library for extracting, validating, editing and visualizing website metadata
+Homepage https://github.com/arran4/header
+License MIT
+ProgramName header
+Document amd64=>header_${VERSION}_linux_amd64.tar.gz > LICENSE > LICENSE
+Document amd64=>header_${VERSION}_linux_amd64.tar.gz > README.md > README.md
+Document arm64=>header_${VERSION}_linux_arm64.tar.gz > LICENSE > LICENSE
+Document arm64=>header_${VERSION}_linux_arm64.tar.gz > README.md > README.md
+Document x86=>header_${VERSION}_linux_386.tar.gz > LICENSE > LICENSE
+Document x86=>header_${VERSION}_linux_386.tar.gz > README.md > README.md
+Binary amd64=>header_${VERSION}_linux_amd64.tar.gz > header > header
+Binary arm64=>header_${VERSION}_linux_arm64.tar.gz > header > header
+Binary x86=>header_${VERSION}_linux_386.tar.gz > header > header
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	testDate := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	err = configs[0].GenerateGithubWorkflow("test.config", testDate, tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-text-header-bin-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	stepMap := make(map[string]map[string]any)
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if name, ok := step["name"].(string); ok {
+			stepMap[name] = step
+		}
+	}
+
+	// Verify step existence and attributes
+	require.Contains(t, stepMap, "Generate md5-cache")
+	require.Contains(t, stepMap, "Lint output")
+	require.Contains(t, stepMap, "Commit and push changes")
+
+	lintStep := stepMap["Lint output"]
+	withMap := lintStep["with"].(map[string]any)
+	actionStr := withMap["action"].(string)
+	require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", actionStr)
+	require.NotContains(t, actionStr, "PG0802")
+
+	// Mock gh to return tag v0.0.5
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	ghMock := filepath.Join(binDir, "gh")
+	require.NoError(t, os.WriteFile(ghMock, []byte("#!/bin/sh\necho 'v0.0.5'\n"), 0755))
+
+	githubOutput := filepath.Join(overlayDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(overlayDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	processStep := stepMap["Process each release"]
+	processScript := processStep["run"].(string)
+	resolvedProcess := resolveWorkflowEnv(processScript, workflow)
+	resolvedProcess = strings.ReplaceAll(resolvedProcess, "https://github.com/arran4/header/releases/download/${tag}/", server.URL+"/arran4/header/releases/download/${tag}/")
+
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=header-bin\nPV=0.0.5\nset -euo pipefail\n"+resolvedProcess)
+	cmd.Dir = overlayDir
+	cmd.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Process each release failed: %s", string(out))
+
+	pkgDir := filepath.Join(overlayDir, "app-text", "header-bin")
+	ebuildPath := filepath.Join(pkgDir, "header-bin-0.0.5.ebuild")
+	ebuildBytes, err := os.ReadFile(ebuildPath)
+	require.NoError(t, err)
+	ebuildContent := string(ebuildBytes)
+
+	// Verify intact, indivisible URLs exceeding 80 characters
+	require.Contains(t, ebuildContent, `KEYWORDS="~amd64 ~arm64 ~x86"`)
+	var hasLongLine bool
+	for _, l := range strings.Split(ebuildContent, "\n") {
+		if len(l) > 80 {
+			hasLongLine = true
+			break
+		}
+	}
+	require.True(t, hasLongLine, "generated ebuild must have line >80 cols to test indivisible URLs")
+
+	// Phase 1: Demonstrate old failure (without cache generate and default fail-severity warning)
+	oldLintCmd := exec.Command("g2", "lint", "-disable-rule", "PG0802", overlayDir, "app-text/header-bin")
+	oldLintOut, oldLintErr := oldLintCmd.CombinedOutput()
+	require.Error(t, oldLintErr, "old lint configuration must fail on warnings: %s", string(oldLintOut))
+	require.Contains(t, string(oldLintOut), "exceeding 80 positions")
+	require.Contains(t, string(oldLintOut), "Missing md5-cache for ebuild header-bin-0.0.5")
+
+	// Phase 2: Execute new Generate md5-cache step script
+	cacheStep := stepMap["Generate md5-cache"]
+	cacheScript := resolveWorkflowEnv(cacheStep["run"].(string), workflow)
+	cacheCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+cacheScript)
+	cacheCmd.Dir = overlayDir
+	cacheOut, err := cacheCmd.CombinedOutput()
+	require.NoError(t, err, "Generate md5-cache step failed: %s", string(cacheOut))
+
+	md5CachePath := filepath.Join(overlayDir, "metadata", "md5-cache", "app-text", "header-bin-0.0.5")
+	_, err = os.Stat(md5CachePath)
+	require.NoError(t, err, "md5-cache file must exist prior to lint")
+
+	// Phase 3: Execute Lint output with -fail-severity error
+	resolvedAction := resolveWorkflowEnv(actionStr, workflow)
+	lintFields := strings.Fields(resolvedAction)
+	require.Equal(t, "lint", lintFields[0])
+	newLintCmd := exec.Command("g2", lintFields...)
+	newLintCmd.Dir = overlayDir
+	newLintOut, err := newLintCmd.CombinedOutput()
+	newLintStr := string(newLintOut)
+	require.NoError(t, err, "Lint output with -fail-severity error must succeed: %s", newLintStr)
+
+	// Missing md5-cache must be completely eliminated
+	require.NotContains(t, newLintStr, "Missing md5-cache")
+
+	// Non-fatal warnings (e.g. line length > 80) must remain visible in output for diagnosis
+	require.Contains(t, newLintStr, "exceeding 80 positions")
+	require.NotContains(t, newLintStr, "[Error]")
+}
+
+// TestIssue194_NegativeGate_BlocksInvalidPublication tests that genuine errors
+// in ebuilds, Manifests, or metadata still fail g2 lint under -fail-severity error,
+// preventing publication of corrupted or invalid packages.
+func TestIssue194_NegativeGate_BlocksInvalidPublication(t *testing.T) {
+	verifyG2Available(t)
+
+	tests := []struct {
+		name        string
+		setup       func(t *testing.T, pkgDir string)
+		expectError string
+	}{
+		{
+			name: "Missing Manifest file",
+			setup: func(t *testing.T, pkgDir string) {
+				writeValidMetadataXml(t, pkgDir)
+				writeValidEbuild(t, pkgDir)
+			},
+			expectError: "[Error] Missing or unparsable Manifest file",
+		},
+		{
+			name: "Distfile missing from Manifest",
+			setup: func(t *testing.T, pkgDir string) {
+				writeValidMetadataXml(t, pkgDir)
+				require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "Manifest"),
+					[]byte("DIST other.tar.gz 100 BLAKE2B 123 SHA512 456\n"), 0644))
+				require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "testpkg-1.0.0.ebuild"), []byte(`EAPI=8
+DESCRIPTION="Valid description with enough characters"
+HOMEPAGE="https://example.com"
+SRC_URI="https://example.com/missing.tar.gz"
+LICENSE="MIT"
+SLOT="0"
+KEYWORDS="~amd64"
+`), 0644))
+			},
+			expectError: "distfile missing from Manifest: [ missing.tar.gz ]",
+		},
+		{
+			name: "Invalid or missing metadata.xml",
+			setup: func(t *testing.T, pkgDir string) {
+				require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "Manifest"), []byte(""), 0644))
+				writeValidEbuild(t, pkgDir)
+			},
+			expectError: "[Error] Invalid or missing metadata.xml",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			overlayDir, cleanup := setupHermeticG2Overlay(t)
+			defer cleanup()
+
+			pkgDir := filepath.Join(overlayDir, "app-text", "testpkg")
+			require.NoError(t, os.MkdirAll(pkgDir, 0755))
+			tc.setup(t, pkgDir)
+
+			// Generate cache
+			_ = exec.Command("g2", "cache", "generate", "-repo", overlayDir, "app-text/testpkg").Run()
+
+			// Run lint with the updater policy: -fail-severity error (without obsolete -disable-rule PG0802)
+			lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-text/testpkg")
+			out, err := lintCmd.CombinedOutput()
+			require.Error(t, err, "lint must fail for %s: %s", tc.name, string(out))
+			require.Contains(t, string(out), tc.expectError)
+		})
+	}
+}
+
+func writeValidMetadataXml(t *testing.T, pkgDir string) {
+	t.Helper()
+	xmlContent := `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>test@example.com</email>
+	</maintainer>
+</pkgmetadata>
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "metadata.xml"), []byte(xmlContent), 0644))
+}
+
+func writeValidEbuild(t *testing.T, pkgDir string) {
+	t.Helper()
+	ebuildContent := `# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+EAPI=8
+DESCRIPTION="Valid test package description with length"
+HOMEPAGE="https://example.com"
+LICENSE="MIT"
+SLOT="0"
+KEYWORDS="~amd64"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "testpkg-1.0.0.ebuild"), []byte(ebuildContent), 0644))
+}
+
+// TestIssue194_AppImage_UpdaterLintGating verifies that Github AppImage release
+// updater workflows correctly generate md5-cache before linting and pass real g2 lint.
+func TestIssue194_AppImage_UpdaterLintGating(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupHermeticG2Overlay(t)
+	defer cleanup()
+
+	require.NoError(t, os.MkdirAll(filepath.Join(overlayDir, "metadata", "md5-cache", "app-misc"), 0755))
+
+	appImageData := []byte("#!/bin/sh\necho 'AppImage mock'\n")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, _ = w.Write(appImageData)
+	}))
+	defer server.Close()
+
+	configString := `Type Github AppImage Release
+GithubProjectUrl https://github.com/myorg/myapp
+EbuildName myapp-appimage
+Category app-misc
+Description Desktop AppImage Application
+Homepage https://myorg.github.io/myapp
+License AGPL-3
+Binary amd64=>myapp-${TAG}-x86_64.AppImage > myapp.AppImage
+DesktopFile myapp.desktop
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	testDate := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	err = configs[0].GenerateGithubWorkflow("test.config", testDate, tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-misc-myapp-appimage-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	stepMap := make(map[string]map[string]any)
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if name, ok := step["name"].(string); ok {
+			stepMap[name] = step
+		}
+	}
+
+	require.Contains(t, stepMap, "Generate md5-cache")
+	require.Contains(t, stepMap, "Lint output")
+	require.Contains(t, stepMap, "Commit and push changes")
+
+	actionStr := stepMap["Lint output"]["with"].(map[string]any)["action"].(string)
+	require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", actionStr)
+	require.NotContains(t, actionStr, "PG0802")
+
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	ghMock := filepath.Join(binDir, "gh")
+	require.NoError(t, os.WriteFile(ghMock, []byte("#!/bin/sh\necho 'v1.0.0'\n"), 0755))
+
+	githubOutput := filepath.Join(overlayDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(overlayDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	processStep := stepMap["Process each release"]
+	processScript := processStep["run"].(string)
+	resolvedProcess := resolveWorkflowEnv(processScript, workflow)
+	resolvedProcess = strings.ReplaceAll(resolvedProcess, "https://github.com/myorg/myapp/releases/download/${tag}/", server.URL+"/")
+
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=myapp-appimage\nPV=1.0.0\nset -euo pipefail\n"+resolvedProcess)
+	cmd.Dir = overlayDir
+	cmd.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Process each release failed: %s", string(out))
+
+	// Execute Generate md5-cache
+	cacheStep := stepMap["Generate md5-cache"]
+	cacheScript := resolveWorkflowEnv(cacheStep["run"].(string), workflow)
+	cacheCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+cacheScript)
+	cacheCmd.Dir = overlayDir
+	cacheOut, err := cacheCmd.CombinedOutput()
+	require.NoError(t, err, "Generate md5-cache step failed: %s", string(cacheOut))
+
+	md5CachePath := filepath.Join(overlayDir, "metadata", "md5-cache", "app-misc", "myapp-appimage-1.0.0")
+	_, err = os.Stat(md5CachePath)
+	require.NoError(t, err, "md5-cache file must exist prior to lint")
+
+	// Execute Lint output with real g2
+	resolvedAction := resolveWorkflowEnv(actionStr, workflow)
+	lintFields := strings.Fields(resolvedAction)
+	newLintCmd := exec.Command("g2", lintFields...)
+	newLintCmd.Dir = overlayDir
+	newLintOut, err := newLintCmd.CombinedOutput()
+	require.NoError(t, err, "AppImage lint output must pass: %s", string(newLintOut))
 }
