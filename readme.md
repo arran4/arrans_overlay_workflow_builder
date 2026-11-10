@@ -370,3 +370,29 @@ Package-license normalization remains #173; ebuild/Manifest publication remains
 provenance comment's width) is explicitly disabled in these fixture lint runs;
 other source width assertions permit only a single indivisible SRC_URI URL
 that exceeds the available width, without exempting other text on the line.
+
+### Metadata cache generation and master repository context
+
+Generated updater workflows include a `Generate md5-cache` step before `Lint output`.
+Metadata cache generation complies with PMS Chapter 14 and `g2` authoritative reconciliation:
+
+* **Ordinary binary packages** (which do not inherit external eclasses) authoritatively generate
+  and verify `metadata/md5-cache` directly on standard CI runners without requiring master repositories
+  or Portage.
+* **Multi-master repositories** (e.g., `masters = gentoo guru hyproverlay` in `metadata/layout.conf`)
+  are parsed and resolved against available local paths:
+  * Environment mappings via `G2_MASTER_REPOS` (comma-separated `name=path` pairs).
+  * Portage configuration via `PORTAGE_REPOS_CONF` or `/etc/portage/repos.conf`.
+  * Standard repository directories in `/var/db/repos/<name>`, `${G2_MASTER_REPO_DIR}/<name>`,
+    `../<name>`, or `${RUNNER_TEMP}/repos/<name>`.
+* **Missing master repositories and Portage evaluation in CI**:
+  * When an ebuild inherits external eclasses (e.g., AppImages with desktop files inheriting `xdg-utils`)
+    and the runner lacks master repository trees, cache generation is skipped with an explicit notice
+    per G2's CI policy (`Authoritative md5-cache generation requires unavailable master repository context (...)`).
+    No partial, unverified, or fabricated cache files are staged or committed.
+  * When master repositories are provided but an eclass contains PMS control flow requiring dynamic
+    Portage evaluation (such as `case ${EAPI} in` in `xdg-utils.eclass`), the step detects whether
+    `portageq` is available. If unavailable, it skips cache generation with an explicit notice rather
+    than producing non-authoritative metadata.
+  * Genuine ebuild defects, Manifest mismatches, or missing dependencies still fail closed under
+    `g2 lint -fail-severity error` and prevent publication.

@@ -231,8 +231,11 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 				t.Fatalf("neither check-and-create-ebuild nor fetch-latest found in workflow")
 			}
 
-			var lintAction, commitRun string
+			var lintAction, commitRun, cacheRun string
 			for _, step := range job.Steps {
+				if step.Name == "Generate md5-cache" {
+					cacheRun = step.Run
+				}
 				if step.Name == "Lint output" {
 					lintAction = step.With["action"]
 				}
@@ -244,6 +247,12 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 			require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", lintAction)
 			require.NotContains(t, lintAction, "PG0802", "PG0802 must never be conditionally suppressed")
 			require.NotContains(t, commitRun, "metadata/md5-cache", "disabled GenerateMd5Cache must not stage md5-cache")
+			require.Contains(t, cacheRun, "masters_line=$(grep -E '^[ \\t]*masters[ \\t]*=' metadata/layout.conf",
+				"Generate md5-cache step must inspect declared masters in layout.conf")
+			require.Contains(t, cacheRun, "unavailable masters permitted by CI policy",
+				"Generate md5-cache step must handle unavailable masters permitted by CI policy")
+			require.Contains(t, cacheRun, "canonical cache metadata requires Portage evaluation",
+				"Generate md5-cache step must handle Portage evaluation requirement")
 		})
 
 		t.Run(tc.name+"/EnabledViaConfigFeature", func(t *testing.T) {
@@ -278,8 +287,11 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 				t.Fatalf("neither check-and-create-ebuild nor fetch-latest found in workflow")
 			}
 
-			var lintAction, commitRun string
+			var lintAction, commitRun, cacheRun string
 			for _, step := range job.Steps {
+				if step.Name == "Generate md5-cache" {
+					cacheRun = step.Run
+				}
 				if step.Name == "Lint output" {
 					lintAction = step.With["action"]
 				}
@@ -292,6 +304,9 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 			require.NotContains(t, lintAction, "PG0802")
 			require.Contains(t, commitRun, "git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true",
 				"enabled GenerateMd5Cache via config must stage md5-cache")
+			require.Contains(t, cacheRun, "masters_line=$(grep -E '^[ \\t]*masters[ \\t]*=' metadata/layout.conf")
+			require.Contains(t, cacheRun, "unavailable masters permitted by CI policy")
+			require.Contains(t, cacheRun, "canonical cache metadata requires Portage evaluation")
 		})
 
 		t.Run(tc.name+"/EnabledViaGlobalOption", func(t *testing.T) {
@@ -326,8 +341,11 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 				t.Fatalf("neither check-and-create-ebuild nor fetch-latest found in workflow")
 			}
 
-			var lintAction, commitRun string
+			var lintAction, commitRun, cacheRun string
 			for _, step := range job.Steps {
+				if step.Name == "Generate md5-cache" {
+					cacheRun = step.Run
+				}
 				if step.Name == "Lint output" {
 					lintAction = step.With["action"]
 				}
@@ -340,6 +358,9 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 			require.NotContains(t, lintAction, "PG0802")
 			require.Contains(t, commitRun, "git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true",
 				"enabled GenerateMd5Cache via option must stage md5-cache")
+			require.Contains(t, cacheRun, "masters_line=$(grep -E '^[ \\t]*masters[ \\t]*=' metadata/layout.conf")
+			require.Contains(t, cacheRun, "unavailable masters permitted by CI policy")
+			require.Contains(t, cacheRun, "canonical cache metadata requires Portage evaluation")
 		})
 	}
 }
