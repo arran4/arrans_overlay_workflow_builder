@@ -389,14 +389,33 @@ jobs:
         run: |
           ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
           backup_dir=$(mktemp -d)
-          cp -a "${ebuild_dir}"/. "${backup_dir}"/
+          mkdir -p "${backup_dir}/ebuild"
+          cp -a "${ebuild_dir}"/. "${backup_dir}/ebuild"/
+          for cache_root in "metadata/md5-cache" "metadata/cache"; do
+            cache_dir="./${cache_root}/${{ env.ecn }}"
+            if [ -d "${cache_dir}" ]; then
+              mkdir -p "${backup_dir}/${cache_root}"
+              find "${cache_dir}" -maxdepth 1 -name "${{ env.epn }}-[0-9]*" -exec cp -a {} "${backup_dir}/${cache_root}"/ \;
+            fi
+          done
+          restore_dedup_snapshot() {
+            find "${ebuild_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            cp -a "${backup_dir}/ebuild"/. "${ebuild_dir}"/
+            for cache_root in "metadata/md5-cache" "metadata/cache"; do
+              cache_dir="./${cache_root}/${{ env.ecn }}"
+              if [ -d "${backup_dir}/${cache_root}" ]; then
+                mkdir -p "${cache_dir}"
+                cp -a "${backup_dir}/${cache_root}"/. "${cache_dir}"/
+              fi
+            done
+          }
           dedup_err=$(mktemp)
           if g2 ebuild deduplicate "${ebuild_dir}" 2>"${dedup_err}"; then
             :
           else
             dedup_rc=$?
             cat "${dedup_err}" >&2
-            cp -a "${backup_dir}"/. "${ebuild_dir}"/
+            restore_dedup_snapshot
             rm -rf "${backup_dir}" "${dedup_err}"
             exit "${dedup_rc}"
           fi
@@ -406,10 +425,18 @@ jobs:
             skipped_cleanup=1
           fi
           rm -f "${dedup_err}"
-          pre_ebuild_count=$(find "${backup_dir}" -maxdepth 1 -name "*.ebuild" | wc -l)
+          pre_ebuild_count=$(find "${backup_dir}/ebuild" -maxdepth 1 -name "*.ebuild" | wc -l)
           post_ebuild_count=$(find "${ebuild_dir}" -maxdepth 1 -name "*.ebuild" | wc -l)
           manifest_verify_err=$(mktemp)
-          g2 manifest verify "${ebuild_dir}" 2>"${manifest_verify_err}" || true
+          if g2 manifest verify "${ebuild_dir}" 2>"${manifest_verify_err}"; then
+            :
+          else
+            verify_rc=$?
+            cat "${manifest_verify_err}" >&2
+            restore_dedup_snapshot
+            rm -rf "${backup_dir}" "${manifest_verify_err}"
+            exit "${verify_rc}"
+          fi
           has_extra_dist=0
           if grep -q "EXTRA in manifest:" "${manifest_verify_err}"; then
             has_extra_dist=1
@@ -417,7 +444,7 @@ jobs:
           cat "${manifest_verify_err}" >&2
           rm -f "${manifest_verify_err}"
           if [ "$has_extra_dist" -eq 1 ] && { [ "$skipped_cleanup" -eq 1 ] || [ "$pre_ebuild_count" -gt "$post_ebuild_count" ]; }; then
-            cp -a "${backup_dir}"/. "${ebuild_dir}"/
+            restore_dedup_snapshot
             echo "::notice title=Deduplication deferred::Manifest cleanup was skipped because directory contains uncertain ebuilds; retaining older ebuilds to maintain Manifest consistency."
           fi
           rm -rf "${backup_dir}"

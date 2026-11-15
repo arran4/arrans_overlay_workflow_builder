@@ -87,6 +87,8 @@ elif [[ "$1" == "manifest" && "$2" == "upsert-from-url" ]]; then
 	echo "g2 manifest called"
 	# Log invocation to a fixture file
 	echo "$@" >> "${RUNNER_TEMP}/g2_manifest_log.txt"
+elif [[ "$1" == "manifest" && "$2" == "verify" ]]; then
+	echo "g2 manifest verify called"
 else
 	echo "Unknown g2 command: $@" >&2
 	exit 1
@@ -382,6 +384,8 @@ elif [[ "$1" == "cache" && "$2" == "generate" ]]; then
 elif [[ "$1" == "manifest" && "$2" == "upsert-from-url" ]]; then
 	echo "g2 manifest called"
 	echo "$@" >> "${RUNNER_TEMP}/g2_manifest_log.txt"
+elif [[ "$1" == "manifest" && "$2" == "verify" ]]; then
+	echo "g2 manifest verify called"
 else
 	echo "Unknown g2 command: $@" >&2
 	exit 1

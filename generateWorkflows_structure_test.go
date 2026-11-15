@@ -493,12 +493,14 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 
 			require.NotEmpty(t, dedupRun, "Deduplicate ebuilds step must be present and non-empty")
 			require.Contains(t, dedupRun, "backup_dir=$(mktemp -d)", "must snapshot ebuild_dir to backup_dir")
+			require.Contains(t, dedupRun, "metadata/md5-cache", "must include metadata/md5-cache in rollback snapshot")
 			require.Contains(t, dedupRun, "g2 ebuild deduplicate \"${ebuild_dir}\"", "must run g2 ebuild deduplicate")
 			require.Contains(t, dedupRun, "skipped cleanup: directory contains uncertain ebuilds", "must detect uncertain ebuilds cleanup skip")
 			require.Contains(t, dedupRun, "g2 manifest verify \"${ebuild_dir}\"", "must verify manifest after deduplication")
+			require.NotContains(t, dedupRun, "g2 manifest verify \"${ebuild_dir}\" 2>\"${manifest_verify_err}\" || true", "must not swallow manifest verify failures")
 			require.Contains(t, dedupRun, "EXTRA in manifest:", "must detect extra manifest entries")
 			require.Contains(t, dedupRun, "retaining older ebuilds to maintain Manifest consistency", "must log notice when deduplication is deferred")
-			require.Contains(t, dedupRun, "cp -a \"${backup_dir}\"/. \"${ebuild_dir}\"/", "must restore from backup on fallback or error")
+			require.Contains(t, dedupRun, "restore_dedup_snapshot", "must restore full snapshot on fallback or error")
 		})
 	}
 }
