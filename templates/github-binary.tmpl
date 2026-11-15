@@ -319,8 +319,7 @@ jobs:
 
       - name: Deduplicate ebuilds
         run: |
-          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          g2 ebuild deduplicate "${ebuild_dir}"
+[[- template "ebuild_deduplicate" . ]]
 
 [[- if .FeatureGenerateOverlay ]]
       - name: Generate Overlay

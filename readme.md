@@ -396,3 +396,26 @@ Metadata cache generation complies with PMS Chapter 14 and `g2` authoritative re
     than producing non-authoritative metadata.
   * Genuine ebuild defects, Manifest mismatches, or missing dependencies still fail closed under
     `g2 lint -fail-severity error` and prevent publication.
+
+### Ebuild deduplication and Manifest consistency lifecycle
+
+Generated updater workflows include an `Ebuild deduplicate` step before `Generate md5-cache` and `Lint output`.
+Package deduplication and Manifest reconciliation maintain transactional consistency:
+
+* **Transactional snapshot**: Before invoking deduplication, the workflow snapshots the package directory
+  and matching `metadata/md5-cache` / `metadata/cache` entries to an isolated temporary backup directory.
+* **Authoritative deduplication**: For packages where all referenced distfiles can be evaluated authoritatively
+  (such as binary packages with static `SRC_URI`), `g2 ebuild deduplicate` removes superseded ebuilds, their
+  obsolete cache entries, and prunes obsolete distfiles from `Manifest`.
+* **Uncertain source fallback and consistency preservation**: When a package inherits external eclasses
+  (e.g., AppImages inheriting `xdg-utils`), G2's source evaluation without full Portage runtime context
+  treats `SRC_URI` as uncertain. `g2 ebuild deduplicate` removes older duplicate ebuilds and their cache entries
+  but skips `CleanManifest`, which would leave orphaned `DIST` entries in `Manifest` and subsequently fail
+  `g2 lint -fail-severity error`. The workflow detects skipped cleanup and unreferenced distfiles (`g2 manifest verify`),
+  and restores both the package directory and cache entries from the backup snapshot. Both older and newer ebuilds
+  are retained along with their valid distfiles and cache entries, emitting a GitHub Actions notice:
+  `::notice title=Deduplication deferred::Manifest cleanup was skipped because directory contains uncertain ebuilds; retaining older ebuilds to maintain Manifest consistency.`
+* **Fail-closed error handling**: If `g2 ebuild deduplicate` or `g2 manifest verify` fails (exits non-zero),
+  both the package directory and cache entries are restored from the snapshot before failing closed, ensuring
+  that no partially deleted or inconsistent package state is committed.
+
