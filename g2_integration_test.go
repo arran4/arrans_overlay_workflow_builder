@@ -1653,3 +1653,595 @@ Binary amd64=>mytool-${TAG}-linux-amd64.tar.gz > mytool > mytool
 	require.NoError(t, err, "real g2 lint must pass: %s", string(lintOut))
 	require.NotContains(t, string(lintOut), "[Error]")
 }
+
+// TestIssue1034_Scenario1_AppImageUpgrade_UnavailableMasters_ConsistentManifest reproduces the exact failure
+// observed in arrans_overlay PR #991 / issue #1034:
+// Upgrading an AppImage ebuild (inheriting xdg-utils) on a runner without Gentoo master context.
+// Deduplication runs g2 ebuild deduplicate, which removes the older 0.1.35 ebuild but skips Manifest
+// cleanup because 0.1.46 is uncertain.
+// The workflow detects unauthoritative cleanup and extra manifest entries, and safely retains older
+// ebuilds so that strict g2 lint passes with zero errors and no orphaned DIST entries.
+func TestIssue1034_Scenario1_AppImageUpgrade_UnavailableMasters_ConsistentManifest(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupMultiMasterG2Overlay(t, "gentoo guru hyproverlay")
+	defer cleanup()
+
+	appImageData := []byte("#!/bin/sh\necho 'flutter-google-datastore mock'\n")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, _ = w.Write(appImageData)
+	}))
+	defer server.Close()
+
+	// Pre-seed 0.1.35 ebuild and Manifest
+	pkgDir := filepath.Join(overlayDir, "app-misc", "flutter-google-datastore-appimage")
+	require.NoError(t, os.MkdirAll(pkgDir, 0755))
+	ebuild0135 := `# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+inherit xdg-utils
+
+DESCRIPTION="Flutter Google Datastore AppImage"
+HOMEPAGE="https://github.com/arran4/flutter-google-datastore"
+SRC_URI="https://github.com/arran4/flutter-google-datastore/releases/download/v0.1.35/flutter_google_datastore-v0.1.35-linux.AppImage -> flutter-google-datastore-appimage-0.1.35-flutter_google_datastore-0.1.35-linux.AppImage"
+LICENSE="AGPL-3"
+SLOT="0"
+KEYWORDS="~amd64"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "flutter-google-datastore-appimage-0.1.35.ebuild"), []byte(ebuild0135), 0644))
+	manifest0135 := `DIST flutter-google-datastore-appimage-0.1.35-flutter_google_datastore-0.1.35-linux.AppImage 47 BLAKE2B a3087d782d9437391d04700c0d97e0db28eb4767654a50d08e2c5920d00016a1504dfd76f34a40000645ffbeb0410170462432f1a04bc704800a88bd165ca852 SHA512 c643c3335df4549bed685f3f58e6970c513cacf6b9f8ba244bb64379f90022e2f1b102eeb9ea7a8b186c08a98c6561c411f9b644ef8abbd61e3c0eed116c5472
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "Manifest"), []byte(manifest0135), 0644))
+
+	metadataXML := `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>test@example.com</email>
+		<name>Test</name>
+	</maintainer>
+</pkgmetadata>
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "metadata.xml"), []byte(metadataXML), 0644))
+
+	configString := `Type Github AppImage Release
+GithubProjectUrl https://github.com/arran4/flutter-google-datastore
+EbuildName flutter-google-datastore-appimage
+Category app-misc
+Description Flutter Google Datastore AppImage
+Homepage https://github.com/arran4/flutter-google-datastore
+License AGPL-3
+Binary amd64=>flutter_google_datastore-${TAG}-linux.AppImage > flutter-google-datastore.AppImage
+DesktopFile flutter-google-datastore.desktop
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	testDate := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	err = configs[0].GenerateGithubWorkflow("test.config", testDate, tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-misc-flutter-google-datastore-appimage-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	stepMap := make(map[string]map[string]any)
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if name, ok := step["name"].(string); ok {
+			stepMap[name] = step
+		}
+	}
+
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	ghMock := filepath.Join(binDir, "gh")
+	require.NoError(t, os.WriteFile(ghMock, []byte("#!/bin/sh\necho 'v0.1.46'\n"), 0755))
+
+	githubOutput := filepath.Join(overlayDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(overlayDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	// Step 1: Process each release
+	processStep := stepMap["Process each release"]
+	processScript := processStep["run"].(string)
+	resolvedProcess := resolveWorkflowEnv(processScript, workflow)
+	resolvedProcess = strings.ReplaceAll(resolvedProcess, "https://github.com/arran4/flutter-google-datastore/releases/download/${tag}/", server.URL+"/")
+
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=flutter-google-datastore-appimage\nPV=0.1.46\nset -euo pipefail\n"+resolvedProcess)
+	cmd.Dir = overlayDir
+	cmd.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	procOut, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Process each release failed: %s", string(procOut))
+
+	// Verify 0.1.46 ebuild was generated with AGPL-3
+	ebuild0146Path := filepath.Join(pkgDir, "flutter-google-datastore-appimage-0.1.46.ebuild")
+	ebuild0146Bytes, err := os.ReadFile(ebuild0146Path)
+	require.NoError(t, err)
+	require.Contains(t, string(ebuild0146Bytes), `AGPL-3`)
+
+	// Step 2: Deduplicate ebuilds
+	dedupStep := stepMap["Deduplicate ebuilds"]
+	dedupScript := resolveWorkflowEnv(dedupStep["run"].(string), workflow)
+	dedupCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+dedupScript)
+	dedupCmd.Dir = overlayDir
+	dedupOut, err := dedupCmd.CombinedOutput()
+	require.NoError(t, err, "Deduplicate ebuilds step must succeed: %s", string(dedupOut))
+	require.Contains(t, string(dedupOut), "Deduplication deferred")
+
+	// Both ebuilds must be present
+	_, stat0135 := os.Stat(filepath.Join(pkgDir, "flutter-google-datastore-appimage-0.1.35.ebuild"))
+	require.NoError(t, stat0135, "0.1.35 ebuild must be retained when manifest cleanup was skipped")
+	_, stat0146 := os.Stat(ebuild0146Path)
+	require.NoError(t, stat0146, "0.1.46 ebuild must be present")
+
+	// Manifest must contain both distfiles without orphaned entries
+	manifestBytes, err := os.ReadFile(filepath.Join(pkgDir, "Manifest"))
+	require.NoError(t, err)
+	require.Contains(t, string(manifestBytes), "0.1.35")
+	require.Contains(t, string(manifestBytes), "0.1.46")
+
+	// Step 3: Generate md5-cache (must skip cleanly per CI policy)
+	cacheStep := stepMap["Generate md5-cache"]
+	cacheScript := resolveWorkflowEnv(cacheStep["run"].(string), workflow)
+	cacheCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+cacheScript)
+	cacheCmd.Dir = overlayDir
+	cacheOut, err := cacheCmd.CombinedOutput()
+	require.NoError(t, err, "Generate md5-cache must succeed in CI mode: %s", string(cacheOut))
+	require.Contains(t, string(cacheOut), "Authoritative md5-cache generation requires unavailable master repository context")
+
+	// Step 4: Lint output
+	actionStr := stepMap["Lint output"]["with"].(map[string]any)["action"].(string)
+	resolvedAction := resolveWorkflowEnv(actionStr, workflow)
+	lintFields := strings.Fields(resolvedAction)
+	lintCmd := exec.Command("g2", lintFields...)
+	lintCmd.Dir = overlayDir
+	lintOut, err := lintCmd.CombinedOutput()
+	require.NoError(t, err, "real g2 lint must pass: %s", string(lintOut))
+	require.NotContains(t, string(lintOut), "[Error]")
+	require.NotContains(t, string(lintOut), "Manifest entry for unused DIST file")
+}
+
+// TestIssue1034_Scenario2_AuthoritativeSourceResolution_CleansManifest verifies that ordinary binary releases
+// without eclass dependencies authoritatively deduplicate ebuilds and clean obsolete Manifest entries.
+func TestIssue1034_Scenario2_AuthoritativeSourceResolution_CleansManifest(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupHermeticG2Overlay(t)
+	defer cleanup()
+
+	tarData := createTarGzFixture(t, []string{"mytool", "README.md", "LICENSE"})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		_, _ = w.Write(tarData)
+	}))
+	defer server.Close()
+
+	// Pre-seed 1.0.0 ebuild and Manifest
+	pkgDir := filepath.Join(overlayDir, "app-admin", "mytool-bin")
+	require.NoError(t, os.MkdirAll(pkgDir, 0755))
+	ebuild100 := `# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+DESCRIPTION="Developer utility tool"
+HOMEPAGE="https://myorg.github.io/mytool"
+SRC_URI="https://github.com/myorg/mytool/releases/download/v1.0.0/mytool-v1.0.0-linux-amd64.tar.gz -> mytool-bin-1.0.0-mytool-1.0.0-linux-amd64.tar.gz"
+LICENSE="MIT"
+SLOT="0"
+KEYWORDS="~amd64"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "mytool-bin-1.0.0.ebuild"), []byte(ebuild100), 0644))
+	// Upsert manifest entry for 1.0.0 using real g2
+	manifestUpsertCmd := exec.Command("g2", "manifest", "upsert-from-url", server.URL+"/mytool-v1.0.0-linux-amd64.tar.gz", "mytool-bin-1.0.0-mytool-1.0.0-linux-amd64.tar.gz", filepath.Join(pkgDir, "Manifest"))
+	manifestUpsertOut, err := manifestUpsertCmd.CombinedOutput()
+	require.NoError(t, err, "upsert initial manifest: %s", string(manifestUpsertOut))
+
+	configString := `Type Github Binary Release
+GithubProjectUrl https://github.com/myorg/mytool
+EbuildName mytool-bin
+Category app-admin
+Description Developer utility tool
+Homepage https://myorg.github.io/mytool
+License MIT
+Binary amd64=>mytool-${TAG}-linux-amd64.tar.gz > mytool > mytool
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	testDate := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	err = configs[0].GenerateGithubWorkflow("test.config", testDate, tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-admin-mytool-bin-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	stepMap := make(map[string]map[string]any)
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if name, ok := step["name"].(string); ok {
+			stepMap[name] = step
+		}
+	}
+
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	ghMock := filepath.Join(binDir, "gh")
+	require.NoError(t, os.WriteFile(ghMock, []byte("#!/bin/sh\necho 'v1.1.0'\n"), 0755))
+
+	githubOutput := filepath.Join(overlayDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(overlayDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	// Step 1: Process each release
+	processStep := stepMap["Process each release"]
+	processScript := processStep["run"].(string)
+	resolvedProcess := resolveWorkflowEnv(processScript, workflow)
+	resolvedProcess = strings.ReplaceAll(resolvedProcess, "https://github.com/myorg/mytool/releases/download/${tag}/", server.URL+"/")
+
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=mytool-bin\nPV=1.1.0\nset -euo pipefail\n"+resolvedProcess)
+	cmd.Dir = overlayDir
+	cmd.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	procOut, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Process each release failed: %s", string(procOut))
+
+	// Step 2: Deduplicate ebuilds
+	dedupStep := stepMap["Deduplicate ebuilds"]
+	dedupScript := resolveWorkflowEnv(dedupStep["run"].(string), workflow)
+	dedupCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+dedupScript)
+	dedupCmd.Dir = overlayDir
+	dedupOut, err := dedupCmd.CombinedOutput()
+	require.NoError(t, err, "Deduplicate ebuilds step must succeed: %s", string(dedupOut))
+	require.NotContains(t, string(dedupOut), "Deduplication deferred")
+
+	// Obsolete 1.0.0 ebuild must be removed
+	_, stat100 := os.Stat(filepath.Join(pkgDir, "mytool-bin-1.0.0.ebuild"))
+	require.True(t, os.IsNotExist(stat100), "mytool-bin-1.0.0.ebuild must be removed by authoritative deduplication")
+
+	// 1.1.0 ebuild must be present
+	_, stat110 := os.Stat(filepath.Join(pkgDir, "mytool-bin-1.1.0.ebuild"))
+	require.NoError(t, stat110, "mytool-bin-1.1.0.ebuild must be present")
+
+	// Manifest must only contain 1.1.0 distfile
+	manifestBytes, err := os.ReadFile(filepath.Join(pkgDir, "Manifest"))
+	require.NoError(t, err)
+	require.NotContains(t, string(manifestBytes), "1.0.0")
+	require.Contains(t, string(manifestBytes), "1.1.0")
+
+	// Step 3: Lint output must pass
+	actionStr := stepMap["Lint output"]["with"].(map[string]any)["action"].(string)
+	resolvedAction := resolveWorkflowEnv(actionStr, workflow)
+	lintFields := strings.Fields(resolvedAction)
+	lintCmd := exec.Command("g2", lintFields...)
+	lintCmd.Dir = overlayDir
+	lintOut, err := lintCmd.CombinedOutput()
+	require.NoError(t, err, "real g2 lint must pass: %s", string(lintOut))
+	require.NotContains(t, string(lintOut), "[Error]")
+}
+
+// TestIssue1034_Scenario3_RevisionHandling_GentooSemantics verifies that revision deduplication
+// correctly removes superseded revisions when distfiles remain referenced by the new revision.
+func TestIssue1034_Scenario3_RevisionHandling_GentooSemantics(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupMultiMasterG2Overlay(t, "gentoo guru hyproverlay")
+	defer cleanup()
+
+	pkgDir := filepath.Join(overlayDir, "app-misc", "flutter-google-datastore-appimage")
+	require.NoError(t, os.MkdirAll(pkgDir, 0755))
+
+	ebuildHeader := `# Copyright 2026 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+inherit xdg-utils
+
+DESCRIPTION="Flutter Google Datastore AppImage"
+HOMEPAGE="https://github.com/arran4/flutter-google-datastore"
+SRC_URI="https://github.com/arran4/flutter-google-datastore/releases/download/v0.1.35/flutter_google_datastore-v0.1.35-linux.AppImage -> flutter-google-datastore-appimage-0.1.35-flutter_google_datastore-0.1.35-linux.AppImage"
+LICENSE="AGPL-3"
+SLOT="0"
+KEYWORDS="~amd64"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "flutter-google-datastore-appimage-0.1.35.ebuild"), []byte(ebuildHeader), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "flutter-google-datastore-appimage-0.1.35-r1.ebuild"), []byte(ebuildHeader), 0644))
+
+	manifest0135 := `DIST flutter-google-datastore-appimage-0.1.35-flutter_google_datastore-0.1.35-linux.AppImage 47 BLAKE2B a3087d782d9437391d04700c0d97e0db28eb4767654a50d08e2c5920d00016a1504dfd76f34a40000645ffbeb0410170462432f1a04bc704800a88bd165ca852 SHA512 c643c3335df4549bed685f3f58e6970c513cacf6b9f8ba244bb64379f90022e2f1b102eeb9ea7a8b186c08a98c6561c411f9b644ef8abbd61e3c0eed116c5472
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "Manifest"), []byte(manifest0135), 0644))
+
+	metadataXML := `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>test@example.com</email>
+		<name>Test</name>
+	</maintainer>
+</pkgmetadata>
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "metadata.xml"), []byte(metadataXML), 0644))
+
+	// Create workflow to get deduplicate script
+	configString := `Type Github AppImage Release
+GithubProjectUrl https://github.com/arran4/flutter-google-datastore
+EbuildName flutter-google-datastore-appimage
+Category app-misc
+Description Flutter Google Datastore AppImage
+Homepage https://github.com/arran4/flutter-google-datastore
+License AGPL-3
+Binary amd64=>flutter_google_datastore-${TAG}-linux.AppImage > flutter-google-datastore.AppImage
+`
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+	err = configs[0].GenerateGithubWorkflow("test.config", time.Now(), tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-misc-flutter-google-datastore-appimage-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	var dedupScript string
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if step["name"] == "Deduplicate ebuilds" {
+			dedupScript = resolveWorkflowEnv(step["run"].(string), workflow)
+		}
+	}
+	require.NotEmpty(t, dedupScript)
+
+	dedupCmd := exec.Command("bash", "-c", "set -euo pipefail\n"+dedupScript)
+	dedupCmd.Dir = overlayDir
+	dedupOut, err := dedupCmd.CombinedOutput()
+	require.NoError(t, err, "Deduplicate ebuilds step must succeed: %s", string(dedupOut))
+
+	// Older revision -r0 must be removed; -r1 must remain
+	_, stat0135 := os.Stat(filepath.Join(pkgDir, "flutter-google-datastore-appimage-0.1.35.ebuild"))
+	require.True(t, os.IsNotExist(stat0135), "older revision 0.1.35 must be removed")
+	_, stat0135r1 := os.Stat(filepath.Join(pkgDir, "flutter-google-datastore-appimage-0.1.35-r1.ebuild"))
+	require.NoError(t, stat0135r1, "superseding revision 0.1.35-r1 must remain")
+
+	// Lint must pass
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", ".", "app-misc/flutter-google-datastore-appimage")
+	lintCmd.Dir = overlayDir
+	lintOut, err := lintCmd.CombinedOutput()
+	require.NoError(t, err, "real g2 lint must pass: %s", string(lintOut))
+	require.NotContains(t, string(lintOut), "[Error]")
+}
+
+// TestIssue1034_Scenario4_PartialFailure_RollsBack verifies transactional protection:
+// if deduplication fails midway, the package directory is restored to its exact pre-deduplication state.
+func TestIssue1034_Scenario4_PartialFailure_RollsBack(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupHermeticG2Overlay(t)
+	defer cleanup()
+
+	pkgDir := filepath.Join(overlayDir, "app-admin", "mytool-bin")
+	require.NoError(t, os.MkdirAll(pkgDir, 0755))
+	testContent := "EAPI=8\n# original ebuild\n"
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "mytool-bin-1.0.0.ebuild"), []byte(testContent), 0644))
+
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	// Mock g2 ebuild deduplicate to fail
+	g2Mock := filepath.Join(binDir, "g2")
+	mockScript := `#!/bin/sh
+if [ "$1" = "ebuild" ] && [ "$2" = "deduplicate" ]; then
+    rm -f "$3"/*.ebuild
+    echo "Simulated fatal deduplication crash" >&2
+    exit 42
+fi
+exec /home/user/.local/bin/g2 "$@"
+`
+	require.NoError(t, os.WriteFile(g2Mock, []byte(mockScript), 0755))
+
+	configString := `Type Github Binary Release
+GithubProjectUrl https://github.com/myorg/mytool
+EbuildName mytool-bin
+Category app-admin
+Description Developer utility tool
+Homepage https://myorg.github.io/mytool
+License MIT
+Binary amd64=>mytool-${TAG}-linux-amd64.tar.gz > mytool > mytool
+`
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+	err = configs[0].GenerateGithubWorkflow("test.config", time.Now(), tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-admin-mytool-bin-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	var dedupScript string
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if step["name"] == "Deduplicate ebuilds" {
+			dedupScript = resolveWorkflowEnv(step["run"].(string), workflow)
+		}
+	}
+	require.NotEmpty(t, dedupScript)
+
+	dedupCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+dedupScript)
+	dedupCmd.Dir = overlayDir
+	dedupOut, err := dedupCmd.CombinedOutput()
+	require.Error(t, err, "deduplicate step must fail when g2 crashes")
+	require.Contains(t, string(dedupOut), "Simulated fatal deduplication crash")
+
+	// Transactional invariant: the deleted ebuild was restored by the backup trap!
+	restoredContent, err := os.ReadFile(filepath.Join(pkgDir, "mytool-bin-1.0.0.ebuild"))
+	require.NoError(t, err, "mytool-bin-1.0.0.ebuild must be restored after partial failure")
+	require.Equal(t, testContent, string(restoredContent))
+}
+
+// TestIssue1034_Scenario5_NoChangeUpstream_PreservesPackage verifies that when upstream has no new releases,
+// the package directory is preserved untouched and passes strict lint.
+func TestIssue1034_Scenario5_NoChangeUpstream_PreservesPackage(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupHermeticG2Overlay(t)
+	defer cleanup()
+
+	tarData := createTarGzFixture(t, []string{"mytool", "README.md", "LICENSE"})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		_, _ = w.Write(tarData)
+	}))
+	defer server.Close()
+
+	configString := `Type Github Binary Release
+GithubProjectUrl https://github.com/myorg/mytool
+EbuildName mytool-bin
+Category app-admin
+Description Developer utility tool
+Homepage https://myorg.github.io/mytool
+License MIT
+Binary amd64=>mytool-${TAG}-linux-amd64.tar.gz > mytool > mytool
+`
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+	err = configs[0].GenerateGithubWorkflow("test.config", time.Now(), tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-admin-mytool-bin-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	stepMap := make(map[string]map[string]any)
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if name, ok := step["name"].(string); ok {
+			stepMap[name] = step
+		}
+	}
+
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	// Upstream returns version v1.0.0
+	ghMock := filepath.Join(binDir, "gh")
+	require.NoError(t, os.WriteFile(ghMock, []byte("#!/bin/sh\necho 'v1.0.0'\n"), 0755))
+
+	githubOutput := filepath.Join(overlayDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(overlayDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	processStep := stepMap["Process each release"]
+	processScript := processStep["run"].(string)
+	resolvedProcess := resolveWorkflowEnv(processScript, workflow)
+	resolvedProcess = strings.ReplaceAll(resolvedProcess, "https://github.com/myorg/mytool/releases/download/${tag}/", server.URL+"/")
+
+	// First pass generates 1.0.0
+	cmd1 := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=mytool-bin\nPV=1.0.0\nset -euo pipefail\n"+resolvedProcess)
+	cmd1.Dir = overlayDir
+	cmd1.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd1.Env = append(cmd1.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	procOut1, err := cmd1.CombinedOutput()
+	require.NoError(t, err, "First process pass should generate ebuild: %s", string(procOut1))
+
+	// Second pass with same upstream tag triggers "Matches existing ebuild. Skipping."
+	cmd2 := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=mytool-bin\nPV=1.0.0\nset -euo pipefail\n"+resolvedProcess)
+	cmd2.Dir = overlayDir
+	cmd2.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd2.Env = append(cmd2.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	procOut2, err := cmd2.CombinedOutput()
+	require.NoError(t, err, "Second process pass should detect match: %s", string(procOut2))
+	require.Contains(t, string(procOut2), "Matches existing ebuild. Skipping.")
+
+	// Deduplicate runs and keeps 1.0.0 intact
+	dedupStep := stepMap["Deduplicate ebuilds"]
+	dedupScript := resolveWorkflowEnv(dedupStep["run"].(string), workflow)
+	dedupCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+dedupScript)
+	dedupCmd.Dir = overlayDir
+	dedupOut, err := dedupCmd.CombinedOutput()
+	require.NoError(t, err, "Deduplicate ebuilds step must succeed: %s", string(dedupOut))
+
+	pkgDir := filepath.Join(overlayDir, "app-admin", "mytool-bin")
+	_, stat100 := os.Stat(filepath.Join(pkgDir, "mytool-bin-1.0.0.ebuild"))
+	require.NoError(t, stat100, "1.0.0 ebuild must remain intact")
+
+	// Lint passes
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", ".", "app-admin/mytool-bin")
+	lintCmd.Dir = overlayDir
+	lintOut, err := lintCmd.CombinedOutput()
+	require.NoError(t, err, "real g2 lint must pass: %s", string(lintOut))
+	require.NotContains(t, string(lintOut), "[Error]")
+}

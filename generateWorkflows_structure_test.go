@@ -364,3 +364,142 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 		})
 	}
 }
+
+func TestDeduplicateEbuildsStepStructure(t *testing.T) {
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	type templateCase struct {
+		name    string
+		config  string
+		outFile string
+	}
+
+	cases := []templateCase{
+		{
+			name: "Github Binary",
+			config: `Type Github Binary Release
+GithubProjectUrl https://github.com/test/test
+Category app-admin
+EbuildName test-bin
+Description Test
+Homepage https://example.test/
+License BSD-2-Clause
+Binary amd64=>test-${VERSION}.tar.gz > test > test
+`,
+			outFile: "app-admin-test-bin-update.yaml",
+		},
+		{
+			name: "Github AppImage",
+			config: `Type Github AppImage Release
+GithubProjectUrl https://github.com/test/test
+Category app-misc
+EbuildName test-appimage
+Description Test
+Homepage https://example.test/
+License BSD-2-Clause
+Binary amd64=>test-${TAG}.AppImage > test.AppImage
+`,
+			outFile: "app-misc-test-appimage-update.yaml",
+		},
+		{
+			name: "Github CMake",
+			config: `Type Github Cmake Release
+GithubProjectUrl https://github.com/test/test
+Category app-admin
+EbuildName test-cmake
+Description Test
+Homepage https://example.test/
+License BSD-2-Clause
+`,
+			outFile: "app-admin-test-cmake-update.yaml",
+		},
+		{
+			name: "Web Binary",
+			config: `Type Web Binary
+Category app-admin
+EbuildName test-web-bin
+Description Test
+Homepage https://example.test/
+License BSD-2-Clause
+DownloadBaseUrl https://example.test/downloads/
+TagsCommand curl -s https://example.test/releases
+Binary amd64=>test-${VERSION}.tar.gz > test > test
+`,
+			outFile: "app-admin-test-web-bin-update.yaml",
+		},
+		{
+			name: "Web AppImage",
+			config: `Type Web AppImage
+DownloadPageUrl https://example.test/downloads/
+Category app-misc
+EbuildName test-web-appimage
+Description Test
+Homepage https://example.test/
+License BSD-2-Clause
+Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
+`,
+			outFile: "app-misc-test-web-appimage-update.yaml",
+		},
+	}
+
+	type parsedWorkflow struct {
+		Jobs map[string]struct {
+			Steps []struct {
+				Name string `yaml:"name"`
+				Run  string `yaml:"run"`
+			} `yaml:"steps"`
+		} `yaml:"jobs"`
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			tempDir, cleanup := setupHermeticEnvironment(t)
+			defer cleanup()
+
+			configs, err := ParseInputConfigReader(strings.NewReader(tc.config))
+			require.NoError(t, err)
+			require.Len(t, configs, 1)
+
+			err = configs[0].GenerateGithubWorkflow("test.config", time.Date(2026, 8, 13, 0, 0, 0, 0, time.UTC), tmpls, tempDir, "1.0.0")
+			require.NoError(t, err)
+
+			data, err := os.ReadFile(filepath.Join(tempDir, tc.outFile))
+			require.NoError(t, err)
+
+			var wf parsedWorkflow
+			require.NoError(t, yaml.Unmarshal(data, &wf))
+			var job struct {
+				Steps []struct {
+					Name string `yaml:"name"`
+					Run  string `yaml:"run"`
+				} `yaml:"steps"`
+			}
+			if j, ok := wf.Jobs["check-and-create-ebuild"]; ok {
+				job = j
+			} else if j, ok := wf.Jobs["fetch-latest"]; ok {
+				job = j
+			} else {
+				t.Fatalf("neither check-and-create-ebuild nor fetch-latest found in workflow")
+			}
+
+			var dedupRun string
+			for _, step := range job.Steps {
+				if step.Name == "Deduplicate ebuilds" {
+					dedupRun = step.Run
+				}
+			}
+
+			require.NotEmpty(t, dedupRun, "Deduplicate ebuilds step must be present and non-empty")
+			require.Contains(t, dedupRun, "backup_dir=$(mktemp -d)", "must snapshot ebuild_dir to backup_dir")
+			require.Contains(t, dedupRun, "g2 ebuild deduplicate \"${ebuild_dir}\"", "must run g2 ebuild deduplicate")
+			require.Contains(t, dedupRun, "skipped cleanup: directory contains uncertain ebuilds", "must detect uncertain ebuilds cleanup skip")
+			require.Contains(t, dedupRun, "g2 manifest verify \"${ebuild_dir}\"", "must verify manifest after deduplication")
+			require.Contains(t, dedupRun, "EXTRA in manifest:", "must detect extra manifest entries")
+			require.Contains(t, dedupRun, "retaining older ebuilds to maintain Manifest consistency", "must log notice when deduplication is deferred")
+			require.Contains(t, dedupRun, "cp -a \"${backup_dir}\"/. \"${ebuild_dir}\"/", "must restore from backup on fallback or error")
+		})
+	}
+}
+
