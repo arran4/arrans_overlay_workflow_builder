@@ -1119,3 +1119,537 @@ DesktopFile myapp.desktop
 	newLintOut, err := newLintCmd.CombinedOutput()
 	require.NoError(t, err, "AppImage lint output must pass: %s", string(newLintOut))
 }
+
+func setupMultiMasterG2Overlay(t *testing.T, masters string) (string, func()) {
+	t.Helper()
+	tempDir, err := os.MkdirTemp("", "g2_multi_master_*")
+	require.NoError(t, err)
+
+	cleanup := func() {
+		_ = os.RemoveAll(tempDir)
+	}
+
+	profilesDir := filepath.Join(tempDir, "profiles")
+	require.NoError(t, os.MkdirAll(profilesDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(profilesDir, "repo_name"), []byte("test-overlay\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(profilesDir, "eapi"), []byte("8\n"), 0644))
+
+	categories := []string{"app-admin", "app-misc", "app-text", "net-im", "www-misc"}
+	require.NoError(t, os.WriteFile(filepath.Join(profilesDir, "categories"), []byte(strings.Join(categories, "\n")+"\n"), 0644))
+
+	for _, cat := range categories {
+		require.NoError(t, os.MkdirAll(filepath.Join(tempDir, cat), 0755))
+	}
+
+	metadataDir := filepath.Join(tempDir, "metadata")
+	require.NoError(t, os.MkdirAll(metadataDir, 0755))
+	layoutConf := fmt.Sprintf("masters = %s\ncache-formats = md5-dict\nthin-manifests = true\n", masters)
+	require.NoError(t, os.WriteFile(filepath.Join(metadataDir, "layout.conf"), []byte(layoutConf), 0644))
+
+	licensesDir := filepath.Join(tempDir, "licenses")
+	require.NoError(t, os.MkdirAll(licensesDir, 0755))
+	for _, lic := range []string{"MIT", "AGPL-3", "Apache-2.0", "GPL-3", "BSD"} {
+		require.NoError(t, os.WriteFile(filepath.Join(licensesDir, lic), []byte(lic+" License\n"), 0644))
+	}
+
+	return tempDir, cleanup
+}
+
+// TestIssue197_FlutterAppImage_MissingMastersCI reproduces the exact Issue #197 failure scenario:
+// a multi-master overlay declaring "masters = gentoo guru hyproverlay", generating an AppImage
+// (flutter-google-datastore-appimage) that inherits Gentoo's xdg-utils eclass, executed on a runner
+// where masters are unavailable. Verifies that md5-cache generation reports an explicit CI skip notice,
+// does not fail the job, does not fabricate false green cache, and successfully passes the lint gate.
+func TestIssue197_FlutterAppImage_MissingMastersCI(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupMultiMasterG2Overlay(t, "gentoo guru hyproverlay")
+	defer cleanup()
+
+	appImageData := []byte("#!/bin/sh\necho 'flutter-google-datastore mock'\n")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, _ = w.Write(appImageData)
+	}))
+	defer server.Close()
+
+	configString := `Type Github AppImage Release
+GithubProjectUrl https://github.com/arran4/flutter-google-datastore
+EbuildName flutter-google-datastore-appimage
+Category app-misc
+Description Flutter Google Datastore AppImage
+Homepage https://github.com/arran4/flutter-google-datastore
+License MIT
+Binary amd64=>flutter-google-datastore-${TAG}-x86_64.AppImage > flutter-google-datastore.AppImage
+DesktopFile flutter-google-datastore.desktop
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	testDate := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	err = configs[0].GenerateGithubWorkflow("test.config", testDate, tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-misc-flutter-google-datastore-appimage-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	stepMap := make(map[string]map[string]any)
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if name, ok := step["name"].(string); ok {
+			stepMap[name] = step
+		}
+	}
+
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	ghMock := filepath.Join(binDir, "gh")
+	require.NoError(t, os.WriteFile(ghMock, []byte("#!/bin/sh\necho 'v0.1.35'\n"), 0755))
+
+	githubOutput := filepath.Join(overlayDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(overlayDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	processStep := stepMap["Process each release"]
+	processScript := processStep["run"].(string)
+	resolvedProcess := resolveWorkflowEnv(processScript, workflow)
+	resolvedProcess = strings.ReplaceAll(resolvedProcess, "https://github.com/arran4/flutter-google-datastore/releases/download/${tag}/", server.URL+"/")
+
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=flutter-google-datastore-appimage\nPV=0.1.35\nset -euo pipefail\n"+resolvedProcess)
+	cmd.Dir = overlayDir
+	cmd.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	procOut, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Process each release failed: %s", string(procOut))
+
+	// Verify generated ebuild inherits xdg-utils
+	ebuildPath := filepath.Join(overlayDir, "app-misc", "flutter-google-datastore-appimage", "flutter-google-datastore-appimage-0.1.35.ebuild")
+	ebuildBytes, err := os.ReadFile(ebuildPath)
+	require.NoError(t, err)
+	require.Contains(t, string(ebuildBytes), "inherit xdg-utils")
+
+	// Execute Generate md5-cache step: must succeed by logging explicit skip notice, not crashing
+	cacheStep := stepMap["Generate md5-cache"]
+	cacheScript := resolveWorkflowEnv(cacheStep["run"].(string), workflow)
+	cacheCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+cacheScript)
+	cacheCmd.Dir = overlayDir
+	cacheOut, err := cacheCmd.CombinedOutput()
+	require.NoError(t, err, "Generate md5-cache step must not fail in CI mode: %s", string(cacheOut))
+	require.Contains(t, string(cacheOut), "Authoritative md5-cache generation requires unavailable master repository context")
+
+	// Crucial invariant: no false green cache file was published
+	md5CachePath := filepath.Join(overlayDir, "metadata", "md5-cache", "app-misc", "flutter-google-datastore-appimage-0.1.35")
+	_, statErr := os.Stat(md5CachePath)
+	require.True(t, os.IsNotExist(statErr), "md5-cache must NOT be fabricated when masters are unavailable")
+
+	// Execute Lint output step: real g2 lint must pass with non-fatal cache warning
+	actionStr := stepMap["Lint output"]["with"].(map[string]any)["action"].(string)
+	resolvedAction := resolveWorkflowEnv(actionStr, workflow)
+	lintFields := strings.Fields(resolvedAction)
+	lintCmd := exec.Command("g2", lintFields...)
+	lintCmd.Dir = overlayDir
+	lintOut, err := lintCmd.CombinedOutput()
+	require.NoError(t, err, "real g2 lint must pass: %s", string(lintOut))
+	require.NotContains(t, string(lintOut), "[Error]")
+}
+
+// TestIssue197_LemmyNotifyAppImage_MissingMastersCI verifies net-im/lemmy-notify-appimage
+// in the same missing-master CI context.
+func TestIssue197_LemmyNotifyAppImage_MissingMastersCI(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupMultiMasterG2Overlay(t, "gentoo guru hyproverlay")
+	defer cleanup()
+
+	appImageData := []byte("#!/bin/sh\necho 'lemmy-notify mock'\n")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		_, _ = w.Write(appImageData)
+	}))
+	defer server.Close()
+
+	configString := `Type Github AppImage Release
+GithubProjectUrl https://github.com/arran4/lemmy-notify
+EbuildName lemmy-notify-appimage
+Category net-im
+Description Lemmy Notify AppImage
+Homepage https://github.com/arran4/lemmy-notify
+License MIT
+Binary amd64=>lemmy-notify-${TAG}-x86_64.AppImage > lemmy-notify.AppImage
+DesktopFile lemmy-notify.desktop
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	testDate := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	err = configs[0].GenerateGithubWorkflow("test.config", testDate, tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "net-im-lemmy-notify-appimage-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	stepMap := make(map[string]map[string]any)
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if name, ok := step["name"].(string); ok {
+			stepMap[name] = step
+		}
+	}
+
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	ghMock := filepath.Join(binDir, "gh")
+	require.NoError(t, os.WriteFile(ghMock, []byte("#!/bin/sh\necho 'v0.0.4'\n"), 0755))
+
+	githubOutput := filepath.Join(overlayDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(overlayDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	processStep := stepMap["Process each release"]
+	processScript := processStep["run"].(string)
+	resolvedProcess := resolveWorkflowEnv(processScript, workflow)
+	resolvedProcess = strings.ReplaceAll(resolvedProcess, "https://github.com/arran4/lemmy-notify/releases/download/${tag}/", server.URL+"/")
+
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=lemmy-notify-appimage\nPV=0.0.4\nset -euo pipefail\n"+resolvedProcess)
+	cmd.Dir = overlayDir
+	cmd.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	procOut, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Process each release failed: %s", string(procOut))
+
+	// Verify generated ebuild inherits xdg-utils
+	ebuildPath := filepath.Join(overlayDir, "net-im", "lemmy-notify-appimage", "lemmy-notify-appimage-0.0.4.ebuild")
+	ebuildBytes, err := os.ReadFile(ebuildPath)
+	require.NoError(t, err)
+	require.Contains(t, string(ebuildBytes), "inherit xdg-utils")
+
+	// Execute Generate md5-cache step: must succeed with explicit skip notice
+	cacheStep := stepMap["Generate md5-cache"]
+	cacheScript := resolveWorkflowEnv(cacheStep["run"].(string), workflow)
+	cacheCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+cacheScript)
+	cacheCmd.Dir = overlayDir
+	cacheOut, err := cacheCmd.CombinedOutput()
+	require.NoError(t, err, "Generate md5-cache step must not fail in CI mode: %s", string(cacheOut))
+	require.Contains(t, string(cacheOut), "Authoritative md5-cache generation requires unavailable master repository context")
+
+	// Verify no false green cache file was created
+	md5CachePath := filepath.Join(overlayDir, "metadata", "md5-cache", "net-im", "lemmy-notify-appimage-0.0.4")
+	_, statErr := os.Stat(md5CachePath)
+	require.True(t, os.IsNotExist(statErr), "md5-cache must NOT be fabricated when masters are unavailable")
+
+	// Execute Lint output step: real g2 lint must pass
+	actionStr := stepMap["Lint output"]["with"].(map[string]any)["action"].(string)
+	resolvedAction := resolveWorkflowEnv(actionStr, workflow)
+	lintFields := strings.Fields(resolvedAction)
+	lintCmd := exec.Command("g2", lintFields...)
+	lintCmd.Dir = overlayDir
+	lintOut, err := lintCmd.CombinedOutput()
+	require.NoError(t, err, "real g2 lint must pass: %s", string(lintOut))
+	require.NotContains(t, string(lintOut), "[Error]")
+}
+
+// TestIssue197_AppImage_NegativeLintGate verifies that genuine errors (such as distfile mismatch)
+// still fail the lint gate and prevent publication even when cache generation is skipped.
+func TestIssue197_AppImage_NegativeLintGate(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupMultiMasterG2Overlay(t, "gentoo guru hyproverlay")
+	defer cleanup()
+
+	pkgDir := filepath.Join(overlayDir, "app-misc", "flutter-google-datastore-appimage")
+	require.NoError(t, os.MkdirAll(pkgDir, 0755))
+
+	// Invalid Manifest: declares a distfile that does not match ebuild SRC_URI
+	manifestContent := "DIST wrong-file.tar.gz 1234 BLAKE2B abc SHA512 def\n"
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "Manifest"), []byte(manifestContent), 0644))
+
+	ebuildContent := `# Copyright 2026 Arrans Overlay Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=8
+
+inherit xdg-utils
+
+DESCRIPTION="Flutter Google Datastore AppImage"
+HOMEPAGE="https://github.com/arran4/flutter-google-datastore"
+SRC_URI="https://example.test/flutter-google-datastore-0.1.35.tar.gz"
+LICENSE="MIT"
+SLOT="0"
+KEYWORDS="~amd64"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "flutter-google-datastore-appimage-0.1.35.ebuild"), []byte(ebuildContent), 0644))
+
+	metadataContent := `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
+<pkgmetadata>
+	<maintainer type="person">
+		<email>maintainer@example.com</email>
+	</maintainer>
+</pkgmetadata>
+`
+	require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "metadata.xml"), []byte(metadataContent), 0644))
+
+	lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-misc/flutter-google-datastore-appimage")
+	lintOut, err := lintCmd.CombinedOutput()
+	require.Error(t, err, "lint must fail on genuine error (missing distfile)")
+	require.Contains(t, string(lintOut), "[Error]")
+}
+
+// TestIssue197_AppImage_WithMastersProvided verifies behavior when master repositories ARE provided:
+// - A simple eclass without control flow allows authoritative cache generation.
+// - An eclass requiring Portage evaluation reports a clear notice when Portage is unavailable.
+func TestIssue197_AppImage_WithMastersProvided(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupMultiMasterG2Overlay(t, "gentoo guru hyproverlay")
+	defer cleanup()
+
+	// Create master repository trees
+	gentooDir := filepath.Join(overlayDir, "masters", "gentoo")
+	guruDir := filepath.Join(overlayDir, "masters", "guru")
+	hyprDir := filepath.Join(overlayDir, "masters", "hyproverlay")
+	for _, m := range []struct {
+		dir  string
+		name string
+	}{
+		{gentooDir, "gentoo"},
+		{guruDir, "guru"},
+		{hyprDir, "hyproverlay"},
+	} {
+		require.NoError(t, os.MkdirAll(filepath.Join(m.dir, "profiles"), 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(m.dir, "profiles", "repo_name"), []byte(m.name+"\n"), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(m.dir, "profiles", "eapi"), []byte("8\n"), 0644))
+	}
+
+	// In gentoo, add real xdg-utils with PMS control flow, and a simple static eclass
+	gentooEclassDir := filepath.Join(gentooDir, "eclass")
+	require.NoError(t, os.MkdirAll(gentooEclassDir, 0755))
+	realXdgUtils := `# Copyright 1999-2024 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+case ${EAPI} in
+	7|8) ;;
+	*) die "${ECLASS}: EAPI ${EAPI:-0} not supported" ;;
+esac
+xdg_desktop_database_update() { :; }
+`
+	require.NoError(t, os.WriteFile(filepath.Join(gentooEclassDir, "xdg-utils.eclass"), []byte(realXdgUtils), 0644))
+	simpleEclass := `# Static simple eclass
+SIMPLE_VAR="1"
+`
+	require.NoError(t, os.WriteFile(filepath.Join(gentooEclassDir, "test-simple.eclass"), []byte(simpleEclass), 0644))
+
+	g2MastersEnv := fmt.Sprintf("gentoo=%s,guru=%s,hyproverlay=%s", gentooDir, guruDir, hyprDir)
+
+	t.Run("StaticEclassProducesAuthoritativeCache", func(t *testing.T) {
+		pkgDir := filepath.Join(overlayDir, "app-misc", "simple-app")
+		require.NoError(t, os.MkdirAll(pkgDir, 0755))
+		ebuildContent := `# Copyright 2026 Arrans Overlay Authors
+# Distributed under the terms of the GNU General Public License v2
+EAPI=8
+inherit test-simple
+DESCRIPTION="Simple App"
+HOMEPAGE="https://example.test/simple"
+SRC_URI="https://example.test/simple-1.0.tar.gz"
+LICENSE="MIT"
+SLOT="0"
+KEYWORDS="~amd64"
+`
+		require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "simple-app-1.0.ebuild"), []byte(ebuildContent), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "Manifest"), []byte("DIST simple-1.0.tar.gz 100 SHA512 a BLAKE2B b\n"), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "metadata.xml"), []byte(`<?xml version="1.0" encoding="UTF-8"?><pkgmetadata><maintainer type="person"><email>m@e.c</email></maintainer></pkgmetadata>`), 0644))
+
+		// Execute g2 cache generate with master-repo supplied
+		cacheCmd := exec.Command("g2", "cache", "generate", "-repo", overlayDir, fmt.Sprintf("-master-repo=%s", g2MastersEnv), "app-misc/simple-app")
+		out, err := cacheCmd.CombinedOutput()
+		require.NoError(t, err, "cache generate must succeed for static eclass: %s", string(out))
+
+		// Cache file exists and passes verification
+		cacheFile := filepath.Join(overlayDir, "metadata", "md5-cache", "app-misc", "simple-app-1.0")
+		_, err = os.Stat(cacheFile)
+		require.NoError(t, err, "md5-cache file must exist on disk")
+
+		lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-misc/simple-app")
+		lintOut, err := lintCmd.CombinedOutput()
+		require.NoError(t, err, "lint must pass: %s", string(lintOut))
+	})
+
+	t.Run("ControlFlowEclassRequiresPortageEvaluation", func(t *testing.T) {
+		pkgDir := filepath.Join(overlayDir, "app-misc", "real-xdg-app")
+		require.NoError(t, os.MkdirAll(pkgDir, 0755))
+		ebuildContent := `# Copyright 2026 Arrans Overlay Authors
+# Distributed under the terms of the GNU General Public License v2
+EAPI=8
+inherit xdg-utils
+DESCRIPTION="Real XDG App"
+HOMEPAGE="https://example.test/real-xdg"
+SRC_URI="https://example.test/real-xdg-1.0.tar.gz"
+LICENSE="MIT"
+SLOT="0"
+KEYWORDS="~amd64"
+`
+		require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "real-xdg-app-1.0.ebuild"), []byte(ebuildContent), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "Manifest"), []byte("DIST real-xdg-1.0.tar.gz 100 SHA512 a BLAKE2B b\n"), 0644))
+		require.NoError(t, os.WriteFile(filepath.Join(pkgDir, "metadata.xml"), []byte(`<?xml version="1.0" encoding="UTF-8"?><pkgmetadata><maintainer type="person"><email>m@e.c</email></maintainer></pkgmetadata>`), 0644))
+
+		// Run g2 cache generate directly to observe released g2 behavior on control flow
+		cacheCmd := exec.Command("g2", "cache", "generate", "-repo", overlayDir, fmt.Sprintf("-master-repo=%s", g2MastersEnv), "app-misc/real-xdg-app")
+		out, err := cacheCmd.CombinedOutput()
+		require.Error(t, err, "g2 cache generate without Portage must fail closed on control flow eclasses")
+		require.Contains(t, string(out), "contains control flow or an unmodelled command; canonical cache metadata requires Portage evaluation")
+
+		// Verify that g2 cache verify in CI mode reports explicit skip
+		verifyCmd := exec.Command("g2", "cache", "verify", "-mode=ci", "-repo", overlayDir, "app-misc/real-xdg-app")
+		verOut, verErr := verifyCmd.CombinedOutput()
+		require.NoError(t, verErr, "cache verify -mode=ci must pass with skipped check: %s", string(verOut))
+		require.Contains(t, string(verOut), "Skipped md5-dict cache")
+
+		// Verify lint passes
+		lintCmd := exec.Command("g2", "lint", "-fail-severity", "error", overlayDir, "app-misc/real-xdg-app")
+		lintOut, err := lintCmd.CombinedOutput()
+		require.NoError(t, err, "lint must pass: %s", string(lintOut))
+	})
+}
+
+// TestIssue197_OrdinaryBinary_Unaffected ensures that ordinary binary workflows without inherited eclasses
+// remain completely unaffected by multi-master overlay settings, successfully producing authoritative cache.
+func TestIssue197_OrdinaryBinary_Unaffected(t *testing.T) {
+	verifyG2Available(t)
+	overlayDir, cleanup := setupMultiMasterG2Overlay(t, "gentoo guru hyproverlay")
+	defer cleanup()
+
+	tarData := createTarGzFixture(t, []string{"mytool"})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		_, _ = w.Write(tarData)
+	}))
+	defer server.Close()
+
+	configString := `Type Github Binary Release
+GithubProjectUrl https://github.com/myorg/mytool
+EbuildName mytool-bin
+Category app-admin
+Description Developer utility tool
+Homepage https://myorg.github.io/mytool
+License MIT
+Binary amd64=>mytool-${TAG}-linux-amd64.tar.gz > mytool > mytool
+`
+
+	configs, err := ParseInputConfigReader(strings.NewReader(configString))
+	require.NoError(t, err)
+	require.Len(t, configs, 1)
+
+	tmpls, err := ParseWorkflowTemplates()
+	require.NoError(t, err)
+
+	testDate := time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC)
+	err = configs[0].GenerateGithubWorkflow("test.config", testDate, tmpls, overlayDir, "1.0.0")
+	require.NoError(t, err)
+
+	yamlPath := filepath.Join(overlayDir, "app-admin-mytool-bin-update.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	require.NoError(t, err)
+
+	var workflow map[string]any
+	require.NoError(t, yaml.Unmarshal(yamlData, &workflow))
+
+	steps := workflow["jobs"].(map[string]any)["check-and-create-ebuild"].(map[string]any)["steps"].([]any)
+	stepMap := make(map[string]map[string]any)
+	for _, s := range steps {
+		step := s.(map[string]any)
+		if name, ok := step["name"].(string); ok {
+			stepMap[name] = step
+		}
+	}
+
+	binDir := filepath.Join(overlayDir, "bin")
+	require.NoError(t, os.MkdirAll(binDir, 0755))
+	ghMock := filepath.Join(binDir, "gh")
+	require.NoError(t, os.WriteFile(ghMock, []byte("#!/bin/sh\necho 'v1.0.0'\n"), 0755))
+
+	githubOutput := filepath.Join(overlayDir, "github_output")
+	_ = os.WriteFile(githubOutput, []byte(""), 0644)
+	githubEnv := filepath.Join(overlayDir, "github_env")
+	_ = os.WriteFile(githubEnv, []byte(""), 0644)
+
+	processStep := stepMap["Process each release"]
+	processScript := processStep["run"].(string)
+	resolvedProcess := resolveWorkflowEnv(processScript, workflow)
+	resolvedProcess = strings.ReplaceAll(resolvedProcess, "https://github.com/myorg/mytool/releases/download/${tag}/", server.URL+"/")
+
+	cmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nP=mytool-bin\nPV=1.0.0\nset -euo pipefail\n"+resolvedProcess)
+	cmd.Dir = overlayDir
+	cmd.Env = append(os.Environ(),
+		"RUNNER_TEMP="+overlayDir,
+		"GITHUB_OUTPUT="+githubOutput,
+		"GITHUB_ENV="+githubEnv,
+	)
+	if envMap, ok := processStep["env"].(map[string]any); ok {
+		for k, v := range envMap {
+			if s, ok := v.(string); ok {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, s))
+			}
+		}
+	}
+	procOut, err := cmd.CombinedOutput()
+	require.NoError(t, err, "Process each release failed: %s", string(procOut))
+
+	// Execute Generate md5-cache step: must generate authoritative cache for ordinary binary
+	cacheStep := stepMap["Generate md5-cache"]
+	cacheScript := resolveWorkflowEnv(cacheStep["run"].(string), workflow)
+	cacheCmd := exec.Command("bash", "-c", "PATH="+binDir+":$PATH\nset -euo pipefail\n"+cacheScript)
+	cacheCmd.Dir = overlayDir
+	cacheOut, err := cacheCmd.CombinedOutput()
+	require.NoError(t, err, "Generate md5-cache step must succeed: %s", string(cacheOut))
+
+	md5CachePath := filepath.Join(overlayDir, "metadata", "md5-cache", "app-admin", "mytool-bin-1.0.0")
+	_, statErr := os.Stat(md5CachePath)
+	require.NoError(t, statErr, "authoritative md5-cache file MUST exist on disk for ordinary binary")
+
+	// Verify lint passes
+	actionStr := stepMap["Lint output"]["with"].(map[string]any)["action"].(string)
+	resolvedAction := resolveWorkflowEnv(actionStr, workflow)
+	lintFields := strings.Fields(resolvedAction)
+	lintCmd := exec.Command("g2", lintFields...)
+	lintCmd.Dir = overlayDir
+	lintOut, err := lintCmd.CombinedOutput()
+	require.NoError(t, err, "real g2 lint must pass: %s", string(lintOut))
+	require.NotContains(t, string(lintOut), "[Error]")
+}
