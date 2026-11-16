@@ -106,7 +106,11 @@ Binary amd64=>test-${VERSION}.tar.gz > test > test
 	lintAction := job.Steps[positions["Lint output"]].With["action"]
 	require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", lintAction)
 	require.NotContains(t, lintAction, "PG0802")
-	require.NotContains(t, job.Steps[positions["Commit and push changes"]].Run, "metadata/md5-cache")
+	commitRun := job.Steps[positions["Commit and push changes"]].Run
+	require.Contains(t, commitRun, "metadata/md5-cache")
+	require.Contains(t, commitRun, "metadata/cache")
+	require.Contains(t, commitRun, "git ls-files")
+	require.NotContains(t, commitRun, "fi || true")
 }
 
 func TestGenerateMd5CacheConfigurations(t *testing.T) {
@@ -246,7 +250,10 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 
 			require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", lintAction)
 			require.NotContains(t, lintAction, "PG0802", "PG0802 must never be conditionally suppressed")
-			require.NotContains(t, commitRun, "metadata/md5-cache", "disabled GenerateMd5Cache must not stage md5-cache")
+			require.Contains(t, commitRun, "metadata/md5-cache", "Commit and push changes must always stage package-scoped md5-cache changes")
+			require.Contains(t, commitRun, "metadata/cache", "Commit and push changes must always stage package-scoped metadata/cache changes")
+			require.Contains(t, commitRun, "git ls-files", "Commit and push changes must use index-aware pathspec handling for deleted cache files")
+			require.NotContains(t, commitRun, "fi || true", "Commit and push changes must never mask push/rebase failures")
 			require.Contains(t, cacheRun, "masters_line=$(grep -E '^[ \\t]*masters[ \\t]*=' metadata/layout.conf",
 				"Generate md5-cache step must inspect declared masters in layout.conf")
 			require.Contains(t, cacheRun, "unavailable masters permitted by CI policy",
@@ -302,8 +309,9 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 
 			require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", lintAction)
 			require.NotContains(t, lintAction, "PG0802")
-			require.Contains(t, commitRun, "git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true",
-				"enabled GenerateMd5Cache via config must stage md5-cache")
+			require.Contains(t, commitRun, ":(glob)${cache_root}/${ecn}/${epn}-[0-9]*",
+				"enabled GenerateMd5Cache via config must stage package-scoped cache with index-aware pathspec")
+			require.NotContains(t, commitRun, "fi || true")
 			require.Contains(t, cacheRun, "masters_line=$(grep -E '^[ \\t]*masters[ \\t]*=' metadata/layout.conf")
 			require.Contains(t, cacheRun, "unavailable masters permitted by CI policy")
 			require.Contains(t, cacheRun, "canonical cache metadata requires Portage evaluation")
@@ -356,8 +364,9 @@ Binary amd64=>test-${VERSION}-x86_64.AppImage > test.AppImage
 
 			require.Equal(t, "lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}", lintAction)
 			require.NotContains(t, lintAction, "PG0802")
-			require.Contains(t, commitRun, "git add metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-* || true",
-				"enabled GenerateMd5Cache via option must stage md5-cache")
+			require.Contains(t, commitRun, ":(glob)${cache_root}/${ecn}/${epn}-[0-9]*",
+				"enabled GenerateMd5Cache via option must stage package-scoped cache with index-aware pathspec")
+			require.NotContains(t, commitRun, "fi || true")
 			require.Contains(t, cacheRun, "masters_line=$(grep -E '^[ \\t]*masters[ \\t]*=' metadata/layout.conf")
 			require.Contains(t, cacheRun, "unavailable masters permitted by CI policy")
 			require.Contains(t, cacheRun, "canonical cache metadata requires Portage evaluation")
