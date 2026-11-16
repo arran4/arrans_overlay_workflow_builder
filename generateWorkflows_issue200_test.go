@@ -87,7 +87,7 @@ func resolveIssue200StepScript(t *testing.T, wf issue200Workflow, stepName strin
 	var prefix strings.Builder
 	prefix.WriteString("set -euo pipefail\n")
 	if tag, ok := extraVars["generated_tag"]; ok {
-		prefix.WriteString(fmt.Sprintf("generated_tag=%q\n", tag))
+		fmt.Fprintf(&prefix, "generated_tag=%q\n", tag)
 	}
 	return prefix.String() + script
 }
