@@ -432,25 +432,63 @@ jobs:
           else
             g2_cache_cmd=(g2 cache generate "${{ env.ecn }}/${{ env.epn }}")
           fi
+          cache_snapshot_dir=$(mktemp -d)
+          for cache_root in "metadata/md5-cache" "metadata/cache"; do
+            cache_dir="${cache_root}/${{ env.ecn }}"
+            if [ -d "${cache_dir}" ]; then
+              mkdir -p "${cache_snapshot_dir}/${cache_root}"
+              find "${cache_dir}" -maxdepth 1 -type f -name "${{ env.epn }}-[0-9]*" -exec cp -a {} "${cache_snapshot_dir}/${cache_root}"/ \;
+            fi
+          done
+          prune_obsolete_package_cache() {
+            for cache_root in "metadata/md5-cache" "metadata/cache"; do
+              cache_dir="${cache_root}/${{ env.ecn }}"
+              [ -d "${cache_dir}" ] || continue
+              while IFS= read -r -d '' cache_file; do
+                base_name=$(basename "${cache_file}")
+                if [ ! -f "./${{ env.ecn }}/${{ env.epn }}/${base_name}.ebuild" ]; then
+                  rm -f "${cache_file}"
+                fi
+              done < <(find "${cache_dir}" -maxdepth 1 -type f -name "${{ env.epn }}-[0-9]*" -print0)
+              rmdir "${cache_dir}" 2>/dev/null || true
+            done
+          }
+          restore_package_cache_snapshot() {
+            for cache_root in "metadata/md5-cache" "metadata/cache"; do
+              cache_dir="${cache_root}/${{ env.ecn }}"
+              if [ -d "${cache_dir}" ]; then
+                find "${cache_dir}" -maxdepth 1 -type f -name "${{ env.epn }}-[0-9]*" -delete
+              fi
+              if [ -d "${cache_snapshot_dir}/${cache_root}" ] && [ -n "$(ls -A "${cache_snapshot_dir}/${cache_root}")" ]; then
+                mkdir -p "${cache_dir}"
+                cp -a "${cache_snapshot_dir}/${cache_root}"/. "${cache_dir}"/
+              fi
+            done
+            prune_obsolete_package_cache
+          }
           cache_err_file=$(mktemp)
           if "${g2_cache_cmd[@]}" 2>"$cache_err_file"; then
             cat "$cache_err_file" >&2
             rm -f "$cache_err_file"
+            prune_obsolete_package_cache
+            rm -rf "${cache_snapshot_dir}"
           else
             gen_rc=$?
             cat "$cache_err_file" >&2
             if grep -q "unavailable masters permitted by CI policy" "$cache_err_file"; then
               rm -f "$cache_err_file"
-              rm -f "metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-"* 2>/dev/null || true
-              rmdir "metadata/md5-cache/${{ env.ecn }}" 2>/dev/null || true
+              restore_package_cache_snapshot
+              rm -rf "${cache_snapshot_dir}"
               echo "::notice title=md5-cache skipped::Authoritative md5-cache generation requires unavailable master repository context; skipping cache generation per CI policy."
             elif grep -q "canonical cache metadata requires Portage evaluation" "$cache_err_file" && ! command -v portageq >/dev/null 2>&1; then
               rm -f "$cache_err_file"
-              rm -f "metadata/md5-cache/${{ env.ecn }}/${{ env.epn }}-"* 2>/dev/null || true
-              rmdir "metadata/md5-cache/${{ env.ecn }}" 2>/dev/null || true
+              restore_package_cache_snapshot
+              rm -rf "${cache_snapshot_dir}"
               echo "::notice title=md5-cache skipped::Inherited eclasses require Portage evaluation which is unavailable on runner; skipping cache generation per CI policy."
             else
               rm -f "$cache_err_file"
+              restore_package_cache_snapshot
+              rm -rf "${cache_snapshot_dir}"
               exit "$gen_rc"
             fi
           fi
@@ -464,10 +502,101 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
-          git add "./${ebuild_dir}"
-          if git commit -m "Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"; then
-            git pull --rebase &&
-            git push
-          fi || true
+          commit_msg="Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"
+          ecn="${{ env.ecn }}"
+          epn="${{ env.epn }}"
+          ebuild_dir="${ecn}/${epn}"
+          if [ -e "./${ebuild_dir}" ] || [ -n "$(git ls-files -- "${ebuild_dir}")" ]; then
+            git add -A -- "${ebuild_dir}"
+          fi
+          for cache_root in "metadata/md5-cache" "metadata/cache"; do
+            cache_pathspec=":(glob)${cache_root}/${ecn}/${epn}-[0-9]*"
+            if [ -n "$(git ls-files -- "${cache_pathspec}")" ] || compgen -G "${cache_root}/${ecn}/${epn}-[0-9]*" >/dev/null; then
+              git add -A -- "${cache_pathspec}"
+            fi
+          done
+          has_staged_changes=0
+          if ! git diff --cached --quiet; then
+            has_staged_changes=1
+          fi
+          dirty_status=$(git status --porcelain)
+          if [ -n "${dirty_status}" ]; then
+            unexpected_dirty=$(printf '%s\n' "${dirty_status}" | grep -Ev '^[MADRC] ' || true)
+            if [ -n "${unexpected_dirty}" ]; then
+              echo "Error: worktree has unexpected unstaged or untracked changes outside staged package scope:" >&2
+              printf '%s\n' "${unexpected_dirty}" >&2
+              exit 1
+            fi
+          fi
+          if [ "${has_staged_changes}" -eq 0 ]; then
+            echo "No package changes to commit or push."
+            exit 0
+          fi
+          target_branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+          if [ -z "${target_branch}" ]; then
+            echo "Error: HEAD is detached; cannot determine target branch for push." >&2
+            exit 1
+          fi
+          local_base=$(git rev-parse HEAD)
+          git commit -m "${commit_msg}"
+          post_commit_status=$(git status --porcelain)
+          if [ -n "${post_commit_status}" ]; then
+            echo "Error: worktree is not clean after commit; refusing to rebase or push:" >&2
+            printf '%s\n' "${post_commit_status}" >&2
+            exit 1
+          fi
+          max_attempts="${G2_PUSH_RETRY_MAX_ATTEMPTS:-5}"
+          base_sleep="${G2_PUSH_RETRY_BASE_SLEEP_SECS:-1}"
+          attempt=1
+          while [ "${attempt}" -le "${max_attempts}" ]; do
+            push_log=$(mktemp)
+            push_rc=0
+            if git push origin "HEAD:${target_branch}" >"${push_log}" 2>&1; then
+              cat "${push_log}"
+              rm -f "${push_log}"
+              exit 0
+            else
+              push_rc=$?
+            fi
+            cat "${push_log}" >&2
+            is_transient_race=0
+            if grep -Eqi '(fetch first|non-fast-forward|cannot lock ref|stale info)' "${push_log}" && \
+               ! grep -Eqi '(permission .* denied|403|authentication failed|protected branch|gh006|gh013|rule violations|pre-receive hook declined)' "${push_log}"; then
+              is_transient_race=1
+            fi
+            rm -f "${push_log}"
+            if [ "${is_transient_race}" -ne 1 ]; then
+              echo "Error: git push failed with non-retryable error (exit ${push_rc})." >&2
+              exit "${push_rc}"
+            fi
+            if [ "${attempt}" -ge "${max_attempts}" ]; then
+              echo "Error: failed to push package update after ${max_attempts} attempts due to concurrent remote updates." >&2
+              exit 1
+            fi
+            sleep_secs=$(( attempt * base_sleep + (RANDOM % 2) ))
+            echo "Push rejected due to concurrent update (attempt ${attempt}/${max_attempts}); retrying in ${sleep_secs}s..." >&2
+            sleep "${sleep_secs}"
+            git fetch origin "${target_branch}"
+            if git merge-base --is-ancestor HEAD "origin/${target_branch}"; then
+              echo "Remote ${target_branch} already contains local commit."
+              exit 0
+            fi
+            remote_pkg_changes=$(git diff --name-only "${local_base}..origin/${target_branch}" -- \
+              "${ebuild_dir}" \
+              ":(glob)metadata/md5-cache/${ecn}/${epn}-[0-9]*" \
+              ":(glob)metadata/cache/${ecn}/${epn}-[0-9]*")
+            if [ -n "${remote_pkg_changes}" ]; then
+              echo "Error: remote ${target_branch} updated ${ebuild_dir} concurrently; refusing to replay potentially stale package state:" >&2
+              printf '%s\n' "${remote_pkg_changes}" >&2
+              exit 1
+            fi
+            if ! git rebase "origin/${target_branch}"; then
+              echo "Error: git rebase onto origin/${target_branch} failed; aborting rebase." >&2
+              git rebase --abort 2>/dev/null || true
+              exit 1
+            fi
+            local_base=$(git rev-parse "origin/${target_branch}")
+            attempt=$(( attempt + 1 ))
+          done
+          exit 1
         if: steps.process_releases.outputs.generated_tag

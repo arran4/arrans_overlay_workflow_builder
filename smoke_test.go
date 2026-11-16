@@ -96,6 +96,11 @@ fi
 `)
 
 	mockCommand(t, binDir, "git", `#!/bin/bash
+if [[ "$1" == "status" || "$1" == "ls-files" ]]; then
+	exit 0
+elif [[ "$1" == "diff" ]]; then
+	exit 0
+fi
 echo "git called with: $@"
 `)
 

@@ -1,0 +1,601 @@
+Regression fixture for Workflow Builder issue #200 (dev-go/goreleaser-bin overlay run 43794460683):
+verifies unconditional package-scoped md5-cache/cache index-aware staging and fail-closed bounded publication retry.
+-- input.config --
+Type Github Binary Release
+GithubProjectUrl https://github.com/goreleaser/goreleaser
+EbuildName goreleaser-bin
+Category dev-go
+Description Deliver Go binaries as fast and easily as possible
+Homepage https://goreleaser.com
+License MIT
+Binary amd64=>goreleaser_Linux_x86_64.tar.gz > goreleaser > goreleaser
+-- expected.yaml --
+# Generated using: https://github.com/arran4/arrans_overlay_workflow_builder 1.0.0 Github Binary Release test.config 2026-07-12 00:00:00 +0000 UTC
+
+name: dev-go/goreleaser-bin update
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: '24 2 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/dev-go-goreleaser-bin-update.yaml'
+
+env:
+  ecn: dev-go
+  epn: goreleaser-bin
+  description: "Deliver Go binaries as fast and easily as possible"
+  homepage: "https://goreleaser.com"
+  github_owner: goreleaser
+  github_repo: goreleaser
+  keywords: ~amd64
+  workflow_filename: dev-go-goreleaser-bin-update.yaml
+  binary_installed_name: 'goreleaser'
+  binary_archived_name_amd64: 'goreleaser'
+  release_name_amd64: 'goreleaser_Linux_x86_64.tar.gz'
+
+concurrency:
+  group: ci-${{ github.workflow_ref }}
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  check-and-create-ebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Install g2
+        uses: arran4/g2-action@v1.2
+
+      - name: Process each release
+        id: process_releases
+        env:
+          DESCRIPTION: "Deliver Go binaries as fast and easily as possible"
+          HOMEPAGE: "https://goreleaser.com"
+          LICENSE: "MIT"
+          KEYWORDS: "~amd64"
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          mkdir -p "$ebuild_dir"
+          metadata_file="${ebuild_dir}/metadata.xml"
+          g2 metadata -m "gentoo@arran4.com:Arran Ubels:person" -u "github:goreleaser/goreleaser" "$metadata_file"
+          declare -A releaseTypes=()
+          tags=$(GH_TOKEN="${{secrets.GITHUB_TOKEN}}" gh api "repos/${{ env.github_owner }}/${{ env.github_repo }}/releases" --jq '.[]? | select(type=="object" and has("tag_name")) | .tag_name')
+          # shellcheck disable=SC2086
+          for tag in $tags; do
+            version="${tag#v}"
+            if [ "${version}" = "${tag}" ]; then
+                echo "$version == $tag so there is no v removed skipping"
+                continue
+            fi
+            # shellcheck disable=SC2034
+            originalVersion="${version}"
+            if ! echo "${version}" | grep -E '^([0-9]+)\.([0-9]+)(\.([0-9]+))?(-r[0-9]+)?((_)(alpha|beta|rc|p)[0-9]*)*$'; then
+                echo "tag / $version doesn't match regexp; skipping"
+                continue
+            fi
+            # shellcheck disable=SC2001
+            releaseType="$(echo "${version}" | sed -n 's/^[^_]\+_\(alpha\|beta\|rc\|p[0-9]*\).*$/\1/p')"
+            if [[ ! -v releaseTypes[${releaseType:=release}] ]]; then
+                if [[ -v releaseTypes[release] ]]; then
+                  echo "Already have a newer main release: ${releaseTypes[release]}"
+                  continue
+                fi
+                releaseTypes[${releaseType:=release}]="${version}"
+            else
+                echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
+                continue
+            fi
+            tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
+
+              # shellcheck disable=SC2016
+              {
+                printf '%s\n' '# SPDX-License-Identifier: '
+                emit_metadata_field() {
+                    local label=$1
+                    local value=$2
+                    local clean_value="${value//$'\r'/}"
+                    clean_value="${clean_value//$'\n'/ }"
+                    local tokens=()
+                    local len=${#clean_value}
+                    local i=0
+                    while [ $i -lt $len ]; do
+                        if [ "${clean_value:i:4}" = "\${P}" ]; then
+                            tokens+=("\${P}")
+                            i=$((i + 4))
+                        elif [ "${clean_value:i:5}" = "\${PV}" ]; then
+                            tokens+=("\${PV}")
+                            i=$((i + 5))
+                        elif [ "${clean_value:i:5}" = "\${PN}" ]; then
+                            tokens+=("\${PN}")
+                            i=$((i + 5))
+                        elif [ "${clean_value:i:9}" = "\${DEPEND}" ]; then
+                            tokens+=("\${DEPEND}")
+                            i=$((i + 9))
+                        else
+                            local c="${clean_value:i:1}"
+                            case "$c" in
+                                \"|\\|\`|\$)
+                                    tokens+=("\\$c")
+                                    ;;
+                                *)
+                                    tokens+=("$c")
+                                    ;;
+                            esac
+                            i=$((i + 1))
+                        fi
+                    done
+                    # KEYWORDS is strictly required by Gentoo QA policy (PG0101/PG0106)
+                    # to be defined at most once and never appended to.
+                    if [ "$label" = "KEYWORDS" ]; then
+                        local full_kw=""
+                        for tok in "${tokens[@]}"; do
+                            full_kw="${full_kw}${tok}"
+                        done
+                        printf '%s="%s"\n' "$label" "$full_kw"
+                        return 0
+                    fi
+                    local prefix="${label}+=\""
+                    local max_chunk=$((80 - ${#prefix} - 1))
+                    echo "${label}=\"\""
+                    [ -z "$value" ] && return 0
+                    local current_line=""
+                    local pending_after_space=""
+                    for tok in "${tokens[@]}"; do
+                        if [ $((${#current_line} + ${#pending_after_space} + ${#tok})) -le $max_chunk ]; then
+                            if [ "$tok" = " " ]; then
+                                current_line="${current_line}${pending_after_space} "
+                                pending_after_space=""
+                            else
+                                pending_after_space="${pending_after_space}${tok}"
+                            fi
+                        else
+                            if [ -n "$current_line" ]; then
+                                printf "%s%s\"\n" "$prefix" "$current_line"
+                                current_line=""
+                                if [ $((${#pending_after_space} + ${#tok})) -le $max_chunk ]; then
+                                    if [ "$tok" = " " ]; then
+                                        current_line="${pending_after_space} "
+                                        pending_after_space=""
+                                    else
+                                        pending_after_space="${pending_after_space}${tok}"
+                                    fi
+                                else
+                                    if [ "$label" = "SRC_URI" ]; then
+                                        if [ "$tok" = " " ]; then
+                                            printf "%s%s \"\n" "$prefix" "$pending_after_space"
+                                            pending_after_space=""
+                                            current_line=""
+                                        else
+                                            pending_after_space="${pending_after_space}${tok}"
+                                        fi
+                                    else
+                                        if [ -n "$pending_after_space" ]; then
+                                            printf "%s%s\"\n" "$prefix" "$pending_after_space"
+                                        fi
+                                        if [ "$tok" = " " ]; then
+                                            current_line=" "
+                                            pending_after_space=""
+                                        else
+                                            pending_after_space="$tok"
+                                        fi
+                                    fi
+                                fi
+                            else
+                                if [ "$label" = "SRC_URI" ]; then
+                                    if [ "$tok" = " " ]; then
+                                        printf "%s%s \"\n" "$prefix" "$pending_after_space"
+                                        pending_after_space=""
+                                        current_line=""
+                                    else
+                                        pending_after_space="${pending_after_space}${tok}"
+                                    fi
+                                else
+                                    if [ -n "$pending_after_space" ]; then
+                                        printf "%s%s\"\n" "$prefix" "$pending_after_space"
+                                    fi
+                                    if [ "$tok" = " " ]; then
+                                        current_line=" "
+                                        pending_after_space=""
+                                    else
+                                        pending_after_space="$tok"
+                                    fi
+                                fi
+                            fi
+                        fi
+                    done
+                    local final="${current_line}${pending_after_space}"
+                    if [ -n "$final" ]; then
+                        printf "%s%s\"\n" "$prefix" "$final"
+                    fi
+                }
+                emit_ebuild_assignment() {
+                    emit_metadata_field "$@"
+                }
+                # Shell helper to wrap provenance fields at exactly 80 chars
+                emit_provenance_field() {
+                    local label=$1
+                    local value=$2
+                    local prefix="#   ${label}: "
+                    local continuation
+                    local width
+                    printf -v continuation '%*s' "${#prefix}" ''
+                    continuation="#${continuation:1}"
+                    while :; do
+                        width=$((80 - ${#prefix}))
+                        if ((${#value} <= width)); then
+                            printf '%s%s\n' "$prefix" "$value"
+                            break
+                        fi
+                        printf '%s%s\n' "$prefix" "${value:0:width}"
+                        value=${value:width}
+                        prefix=$continuation
+                    done
+                }
+                echo '# Generated via:'
+                emit_provenance_field "repository" "${{ github.server_url }}/${{ github.repository }}"
+                emit_provenance_field "commit" "${{ github.sha }}"
+                emit_provenance_field "workflow" ".github/workflows/${{ env.workflow_filename }}"
+                echo 'EAPI=8'
+                emit_metadata_field "DESCRIPTION" "$DESCRIPTION"
+                emit_metadata_field "HOMEPAGE" "$HOMEPAGE"
+                src_uri_val=""
+                src_uri_val+=" amd64? (  "
+                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/goreleaser_Linux_x86_64.tar.gz "
+                src_uri_val+=" -> \${P}-goreleaser_Linux_x86_64.tar.gz  )  "
+                emit_metadata_field "SRC_URI" "$src_uri_val"
+                emit_metadata_field "LICENSE" "$LICENSE"
+                echo 'SLOT="0"'
+                emit_metadata_field "KEYWORDS" "$KEYWORDS"
+                                iuse_val=""
+                emit_metadata_field "IUSE" "$iuse_val"
+                echo ''
+                ruse_val=""
+                emit_metadata_field "REQUIRED_USE" "$ruse_val"
+                echo ''
+                rdepend_val=""
+                emit_metadata_field "RDEPEND" "$rdepend_val"
+                echo ''
+                echo 'S="${WORKDIR}"'
+                echo ''
+                echo 'src_unpack() {'
+                echo '	if use amd64; then'
+                echo "		unpack \"\${DISTDIR}/\${P}-goreleaser_Linux_x86_64.tar.gz\" "\\
+                echo "			|| die \"Failed to unpack archive file\""
+                echo '	fi'
+                echo '}'
+                echo ''
+                echo 'src_install() {'
+                echo '	exeinto /opt/bin'
+                echo '	if use amd64; then'
+                echo '		newexe '\\
+                echo '			"${{ env.binary_archived_name_amd64 }}" '\\
+                echo '			"${{ env.binary_installed_name }}" '\\
+                echo '			|| die "Failed to install Binary"'
+                echo '	fi'
+                echo '}'
+              } > "$tmp_ebuild_file"
+              if next_version=$(g2 ebuild next-revision --inspect "$tmp_ebuild_file" "${ebuild_dir}" "${version}"); then
+                  next_ebuild_file="${ebuild_dir}/${{ env.epn }}-${next_version}.ebuild"
+                  echo "Content changed or new version for $version. Writing $next_ebuild_file"
+                  mv "$tmp_ebuild_file" "$next_ebuild_file"
+                  ebuild_file="$next_ebuild_file"
+              else
+                  echo "Matches existing ebuild. Skipping."
+                  rm -f "$tmp_ebuild_file"
+                  continue
+              fi
+              failed=0
+              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/goreleaser_Linux_x86_64.tar.gz" "${{ env.epn }}-${version}-goreleaser_Linux_x86_64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if [ "$failed" -eq 1 ]; then
+                  echo "Failed to generate manifest for $tag. Skipping..."
+                  rm -f "$ebuild_file"
+                  continue
+              fi
+              echo "generated_tag=${tag}" >> $GITHUB_OUTPUT
+          done
+
+      - name: Deduplicate ebuilds
+        run: |
+          ebuild_dir="./${{ env.ecn }}/${{ env.epn }}"
+          backup_dir=$(mktemp -d)
+          mkdir -p "${backup_dir}/ebuild"
+          cp -a "${ebuild_dir}"/. "${backup_dir}/ebuild"/
+          for cache_root in "metadata/md5-cache" "metadata/cache"; do
+            cache_dir="./${cache_root}/${{ env.ecn }}"
+            if [ -d "${cache_dir}" ]; then
+              mkdir -p "${backup_dir}/${cache_root}"
+              find "${cache_dir}" -maxdepth 1 -name "${{ env.epn }}-[0-9]*" -exec cp -a {} "${backup_dir}/${cache_root}"/ \;
+            fi
+          done
+          restore_dedup_snapshot() {
+            find "${ebuild_dir}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+            cp -a "${backup_dir}/ebuild"/. "${ebuild_dir}"/
+            for cache_root in "metadata/md5-cache" "metadata/cache"; do
+              cache_dir="./${cache_root}/${{ env.ecn }}"
+              if [ -d "${backup_dir}/${cache_root}" ]; then
+                mkdir -p "${cache_dir}"
+                cp -a "${backup_dir}/${cache_root}"/. "${cache_dir}"/
+              fi
+            done
+          }
+          dedup_err=$(mktemp)
+          if g2 ebuild deduplicate "${ebuild_dir}" 2>"${dedup_err}"; then
+            :
+          else
+            dedup_rc=$?
+            cat "${dedup_err}" >&2
+            restore_dedup_snapshot
+            rm -rf "${backup_dir}" "${dedup_err}"
+            exit "${dedup_rc}"
+          fi
+          cat "${dedup_err}" >&2
+          skipped_cleanup=0
+          if grep -q "skipped cleanup: directory contains uncertain ebuilds" "${dedup_err}"; then
+            skipped_cleanup=1
+          fi
+          rm -f "${dedup_err}"
+          pre_ebuild_count=$(find "${backup_dir}/ebuild" -maxdepth 1 -name "*.ebuild" | wc -l)
+          post_ebuild_count=$(find "${ebuild_dir}" -maxdepth 1 -name "*.ebuild" | wc -l)
+          manifest_verify_err=$(mktemp)
+          if g2 manifest verify "${ebuild_dir}" 2>"${manifest_verify_err}"; then
+            :
+          else
+            verify_rc=$?
+            cat "${manifest_verify_err}" >&2
+            restore_dedup_snapshot
+            rm -rf "${backup_dir}" "${manifest_verify_err}"
+            exit "${verify_rc}"
+          fi
+          has_extra_dist=0
+          if grep -q "EXTRA in manifest:" "${manifest_verify_err}"; then
+            has_extra_dist=1
+          fi
+          cat "${manifest_verify_err}" >&2
+          rm -f "${manifest_verify_err}"
+          if [ "$has_extra_dist" -eq 1 ] && { [ "$skipped_cleanup" -eq 1 ] || [ "$pre_ebuild_count" -gt "$post_ebuild_count" ]; }; then
+            restore_dedup_snapshot
+            echo "::notice title=Deduplication deferred::Manifest cleanup was skipped because directory contains uncertain ebuilds; retaining older ebuilds to maintain Manifest consistency."
+          fi
+          rm -rf "${backup_dir}"
+
+      - name: Generate md5-cache
+        if: steps.process_releases.outputs.generated_tag
+        run: |
+          mkdir -p profiles metadata
+          if [ -f profiles/repo_name ]; then
+            :
+          else
+            echo "::warning title=Missing profiles/repo_name::profiles/repo_name is missing. Skipping creation because explicit upsert is not enabled."
+          fi
+          if [ ! -f profiles/eapi ]; then
+            echo "8" > profiles/eapi
+          fi
+          if [ ! -f metadata/layout.conf ]; then
+            wget -qO - https://raw.githubusercontent.com/gentoo/gentoo/master/metadata/layout.conf > metadata/layout.conf || true
+          fi
+          if ! grep -q "^cache-formats" metadata/layout.conf; then
+            echo "cache-formats = md5-dict" >> metadata/layout.conf
+          else
+            echo "::warning title=Layout.conf check::cache-formats is already defined in layout.conf, skipping generation."
+          fi
+          declared_masters=()
+          masters_line=$(grep -E '^[ \t]*masters[ \t]*=' metadata/layout.conf 2>/dev/null || true)
+          if [ -n "$masters_line" ]; then
+            raw_masters="${masters_line#*=}"
+            for m in $raw_masters; do
+              [ -n "$m" ] && declared_masters+=("$m")
+            done
+          fi
+          resolved_masters=()
+          for m in "${declared_masters[@]}"; do
+            mpath=""
+            if [ -n "${G2_MASTER_REPOS:-}" ]; then
+              IFS="," read -ra mappings <<< "$G2_MASTER_REPOS"
+              for mapping in "${mappings[@]}"; do
+                if [ "${mapping%%=*}" = "$m" ]; then
+                  mpath="${mapping#*=}"
+                  break
+                fi
+              done
+            fi
+            if [ -z "$mpath" ] && [ -d "/var/db/repos/$m" ]; then mpath="/var/db/repos/$m"; fi
+            if [ -z "$mpath" ] && [ -n "${G2_MASTER_REPO_DIR:-}" ] && [ -d "${G2_MASTER_REPO_DIR}/$m" ]; then mpath="${G2_MASTER_REPO_DIR}/$m"; fi
+            if [ -z "$mpath" ] && [ -d "../$m" ]; then mpath="../$m"; fi
+            if [ -z "$mpath" ] && [ -d "${RUNNER_TEMP:-/tmp}/repos/$m" ]; then mpath="${RUNNER_TEMP:-/tmp}/repos/$m"; fi
+            if [ -n "$mpath" ] && [ -d "$mpath" ]; then
+              resolved_masters+=("$m=$mpath")
+            fi
+          done
+          master_flags=()
+          if [ -n "${PORTAGE_REPOS_CONF:-}" ] && [ -e "${PORTAGE_REPOS_CONF}" ]; then
+            master_flags+=("-repos-conf=${PORTAGE_REPOS_CONF}")
+          fi
+          if [ "${#resolved_masters[@]}" -gt 0 ]; then
+            master_arg=$(IFS=","; echo "${resolved_masters[*]}")
+            master_flags+=("-master-repo=${master_arg}")
+          fi
+          if [ "${#master_flags[@]}" -gt 0 ]; then
+            g2_cache_cmd=(g2 cache generate "${master_flags[@]}" "${{ env.ecn }}/${{ env.epn }}")
+          else
+            g2_cache_cmd=(g2 cache generate "${{ env.ecn }}/${{ env.epn }}")
+          fi
+          cache_snapshot_dir=$(mktemp -d)
+          for cache_root in "metadata/md5-cache" "metadata/cache"; do
+            cache_dir="${cache_root}/${{ env.ecn }}"
+            if [ -d "${cache_dir}" ]; then
+              mkdir -p "${cache_snapshot_dir}/${cache_root}"
+              find "${cache_dir}" -maxdepth 1 -type f -name "${{ env.epn }}-[0-9]*" -exec cp -a {} "${cache_snapshot_dir}/${cache_root}"/ \;
+            fi
+          done
+          prune_obsolete_package_cache() {
+            for cache_root in "metadata/md5-cache" "metadata/cache"; do
+              cache_dir="${cache_root}/${{ env.ecn }}"
+              [ -d "${cache_dir}" ] || continue
+              while IFS= read -r -d '' cache_file; do
+                base_name=$(basename "${cache_file}")
+                if [ ! -f "./${{ env.ecn }}/${{ env.epn }}/${base_name}.ebuild" ]; then
+                  rm -f "${cache_file}"
+                fi
+              done < <(find "${cache_dir}" -maxdepth 1 -type f -name "${{ env.epn }}-[0-9]*" -print0)
+              rmdir "${cache_dir}" 2>/dev/null || true
+            done
+          }
+          restore_package_cache_snapshot() {
+            for cache_root in "metadata/md5-cache" "metadata/cache"; do
+              cache_dir="${cache_root}/${{ env.ecn }}"
+              if [ -d "${cache_dir}" ]; then
+                find "${cache_dir}" -maxdepth 1 -type f -name "${{ env.epn }}-[0-9]*" -delete
+              fi
+              if [ -d "${cache_snapshot_dir}/${cache_root}" ] && [ -n "$(ls -A "${cache_snapshot_dir}/${cache_root}")" ]; then
+                mkdir -p "${cache_dir}"
+                cp -a "${cache_snapshot_dir}/${cache_root}"/. "${cache_dir}"/
+              fi
+            done
+            prune_obsolete_package_cache
+          }
+          cache_err_file=$(mktemp)
+          if "${g2_cache_cmd[@]}" 2>"$cache_err_file"; then
+            cat "$cache_err_file" >&2
+            rm -f "$cache_err_file"
+            prune_obsolete_package_cache
+            rm -rf "${cache_snapshot_dir}"
+          else
+            gen_rc=$?
+            cat "$cache_err_file" >&2
+            if grep -q "unavailable masters permitted by CI policy" "$cache_err_file"; then
+              rm -f "$cache_err_file"
+              restore_package_cache_snapshot
+              rm -rf "${cache_snapshot_dir}"
+              echo "::notice title=md5-cache skipped::Authoritative md5-cache generation requires unavailable master repository context; skipping cache generation per CI policy."
+            elif grep -q "canonical cache metadata requires Portage evaluation" "$cache_err_file" && ! command -v portageq >/dev/null 2>&1; then
+              rm -f "$cache_err_file"
+              restore_package_cache_snapshot
+              rm -rf "${cache_snapshot_dir}"
+              echo "::notice title=md5-cache skipped::Inherited eclasses require Portage evaluation which is unavailable on runner; skipping cache generation per CI policy."
+            else
+              rm -f "$cache_err_file"
+              restore_package_cache_snapshot
+              rm -rf "${cache_snapshot_dir}"
+              exit "$gen_rc"
+            fi
+          fi
+
+      - name: Lint output
+        if: steps.process_releases.outputs.generated_tag
+        uses: arran4/g2-action@v1.2
+        with:
+          mode: 'run'
+          action: 'lint -fail-severity error . ${{ env.ecn }}/${{ env.epn }}'
+
+      - name: Commit and push changes
+        run: |
+          commit_msg="Add ebuilds for new ${{ env.epn }} releases tag ${generated_tag}"
+          ecn="${{ env.ecn }}"
+          epn="${{ env.epn }}"
+          ebuild_dir="${ecn}/${epn}"
+          if [ -e "./${ebuild_dir}" ] || [ -n "$(git ls-files -- "${ebuild_dir}")" ]; then
+            git add -A -- "${ebuild_dir}"
+          fi
+          for cache_root in "metadata/md5-cache" "metadata/cache"; do
+            cache_pathspec=":(glob)${cache_root}/${ecn}/${epn}-[0-9]*"
+            if [ -n "$(git ls-files -- "${cache_pathspec}")" ] || compgen -G "${cache_root}/${ecn}/${epn}-[0-9]*" >/dev/null; then
+              git add -A -- "${cache_pathspec}"
+            fi
+          done
+          has_staged_changes=0
+          if ! git diff --cached --quiet; then
+            has_staged_changes=1
+          fi
+          dirty_status=$(git status --porcelain)
+          if [ -n "${dirty_status}" ]; then
+            unexpected_dirty=$(printf '%s\n' "${dirty_status}" | grep -Ev '^[MADRC] ' || true)
+            if [ -n "${unexpected_dirty}" ]; then
+              echo "Error: worktree has unexpected unstaged or untracked changes outside staged package scope:" >&2
+              printf '%s\n' "${unexpected_dirty}" >&2
+              exit 1
+            fi
+          fi
+          if [ "${has_staged_changes}" -eq 0 ]; then
+            echo "No package changes to commit or push."
+            exit 0
+          fi
+          target_branch=$(git symbolic-ref --short HEAD 2>/dev/null || true)
+          if [ -z "${target_branch}" ]; then
+            echo "Error: HEAD is detached; cannot determine target branch for push." >&2
+            exit 1
+          fi
+          local_base=$(git rev-parse HEAD)
+          git commit -m "${commit_msg}"
+          post_commit_status=$(git status --porcelain)
+          if [ -n "${post_commit_status}" ]; then
+            echo "Error: worktree is not clean after commit; refusing to rebase or push:" >&2
+            printf '%s\n' "${post_commit_status}" >&2
+            exit 1
+          fi
+          max_attempts="${G2_PUSH_RETRY_MAX_ATTEMPTS:-5}"
+          base_sleep="${G2_PUSH_RETRY_BASE_SLEEP_SECS:-1}"
+          attempt=1
+          while [ "${attempt}" -le "${max_attempts}" ]; do
+            push_log=$(mktemp)
+            push_rc=0
+            if git push origin "HEAD:${target_branch}" >"${push_log}" 2>&1; then
+              cat "${push_log}"
+              rm -f "${push_log}"
+              exit 0
+            else
+              push_rc=$?
+            fi
+            cat "${push_log}" >&2
+            is_transient_race=0
+            if grep -Eqi '(fetch first|non-fast-forward|cannot lock ref|stale info)' "${push_log}" && \
+               ! grep -Eqi '(permission .* denied|403|authentication failed|protected branch|gh006|gh013|rule violations|pre-receive hook declined)' "${push_log}"; then
+              is_transient_race=1
+            fi
+            rm -f "${push_log}"
+            if [ "${is_transient_race}" -ne 1 ]; then
+              echo "Error: git push failed with non-retryable error (exit ${push_rc})." >&2
+              exit "${push_rc}"
+            fi
+            if [ "${attempt}" -ge "${max_attempts}" ]; then
+              echo "Error: failed to push package update after ${max_attempts} attempts due to concurrent remote updates." >&2
+              exit 1
+            fi
+            sleep_secs=$(( attempt * base_sleep + (RANDOM % 2) ))
+            echo "Push rejected due to concurrent update (attempt ${attempt}/${max_attempts}); retrying in ${sleep_secs}s..." >&2
+            sleep "${sleep_secs}"
+            git fetch origin "${target_branch}"
+            if git merge-base --is-ancestor HEAD "origin/${target_branch}"; then
+              echo "Remote ${target_branch} already contains local commit."
+              exit 0
+            fi
+            remote_pkg_changes=$(git diff --name-only "${local_base}..origin/${target_branch}" -- \
+              "${ebuild_dir}" \
+              ":(glob)metadata/md5-cache/${ecn}/${epn}-[0-9]*" \
+              ":(glob)metadata/cache/${ecn}/${epn}-[0-9]*")
+            if [ -n "${remote_pkg_changes}" ]; then
+              echo "Error: remote ${target_branch} updated ${ebuild_dir} concurrently; refusing to replay potentially stale package state:" >&2
+              printf '%s\n' "${remote_pkg_changes}" >&2
+              exit 1
+            fi
+            if ! git rebase "origin/${target_branch}"; then
+              echo "Error: git rebase onto origin/${target_branch} failed; aborting rebase." >&2
+              git rebase --abort 2>/dev/null || true
+              exit 1
+            fi
+            local_base=$(git rev-parse "origin/${target_branch}")
+            attempt=$(( attempt + 1 ))
+          done
+          exit 1
+        if: steps.process_releases.outputs.generated_tag

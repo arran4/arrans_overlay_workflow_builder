@@ -396,6 +396,34 @@ Metadata cache generation complies with PMS Chapter 14 and `g2` authoritative re
     than producing non-authoritative metadata.
   * Genuine ebuild defects, Manifest mismatches, or missing dependencies still fail closed under
     `g2 lint -fail-severity error` and prevent publication.
+* **Canonical cache retention, removal, and staging policy**:
+  * **Authoritative generation**: When `g2 cache generate` succeeds, generated `metadata/md5-cache` and
+    `metadata/cache` entries for the package are authoritative, and any obsolete cache entries whose
+    `.ebuild` no longer exists are pruned.
+  * **Skipped generation**: When cache generation is skipped in CI (unavailable masters or unavailable
+    Portage evaluation), any partial/unauthoritative writes from the failed attempt are rolled back,
+    previously tracked cache entries for still-retained ebuilds are preserved, and genuinely obsolete
+    cache entries for removed ebuilds are pruned.
+  * **Index-aware package-scoped staging**: `Commit and push changes` unconditionally stages both
+    `./${ecn}/${epn}` and package-scoped cache paths (`:(glob)metadata/md5-cache/${ecn}/${epn}-[0-9]*`
+    and `:(glob)metadata/cache/${ecn}/${epn}-[0-9]*`) using `git ls-files` and `git add -A --`, ensuring
+    tracked cache deletions are staged even when no matching files remain on disk, without ever staging
+    unrelated packages or using `git add -A` across the whole repository.
+
+### Fail-closed publication and concurrent push retries
+
+`Commit and push changes` never masks `git commit`, `git pull`/`git rebase`, or `git push` failures:
+
+* **No-op vs dirty worktree**: If no package-scoped changes are staged and the worktree is clean, the step
+  exits `0` as a clean no-op. If unexpected unstaged or untracked changes remain after package-scoped
+  staging, the step fails closed with diagnostics before rebasing or pushing.
+* **Bounded retry for concurrent `main` writes**: Transient ref-update races (`fetch first`,
+  `non-fast-forward`, `cannot lock ref`, `stale info`) are retried up to `G2_PUSH_RETRY_MAX_ATTEMPTS`
+  (default `5`) with bounded backoff and jitter. Before rebasing, the step fetches `origin/<branch>`,
+  verifies whether `HEAD` is already an ancestor of `origin/<branch>`, and refuses to replay if the
+  remote concurrently modified the same package.
+* **Genuine failures**: Permission/ruleset rejections, content/rebase conflicts (aborted cleanly via
+  `git rebase --abort`), dirty worktrees, and exhausted retries all exit non-zero. Force-pushing is never used.
 
 ### Ebuild deduplication and Manifest consistency lifecycle
 
