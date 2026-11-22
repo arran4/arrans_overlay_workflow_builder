@@ -109,6 +109,8 @@ jobs:
                 echo "Already have a newer ${releaseType:=release} release: ${releaseTypes[${releaseType:=release}]}"
                 continue
             fi
+            # Reuse the release URL for high-variant packages to keep the Actions run command bounded.
+            release_base="https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}"
             tmp_ebuild_file="${ebuild_dir}/${{ env.epn }}-${version}.ebuild.tmp"
 
               # shellcheck disable=SC2016
@@ -264,37 +266,37 @@ jobs:
                 emit_metadata_field "HOMEPAGE" "$HOMEPAGE"
                 src_uri_val=""
                 src_uri_val+=" amd64? ( glibc? ( !loong64? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux-glibc_amd64.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux-glibc_amd64.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux-glibc_amd64.tar.gz  )  )  )  "
                 src_uri_val+=" amd64? ( !glibc? ( !loong64? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux-musl_amd64.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux-musl_amd64.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux-musl_amd64.tar.gz  )  )  )  "
                 src_uri_val+=" amd64? ( loong64? ( !glibc? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_loong64.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux_loong64.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_loong64.tar.gz  )  )  )  "
                 src_uri_val+=" arm? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_arm.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux_arm.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_arm.tar.gz  )  "
                 src_uri_val+=" arm64? ( android? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_android_arm64.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_android_arm64.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_android_arm64.tar.gz  )  )  "
                 src_uri_val+=" arm64? ( !android? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_arm64.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux_arm64.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_arm64.tar.gz  )  )  "
                 src_uri_val+=" ppc64? ( !le? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_ppc64.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux_ppc64.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_ppc64.tar.gz  )  )  "
                 src_uri_val+=" ppc64? ( le? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_ppc64le.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux_ppc64le.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_ppc64le.tar.gz  )  )  "
                 src_uri_val+=" riscv? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_riscv64.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux_riscv64.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_riscv64.tar.gz  )  "
                 src_uri_val+=" s390? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_s390x.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux_s390x.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_s390x.tar.gz  )  "
                 src_uri_val+=" x86? (  "
-                src_uri_val+=" https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_i386.tar.gz "
+                src_uri_val+=" ${release_base}/chezmoi_${version}_linux_i386.tar.gz "
                 src_uri_val+=" -> \${P}-chezmoi_\${PV}_linux_i386.tar.gz  )  "
                 emit_metadata_field "SRC_URI" "$src_uri_val"
                 emit_metadata_field "LICENSE" "$LICENSE"
@@ -442,17 +444,17 @@ jobs:
                   continue
               fi
               failed=0
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux-glibc_amd64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux-glibc_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux-musl_amd64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux-musl_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_loong64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_loong64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_arm.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_arm.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_android_arm64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_android_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_arm64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_ppc64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_ppc64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_ppc64le.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_ppc64le.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_riscv64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_riscv64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_s390x.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_s390x.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
-              if ! g2 manifest upsert-from-url "https://github.com/${{ env.github_owner }}/${{ env.github_repo }}/releases/download/${tag}/chezmoi_${version}_linux_i386.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_i386.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux-glibc_amd64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux-glibc_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux-musl_amd64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux-musl_amd64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux_loong64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_loong64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux_arm.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_arm.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_android_arm64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_android_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux_arm64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_arm64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux_ppc64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_ppc64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux_ppc64le.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_ppc64le.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux_riscv64.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_riscv64.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux_s390x.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_s390x.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
+              if ! g2 manifest upsert-from-url "${release_base}/chezmoi_${version}_linux_i386.tar.gz" "${{ env.epn }}-${version}-chezmoi_${version}_linux_i386.tar.gz" "${ebuild_dir}/Manifest"; then failed=1; fi
               if [ "$failed" -eq 1 ]; then
                   echo "Failed to generate manifest for $tag. Skipping..."
                   rm -f "$ebuild_file"
